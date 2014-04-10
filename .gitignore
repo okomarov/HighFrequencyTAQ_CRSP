@@ -1,0 +1,12 @@
+/*.mat
+/data/TAQ/
+/data/SP500/
+/data/CCM/
+/data/sas2csv/
+/data/Tickwrite/
+/data/CRSP/
+/results/*.mat
+/results/*.zip
+/utils/*.mexw64
+/utils/*/*.mexw64
+/taq2cusip/data/

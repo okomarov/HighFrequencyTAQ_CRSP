@@ -1,0 +1,1 @@
+system(sprintf('wmic process where processid="%d" CALL setpriority 64',feature('getpid')))
