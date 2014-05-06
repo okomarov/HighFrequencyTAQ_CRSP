@@ -32,6 +32,7 @@
 %
 
 % Changes (for whole package including fast_median)
+%   Version 0.87 - Bugfix for handling empty inputs.
 %   Version 0.86 - Bugfixes, both a compile time bug and a more insidious 
 %                  multithreading runtime bug.
 %   Version 0.85 - DO NOT USE; BUGS; use 0.86 or higher.
@@ -45,6 +46,6 @@
 %                  documentation to CPP files
 %   Version 0.8  - Initial release
 
-% Version 0.86
-% Peter H. Li 26-JUL-2013
+% Version 0.87
+% Peter H. Li 14-NOV-2013
 % As required by MatLab Central FileExchange, licensed under the FreeBSD License

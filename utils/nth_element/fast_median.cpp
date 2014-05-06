@@ -1,6 +1,6 @@
 /* fast_median.cpp
- * Ver 0.86
- * Peter H. Li 2012 FreeBSD License
+ * Ver 0.87
+ * Peter H. Li 2013 FreeBSD License
  * See fast_median.m for documentation.
  */
 #include "mex.h"

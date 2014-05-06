@@ -32,11 +32,15 @@
 %    This may result in FAST_MEDIAN differing in output from MEDIAN for
 %    some integer inputs.
 %
+%    In contrast to MEDIAN, which attempts to return NaN for empty inputs,
+%    FAST_MEDIAN returns empty output of the proper datatype for empty
+%    inputs.
+%
 %    To compile FAST_MEDIAN, you must have MEX set up with a compiler. 
 %    Then go to the directory containing fast_median.cpp and run:
 %        > mex fast_median.cpp
 %
 
-% Version 0.86
-% Peter H. Li 26-JUL-2013
+% Version 0.87
+% Peter H. Li 14-NOV-2013
 % As required by MatLab Central FileExchange, licensed under the FreeBSD License
