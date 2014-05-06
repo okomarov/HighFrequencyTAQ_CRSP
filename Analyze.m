@@ -1,9 +1,27 @@
-function Analyze(fun, varnames, cached, debug)
+function res = Analyze(fun, varnames, cached, debug)
+
+% ANALYZE Executes specified fun in parallel on the whole database (all .mat files) 
+% 
+%   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of 
+%                          the following sub-functions:
+%                               - 'dailystats'            
+%                               - 'badprices'
+%                               - 'avgtimestep'
+%                          VARNAMES is a cell-array of strings (or string)
+%                          with the VarNames of the dataset with the results
+%
+%   ANALYZE(..., CACHED) Some FUN might require pre-cached results which where
+%                        run on the whole database.
+%                        Check the specific sub-function for the format of the 
+%                        needed CACHED results.
+%   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be 
+%                       able to step through the code in debug mode.
+
+
 if nargin < 3; cached = [];    end
 if nargin < 4; debug  = false; end   
 
 % Simply call the specific subroutine
-cd C:\HFbetas
 addpath(genpath('.\utils'))
 writeto = '.\results\';
 
@@ -63,13 +81,37 @@ if ~debug
     rmpref('Internet','SMTP_Password')
 end
 end
+%% Check stats for returns
+function res = dailystats(s,~)
+% DAILYSTATS Relevant for median calculation
+
+% STEP 1) Selection
+inan = selecttrades(s.data);
+  
+% Select non nans
+prices = s.data.Price(~inan);
+% Set to NaN overnight
+[n, subs] = histc(find(~inan), [1; s.mst.To+1]);
+
+% Daily median price
+fill = NaN('single');
+nmst = size(s.mst,1);
+Med  = accumarray(subs, prices,[nmst,1], @fast_median, fill);
+
+% Min max return
+ret              = prices(2:end)./prices(1:end-1)-1;
+nnovernight      = true(size(ret));
+idx              = setdiff(cumsum(n(1:end-2)),0);
+nnovernight(idx) = false;
+ret              = ret(nnovernight);
+subs             = subs(nnovernight);
+% Collect results
+res = [accumarray(subs, ret,[nmst,1],@min,fill), accumarray(subs, ret,[nmst,1],@max,fill), Med, n(1:end-1)-1];
+end
 %% Count bad prices
 function res = badprices(s, cached)
 
-% Detect bad prices
-% If number of bad prices of that day is 50% then is a bad day
-% If the number of bad days per series is more than 50% then bad series
-
+% Flag bad days if number of intraday bad prices is > dailycut
 dailycut = .5;
 
 % Number of observations per day
@@ -78,12 +120,40 @@ nobs = double(s.mst.To - s.mst.From + 1);
 % STEP 1) Selection
 inan = selecttrades(s.data);
 
-% STEP 2) Bad prices are 1.5x or .65x the daily median (net of selection nans)
+% STEP 2) Bad prices are < than .65x daily median or > than 1.5x daily median
 [~,ibadprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
 ibadprice     = ibadprice ~= 1;
 
 % STEP 3) Bad days
- res = accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs);
+res = accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs);
+end
+%% Check stats for returns
+function res = avgtimestep(s,cached)
+% Number of observations per day
+nobs = double(s.mst.To - s.mst.From + 1);
+nmst = size(s.mst,1);
+% STEP 1) Selection
+inan = selecttrades(s.data);
+
+% STEP 2) Bad prices are < than .65x daily median or > than 1.5x daily median
+[~,ibadprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
+ibadprice     = ibadprice ~= 1;
+inan          = inan | ibadprice;
+
+% STEP 3) Take median price if same timestamp
+mstrow           = RunLength((1:nmst)',nobs);
+mstrow           = mstrow(~inan);
+[unTimes,~,subs] = unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:)));
+price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
+
+% Calculate average intraday unique time step after selection, bad prices and consolidation
+daySubs   = single(RunLength((1:nmst)',nobs));
+times     = unique(daySubs(~inan) + single(hhmmssmat2serial(s.data.Time(~inan,:))));
+subs      = fix(times);
+n         = accumarray(subs, single(1), [nmst,1],   [], ones('single'));
+openTime  = accumarray(subs,     times, [nmst,1], @min, ones('single'));
+closeTime = accumarray(subs,     times, [nmst,1], @max, ones('single'));
+res       = (closeTime - openTime)./(n-1);
 end
 %% Check how many bad prices
 function res = cleanprices(s,cached)
@@ -226,51 +296,4 @@ scrollto('s.mst' ,[r ,1])
 idx = s.mst.From(r):s.mst.To(r);
 s.data.Price(idx)
 s.data.Exchange(idx)
-end
-%% Check stats for returns
-function res = dailystats(s,~)
-% STEP 1) Selection
-inan = selecttrades(s.data);
-   
-% Select non nans (use prevprice next time)
-prices = s.data.Price(~inan);
-% Set to NaN overnight
-[n, subs] = histc(find(~inan), [1; s.mst.To+1]);
-
-% Daily median price
-fill = NaN(1,'single');
-nmst = size(s.mst,1);
-Med  = accumarray(subs, prices,[nmst,1], @fast_median, fill);
-
-% Min max return
-ret              = prices(2:end)./prices(1:end-1)-1;
-nnovernight      = true(size(ret));
-idx              = setdiff(cumsum(n(1:end-2)),0);
-nnovernight(idx) = false;
-ret              = ret(nnovernight);
-subs             = subs(nnovernight);
-% Collect results
-res = [accumarray(subs, ret,[nmst,1],@min,fill), accumarray(subs, ret,[nmst,1],@max,fill), Med, n(1:end-1)-1];
-end
-%% Check stats for returns
-function res = avgtimestep(s,cached)
-% Number of observations per day
-nobs = double(s.mst.To - s.mst.From + 1);
-nmst = size(s.mst,1);
-% STEP 1) Selection
-inan = selecttrades(s.data);
-
-% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
-[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
-iprice     = iprice ~= 1;
-inan       = inan | iprice;
-
-% Calculate average intraday unique time step after selection and bad prices
-daySubs   = single(RunLength((1:nmst)',nobs));
-times     = unique(daySubs(~inan) + single(hhmmssmat2serial(s.data.Time(~inan,:))));
-subs      = fix(times);
-n         = accumarray(subs, single(1), [nmst,1],   [], ones('single'));
-openTime  = accumarray(subs,     times, [nmst,1], @min, ones('single'));
-closeTime = accumarray(subs,     times, [nmst,1], @max, ones('single'));
-res       = (closeTime - openTime)./(n-1);
 end

@@ -393,6 +393,62 @@ end
 % matlabpool close
 rmpref('Internet','SMTP_Password')
 
+%% Selection/filtering
+
+% Load big master file
+d = '.\data\TAQ';
+load(fullfile(d,'master'),'-mat')
+
+% Results directory
+resdir = '.\results\';
+
+% Median and other dailystats
+testname = 'dailystats';
+try 
+    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
+    names = sort({dd.name});
+    load(fullfile(resdir,names{end}))
+catch
+    res = Analyze(testname,{'Min','Max','MedPrice','Nrets'});
+end
+mst = [mst, res];
+
+% Bad prices days 
+testname = 'badprices';
+try 
+    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
+    names = sort({dd.name});
+    load(fullfile(resdir,names{end}))
+catch
+    res = Analyze(testname,'Baddays',mst(:, {'File','MedPrice'}));
+end
+mst = [mst, res];
+
+% Bad series 
+totbad      = accumarray(mst.Id, mst.Baddays);
+totobs      = accumarray(mst.Id,  mst.To - mst.From +1);
+% hist(totbad./totobs,100) 
+badseries   = totbad./totobs > .1;
+mst.Baddays = mst.Baddays | badseries(mst.Id);
+clearvars -except mst d SP500
+
+% Average time step
+testname = 'avgtimestep';
+try 
+    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
+    names = sort({dd.name});
+    load(fullfile(resdir,names{end}))
+catch
+    res = Analyze(testname,'Timestep', mst(:, {'File','MedPrice'}));
+end
+mst = [mst, res];
+
+% Select on basis of minimum number of observations
+% - Worst case 13 trades with an AVERAGE of 30min timestep
+ifewtrades   = isnan(res.Timestep) | res.Timestep > 1/48 | mst.Nrets < 12;
+perfew       = accumarray(mst.Id, ifewtrades)./accumarray(mst.Id, 1) > .5;
+mst.Timestep = ifewtrades | ismember(mst.Id, find(perfew));
+
 %% Betas
 cd C:\HFbetas
 addpath '.\utils' '.\utils\nth_element'
