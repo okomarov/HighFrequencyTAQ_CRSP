@@ -141,15 +141,13 @@ ibadprice     = ibadprice ~= 1;
 inan          = inan | ibadprice;
 
 % STEP 3) Take median price if same timestamp
-mstrow           = RunLength((1:nmst)',nobs);
-mstrow           = mstrow(~inan);
-[unTimes,~,subs] = unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:)));
-price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
+mstrow         = RunLength((1:nmst)',nobs);
+mstrow         = mstrow(~inan);
+[times,~,subs] = unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:)));
+price          = accumarray(subs, s.data.Price(~inan),[],@fast_median);
 
 % Calculate average intraday unique time step after selection, bad prices and consolidation
-daySubs   = single(RunLength((1:nmst)',nobs));
-times     = unique(daySubs(~inan) + single(hhmmssmat2serial(s.data.Time(~inan,:))));
-subs      = fix(times);
+subs      = single(fix(times));
 n         = accumarray(subs, single(1), [nmst,1],   [], ones('single'));
 openTime  = accumarray(subs,     times, [nmst,1], @min, ones('single'));
 closeTime = accumarray(subs,     times, [nmst,1], @max, ones('single'));
