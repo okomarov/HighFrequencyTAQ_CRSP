@@ -8,7 +8,7 @@ if ischar(tickers) && isrow(tickers)
 end
     
 % Find tickers in the master file
-[ifound,ids] = ismember(tickers,master.ids);
+[ifound,ids] = ismember(upper(tickers),upper(master.ids));
 if all(~ifound)
     warning('None of the TICKERS were found.')
     return
@@ -44,13 +44,15 @@ elapsed = zeros(nfiles+1,1);
 tic
 % LOOP all .mat files
 for ii = 1:nfiles
+    
     % Check if progress was cancelled
     if getappdata(h,'canceling')
         break
     end
+    
     % Update waitbar
-    matname = sprintf('T%04d.mat',files(ii));
-    x = (ii-1)/nfiles;
+    matname  = sprintf('T%04d.mat',files(ii));
+    x        = (ii-1)/nfiles;
     time2end = elapsed(ii)*(1-x)/x;
     waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
     
@@ -68,14 +70,14 @@ for ii = 1:nfiles
         c     = c+1;
         iout  = cblocks(c)+1:cblocks(c+1);
         idata = mstfile.From(jj):mstfile.To(jj);
+
         % Retrieve data
         out.Id      (iout) = mstfile.Id(jj);
         out.Datetime(iout) = dates(jj) + hhmmssmat2serial(s.data.Time(idata,:));
         out.Price   (iout) = s.data.Price(idata);
-        
-        % Update waitbar 
-        waitbar(x + jj/(nfiles*nrec),h)
     end
+    % Update waitbar 
+    waitbar(ii/nfiles,h)
     elapsed(ii+1) = toc;
 end
 if getappdata(h,'canceling')
