@@ -95,93 +95,107 @@ ifewtrades   = isnan(res.Timestep) | res.Timestep > 1/48 | mst.Nrets < 12;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Timestep = ifewtrades | ismember(mst.UnID, find(perfew));
 
-
 % Sample at 5 min
 mst = mst(:, {'File','UnID','MedPrice','Baddays','Timestep'});
 testname = 'sample';
 Analyze(testname,{'ID','Datetime','Price'}, mst(:, {'File','UnID','MedPrice','Baddays','Timestep'}));
 
-
 %% Betas
-cd C:\HFbetas
 addpath '.\utils' '.\utils\nth_element'
+resdir = '.\results';
+d      = '.\data\';
 
 % Load SPX (tickwrite)
-d         = '.\data\';
-filename  = unzip(fullfile(d,'Tickwrite','SP.zip'), fullfile(d,'Tickwrite'));
-SP500tick = dataset('File',filename{:},'Delimiter',',','ReadVarNames',1,'format','%f%f%f%*[^\n]');
-SP500tick = replacedata(SP500tick,@(x) yyyymmdd2serial(x + ((x>9e5).*19e6 + (x<=9e5).*20e6)),'Date');
-SP500tick = replacedata(SP500tick,@(x) hhmmssfff2serial(x),'Time');
-SP500tick.Datetime = SP500tick.Date + SP500tick.Time;
-delete(filename{:})
+testname = 'SP500';
+try 
+    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
+    names = sort({dd.name});
+    load(fullfile(resdir,names{end}))
+catch
+    
+    filename  = unzip(fullfile(d,'Tickwrite','SP.zip'), fullfile(d,'Tickwrite'));
+    SP500tick = dataset('File',filename{:},'Delimiter',',','ReadVarNames',1,'format','%f%f%f%*[^\n]');
+    SP500tick = replacedata(SP500tick,@(x) yyyymmdd2serial(x + ((x>9e5).*19e6 + (x<=9e5).*20e6)),'Date');
+    SP500tick = replacedata(SP500tick,@(x) hhmmssfff2serial(x),'Time');
+    SP500tick.Datetime = SP500tick.Date + SP500tick.Time;
+    delete(filename{:})
+    
+    % Median price for same timestamp
+    [SP500,~,subsID] = unique(SP500tick(:,{'Date','Datetime'}));
+    SP500.Price = accumarray(subsID,SP500tick.Price,[],@fast_median);
+    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),testname)), 'SP500')
+end
 
-% Median price for same timestamp
-[SP500new,~,subs] = unique(SP500tick(:,{'Date','Datetime'}));
-SP500new.Price = accumarray(subs,SP500tick.Price,[],@fast_median);
-clear SP500tick subs
-
-% Sample SPX
-grid  = (9.5/24:5/(60*24):16/24)';
-SP500 = fixedsampling(double([SP500new.Datetime, SP500new.Price]), 'Previous', grid);
+% Sample SP500 (until 3:15 PM!)
+grid  = (9.5/24:5/(60*24):(15+15/60)/24)';
+ngrid = numel(grid);
+SP500 = fixedsampling(double([SP500.Datetime, SP500.Price]), 'Previous', grid);
 SP500 = mat2dataset(SP500,'VarNames',{'Datetime','Price'});
 
-% Load MASTER file
-d   = '.\data\TAQ';
-load(fullfile(d,'master'),'-mat')
+% SP500 ret (zeroing overnight)
+SPret = [SP500.Datetime(2:end) SP500.Price(2:end)./SP500.Price(1:end-1)-1];
+SPret = SPret(diff(fix(SP500.Datetime)) == 0,:);
 
-% Prepare pre-cached SP500
-tic
-mstdates      = unique(mst(:,{'Date','File'}));
-mstdates.Date = yyyymmdd2serial(double(mstdates.Date));
-toc
-N = max(mstdates.File);
-tmp = cell(N,1);
-for ii = 1:N
-    disp(ii)
-    dt = mstdates.Date(ii == mstdates.File);
-    tmp{ii} = SP500(ismembc(fix(SP500.Datetime),dt), :);
-%     tmp{ii}.File = repmat(uint16(ii), size(tmp{ii},1),1);
+% Cache SP500 returns by days
+SPdays = unique(fix(SPret(:,1)),'stable');
+SPret  = mat2cell(SPret(:,2),repmat(ngrid-1,size(SPret,1)/(ngrid-1),1));
+
+
+% LOOP by sampled data 
+d = '.\data\TAQ\sampled';
+dd = dir(fullfile(d,'S*.mat'));
+res = cell(numel(dd),1);
+parpool(4)
+parfor f = 1:numel(dd)
+    disp(f)
+    % Load data and get returns until 3:15 PM
+    s      = load(fullfile(d,dd(f).name));
+    ret    = [s.data.Datetime(2:end), s.data.Price(2:end)./s.data.Price(1:end-1)-1];
+    idx    = rem(ret(:,1),1) <= (15+16/60)/24;
+    ret    = ret(idx,:);
+    ret    = ret([true; diff(rem(ret(:,1),1)) >= 0],:);
+    
+    % Map SP500 rets to stock rets
+    days    = yyyymmdd2serial(double(s.mst.Date));
+    spret   = cat(1,SPret{ismembc2(days, SPdays)});
+    prodret = spret.*ret(:,2);
+    subsID    = reshape(repmat(1:size(s.mst,1),ngrid-1,1),[],1);
+    ikeep   = ~isnan(prodret);
+    beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2);
+    
+    % Store results
+    res{f} = s.mst(:,{'UnID','Date'});
+    res{f}.Beta = beta;
 end
-toc
-SP500 = tmp;
-clear tmp SP500new
+Betas = cat(1,res{:});
+save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')), 'Betas')
+%% Smooth Betas
+resdir = '.\results';
+dd     = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
+names  = sort({dd.name});
+load(fullfile(resdir,names{end}))
 
-% Load daily stats
-% Analyze('dailystats',{'Min','Max','MedPrice','Nrets'},[],1)
-load .\results\20131230_1732_dailystats.mat
-mst = [mst, res];
+% Sort betas
+Betas = sortrows(Betas,{'UnID','Date'});
 
-% Load avg timestes:
-% - Worst case 13 trades with an AVERAGE of 30min timestep
-% clear res 
-% Analyze('avgtimestep','Timestep', mst(:, {'File','MedPrice'}),1)
-load .\results\20131230_1844_avgtimestep.mat
-ifewtrades   = isnan(res.Timestep) | res.Timestep > 1/48 | mst.Nrets < 12;
-perfew       = accumarray(mst.Id, ifewtrades)./accumarray(mst.Id, 1) > .5;
-mst.Timestep = ifewtrades | ismember(mst.Id, find(perfew));
+% Index by ID
+[unID, ~,subsID] = unique(Betas.UnID);
 
-% Bad prices days/series
-% Analyze('badprices',[],mst(:, {'File','MedPrice'}))
-load .\results\20131230_2142_badprices.mat
-mst.Baddays = res;
-totbad      = accumarray(mst.Id, mst.Baddays);
-totobs      = accumarray(mst.Id,  mst.To - mst.From +1);
-    % hist(totbad./totobs,100) 
-badseries   = totbad./totobs > .1;
-mst.Baddays = mst.Baddays | badseries(mst.Id);
-clearvars -except mst d SP500
+% Exclude series with less than 20 observations, i.e. one month of data
+ifewdays = accumarray(subsID,1) < 20;
+ikeep    = ~ismember(Betas.UnID, unID(ifewdays));
 
-% Run min/max diagnostics
-mst = mst(:, {'File','MedPrice','Timestep','Baddays'});
-% Analyze('cleanprices',{'Min','Max'},mst,1)
+% Moving averages
+% tmp = accumarray(subsID(ikeep), Betas.Date(ikeep),[],@issorted, true);
+sz      = size(unID);
+Res.SMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
+Res.EMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
 
-% Cache mst into file blocks
-cached = num2cell([accumarray(mst.File,(1:size(mst))',[],@(x) {mst(x,2:end)}), SP500],2);
-clear mst SP500
-save test
+% Weekly betas
+[unW,~,subsWeek] = unique([Betas.UnID fix(double(Betas.Date)/1e4) weeknum(yyyymmdd2serial(double(Betas.Date)))'],'rows');
+Res.Week         = accumarray(subsWeek(ikeep), Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
 
-load test
-Analyze('betas','Beta',cached)
+
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
