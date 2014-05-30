@@ -105,7 +105,7 @@ idx              = setdiff(cumsum(n(1:end-2)),0);
 nnovernight(idx) = false;
 ret              = ret(nnovernight);
 subs             = subs(nnovernight);
-% Collect results
+% Collect results (note, nrets can be negative if it was only one price, which was selected out)
 res = [accumarray(subs, ret,[nmst,1],@min,fill), accumarray(subs, ret,[nmst,1],@max,fill), Med, n(1:end-1)-1];
 end
 %% Count bad prices
@@ -230,15 +230,23 @@ if ~all(inan)
         
     % STEP 7) Sample on fixed grid (easier to match sp500) 
     grid  = (9.5/24:5/(60*24):16/24)';
+    ngrid = numel(grid);
     price = fixedsampling(double([unTimes, price]), 'Previous', grid);
     idx   = fix(price(:,1));
     dates = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(price(:,1),1);
     
     % Save
-    res = [];
+    res   = [];
     fname = fullfile('.\data\TAQ\sampled',sprintf('S5m_%04d.mat',nfile));
-    data = dataset({cached.UnID(idx),'UnID'}, {dates,'Datetime'},{price(:,2),'Price'});
-    save(fname, 'data')
+    data  = dataset({dates,'Datetime'},{price(:,2),'Price'});
+    
+    imst     = unique(mstrow,'stable');
+    mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
+    mst.From = (1:ngrid:size(data,1))';
+    mst.To   = (ngrid:ngrid:size(data,1))';
+    
+    ids = s.ids;
+    save(fname, 'data','ids', 'mst')
 end    
         
 
