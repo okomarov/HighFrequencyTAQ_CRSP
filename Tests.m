@@ -171,6 +171,8 @@ Betas = cat(1,res{:});
 save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')), 'Betas')
 %% Smooth Betas
 resdir = '.\results';
+
+% Load Betas
 dd     = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
 names  = sort({dd.name});
 load(fullfile(resdir,names{end}))
@@ -194,6 +196,25 @@ Res.EMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')
 % Weekly betas
 [unW,~,subsWeek] = unique([Betas.UnID fix(double(Betas.Date)/1e4) weeknum(yyyymmdd2serial(double(Betas.Date)))'],'rows');
 Res.Week         = accumarray(subsWeek(ikeep), Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
+
+%% Size quantiles
+resdir = '.\results';
+vars = {'cusip','symbol','datef'};
+load(fullfile(resdir, 'taq2crsp.mat'))
+
+% Load shrout getting rid of 0s
+load(fullfile(resdir, 'TAQshrout.mat'))
+TAQshrout.Properties.VarNames = [vars, 'shrout'];
+
+% Direct match
+TAQshrout.ID      = zeros(size(TAQshrout,1),1,'uint16');
+[idx,pos]         = ismember(TAQshrout(:,vars(1:2)), taq2crsp(:,vars(1:2)));
+TAQshrout.ID(idx) = taq2crsp.ID(pos(idx));
+
+% Organize number of shares as monthly panel
+
+
+
 
 
 %% Verify MANUAL vs AUTOMATIC betas
