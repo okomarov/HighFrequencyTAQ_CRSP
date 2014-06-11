@@ -14,7 +14,7 @@ function tspanel = nanfillts(tspanel)
 %
 % See also
 
-% Author: Oleg Komarov (o.komarov11@bcsprime.com)
+% Author: Oleg Komarov (o.komarov11@imperial.ac.uk)
 % Tested on R2013a Win7 64bit
 % 13 Dec 2013 - Created
 
