@@ -198,6 +198,8 @@ Res.EMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')
 Res.Week         = accumarray(subsWeek(ikeep), Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
 
 %% Size quantiles
+addpath .\utils\
+
 resdir = '.\results';
 vars = {'cusip','symbol','datef'};
 load(fullfile(resdir, 'taq2crsp.mat'))
@@ -206,16 +208,41 @@ load(fullfile(resdir, 'taq2crsp.mat'))
 load(fullfile(resdir, 'TAQshrout.mat'))
 TAQshrout.Properties.VarNames = [vars, 'shrout'];
 
+% Filter out matches (max score 42, so 100 takes all)
+iscore = taq2crsp.score < 100 | isnan(taq2crsp.score);
+
 % Direct match
 TAQshrout.ID      = zeros(size(TAQshrout,1),1,'uint16');
-[idx,pos]         = ismember(TAQshrout(:,vars(1:2)), taq2crsp(:,vars(1:2)));
-TAQshrout.ID(idx) = taq2crsp.ID(pos(idx));
+[idx,pos]         = ismember(TAQshrout(:,vars(1:2)), taq2crsp(iscore,vars(1:2)));
+IDs               = taq2crsp.ID(iscore);
+TAQshrout.ID(idx) = IDs(pos(idx));
 
-% Organize number of shares as monthly panel
+% Matched
+imatched = TAQshrout.ID ~= 0;
 
+% Exclude overlapping records
+[un,~,subs] = unique(TAQshrout(imatched,{'ID','datef'}));
+overlap     = un(accumarray(subs,1) > 1,:);
+imatched    = imatched & ~ismember(TAQshrout(:, {'ID','datef'}), overlap);
+% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(3))),:)
 
+% Get panel of shrout
+shrout = Pivot([double(TAQshrout.ID(imatched)), double(TAQshrout.datef(imatched)), TAQshrout.shrout(imatched)]);
 
+% Monthly dates of interest
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+alldates = union(shrout(2:end,1), refdates);
 
+[~,pdates] = ismember(shrout(2:end,1),alldates);
+data       = NaN(numel(alldates),size(shrout,2)-1);
+data(pdates,:) = shrout(2:end,2:end);
+shrout = [[NaN; alldates], [shrout(1,2:end); data]];
+
+% Fill in previous value
+shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
+
+% Get reference dates
+shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
 
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
