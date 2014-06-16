@@ -217,15 +217,14 @@ inan = inan | RunLength(cached.Baddays,nobs);
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
 inan = inan | RunLength(cached.Timestep,nobs);
 
-% STEP 5) Clean prices
-s.data.Price(inan) = NaN;
+% STEP 5) Clean prices - carried out in the median consolidation
+% s.data.Price(inan) = NaN;
 
 if ~all(inan)
 
     % STEP 6) Median prices for same timestamps
     mstrow           = RunLength((1:nmst)',nobs);
-    mstrow           = mstrow(~inan);
-    [unTimes,~,subs] = unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:)));
+    [unTimes,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
     price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
         
     % STEP 7) Sample on fixed grid (easier to match sp500) 
@@ -240,7 +239,7 @@ if ~all(inan)
     fname = fullfile('.\data\TAQ\sampled',sprintf('S5m_%04d.mat',nfile));
     data  = dataset({dates,'Datetime'},{price(:,2),'Price'});
     
-    imst     = unique(mstrow,'stable');
+    imst     = RunLength(idx);
     mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
     mst.From = (1:ngrid:size(data,1))';
     mst.To   = (ngrid:ngrid:size(data,1))';
@@ -248,76 +247,6 @@ if ~all(inan)
     ids = s.ids;
     save(fname, 'data','ids', 'mst')
 end    
-        
-
-end
-%% Betas
-function res = betas(s,cached)
-% Number of observations per day
-nobs = double(s.mst.To - s.mst.From + 1);
-nmst = size(s.mst,1);
-sp500 = cached{2};
-cached = cached{1};
-% STEP 1) Selection
-inan = selecttrades(s.data);
-
-% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
-[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
-iprice     = iprice ~= 1;
-inan       = inan | iprice;
-
-% STEP 3) Bad series/days
-inan = inan | RunLength(cached.Baddays,nobs);
-
-% STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
-inan = inan | RunLength(cached.Timestep,nobs);
-
-% STEP 5) Clean prices
-s.data.Price(inan) = NaN;
-
-res = NaN(nmst,1,'single');
-if ~all(inan)
-
-    % STEP 6) Median prices for same timestamps
-    mstrow           = RunLength((1:nmst)',nobs);
-    mstrow           = mstrow(~inan);
-    [unTimes,~,subs] = unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:)));
-    price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
-        
-    % STEP 7) Sample on fixed grid (easier to match sp500) 
-    grid  = (9.5/24:5/(60*24):16/24)';
-    ngrid = numel(grid);
-    
-%     biggrid = bsxfun(@plus, grid, unique(fix(unTimes))');
-%     [price,pricedt] = realized_price_filter(price,unTimes,'Unit','Fixed',biggrid(:))
-  
-    % Sample price and 
-    price = fixedsampling(double([unTimes, price]), 'Previous', grid);
-    
-    % Collect sp500 into cell per day array
-    sp500date2cell = fix(sp500.Datetime(ngrid:ngrid:end));
-    sp500          = mat2cell(sp500.Price,repmat(ngrid,size(sp500,1)/ngrid,1),1);
-    [~,pos]        = ismember(yyyymmdd2serial(double(s.mst.Date(fix(price(ngrid:ngrid:end,1))))), sp500date2cell);
-    sp500          = cat(1,sp500{pos});
-        
-    % STEP 8) Sample SP500
-%     sp500 = fltprice(double(sp500),'FixedTime', 'Previous', grid);
-%     biggrid2 = bsxfun(@plus, grid, unique(fix(sp500.Datetime))');
-%     [sp500,sp500dt] = realized_price_filter(sp500.Price,sp500.Datetime,'Unit','Fixed',biggrid2(:))
-   
-    % Returns
-    ret      = price(2:end,2)./price(1:end-1,2)-1;
-    retSP500 = sp500(2:end)./sp500(1:end-1)-1;
-    nret     = numel(ret);
-    prodret  = ret .* retSP500;
-    % Get rid of overnight and NaNs
-    subs     = reshape(repmat(1:numel(pos),ngrid,1),[],1);
-    ikeep    = ~isnan(prodret);
-    ikeep(ngrid:ngrid:nret) = false;
-    % Realised beta
-    res(unique(mstrow)) = accumarray(subs(ikeep), prodret(ikeep))./accumarray(subs(ikeep), retSP500(ikeep).^2);
-end
-
 end
 % %% Analyze flagged
 % % Good example: TESTC
