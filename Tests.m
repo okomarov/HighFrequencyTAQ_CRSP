@@ -23,9 +23,13 @@ catch
     for ii = 1:numel(ids)
         symbol   = ids{ii};
         % Extract records from taq2crsp corresponding to TAQ's symbol
-        tmp      = sortrows(taq2crsp(strcmpi(symbol,taq2crsp.symbol), {'ID','datef'}),'datef');
+        isymbol  = strcmpi(symbol,taq2crsp.symbol);
+        tmp      = sortrows(taq2crsp(isymbol, {'ID','datef'}),'datef');
         if isempty(tmp)
-            tmp = sortrows(taq2crsp(strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol), {'ID','datef'}),'datef');
+            % Preferred stocks symbol use sometimes the lowercase suffix
+            % 'p' instead of 'PR' (see daily TAQ guide)
+            isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
+            tmp     = sortrows(taq2crsp(isymbol, {'ID','datef'}),'datef');
         end
         if isempty(tmp),fprintf('%d\n',ii),continue,end
         imst     = find(mst.Id == ii);
@@ -36,7 +40,7 @@ catch
         unID(imst(nnzero)) = tmp.ID(itmp(nnzero));
     end
     % Unmatched
-    mst.UnID(mst.UnID == 0) = intmax('uint16');
+    unID(unID == 0) = intmax('uint16');
     res = dataset(unID,'VarNames','UnID');
     save(fullfile(resdir, sprintf('%s_%s.mat', datestr(now,'yyyymmdd_HHMM'),testname)), 'res')
 end
@@ -93,12 +97,12 @@ mst = [mst, res];
 % - Worst case 13 trades with an AVERAGE of 30min timestep
 ifewtrades   = isnan(res.Timestep) | res.Timestep > 1/48 | mst.Nrets < 12;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
-mst.Timestep = ifewtrades | ismember(mst.UnID, find(perfew));
+mst.Timestep = ifewtrades | perfew(mst.UnID);
 
 % Sample at 5 min
-mst = mst(:, {'File','UnID','MedPrice','Baddays','Timestep'});
+mst = mst(:, {'File','Id','UnID','MedPrice','Baddays','Timestep'});
 testname = 'sample';
-Analyze(testname,{'ID','Datetime','Price'}, mst(:, {'File','UnID','MedPrice','Baddays','Timestep'}));
+Analyze(testname,{'ID','Datetime','Price'}, mst);
 
 %% Betas
 addpath '.\utils' '.\utils\nth_element'
@@ -140,31 +144,36 @@ SPret = SPret(diff(fix(SP500.Datetime)) == 0,:);
 SPdays = unique(fix(SPret(:,1)),'stable');
 SPret  = mat2cell(SPret(:,2),repmat(ngrid-1,size(SPret,1)/(ngrid-1),1));
 
-
 % LOOP by sampled data 
 d = '.\data\TAQ\sampled';
+% d = 'D:\TAQ\HFbetas\data\TAQ\sampled'
 dd = dir(fullfile(d,'S*.mat'));
 res = cell(numel(dd),1);
-parpool(4)
+% parpool(4)
 parfor f = 1:numel(dd)
     disp(f)
-    % Load data and get returns until 3:15 PM
+    % Load data 
     s      = load(fullfile(d,dd(f).name));
-    ret    = [s.data.Datetime(2:end), s.data.Price(2:end)./s.data.Price(1:end-1)-1];
-    idx    = rem(ret(:,1),1) <= (15+16/60)/24;
+    dates  = s.data.Datetime(2:end);
+    ret    = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
+    % Limit to <= 3:15 PM
+    idx    = rem(dates,1) <= (15+16/60)/24;
     ret    = ret(idx,:);
-    ret    = ret([true; diff(rem(ret(:,1),1)) >= 0],:);
+    dates  = dates(idx,:);
+    % Keep all except overnight
+    idx    = [true; diff(rem(dates,1)) >= 0];
+    ret    = ret(idx,:);
     
     % Map SP500 rets to stock rets
     days    = yyyymmdd2serial(double(s.mst.Date));
     spret   = cat(1,SPret{ismembc2(days, SPdays)});
-    prodret = spret.*ret(:,2);
-    subsID    = reshape(repmat(1:size(s.mst,1),ngrid-1,1),[],1);
+    prodret = spret.*ret;
+    subsID  = reshape(repmat(1:size(s.mst,1),ngrid-1,1),[],1);
     ikeep   = ~isnan(prodret);
     beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2);
     
     % Store results
-    res{f} = s.mst(:,{'UnID','Date'});
+    res{f} = s.mst;
     res{f}.Beta = beta;
 end
 Betas = cat(1,res{:});
