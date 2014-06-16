@@ -179,7 +179,12 @@ end
 Betas = cat(1,res{:});
 save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')), 'Betas')
 %% Smooth Betas
+load(fullfile(resdir, 'taq2crsp.mat'))
+load .\data\TAQ\master -mat
+
+addpath .\utils\
 resdir = '.\results';
+
 
 % Load Betas
 dd     = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
@@ -198,14 +203,31 @@ ikeep    = ~ismember(Betas.UnID, unID(ifewdays));
 
 % Moving averages
 % tmp = accumarray(subsID(ikeep), Betas.Date(ikeep),[],@issorted, true);
-sz      = size(unID);
-Res.SMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
-Res.EMA = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
+sz     = size(unID);
+Betasd = dataset();
+tmp    = accumarray(subsID(ikeep), Betas.UnID(ikeep),sz,@(x) {x(5:end)});
+Betasd.ID = cat(1,tmp{:});
+tmp    = accumarray(subsID(ikeep), Betas.Date(ikeep),sz,@(x) {x(5:end)});
+Betasd.Date = cat(1,tmp{:});
+tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
+Betasd.SMA = cat(1,tmp{:});
+% tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
+% Betasd.EMA = cat(1,tmp{:});
+
+
+[un,~,subs] = unique(Betasd(:,{'ID','Date'}));
+overlap     = un(accumarray(subs,1) > 1,:);
+n = 1024;
+taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
+
+Pivot([double(Betasd.ID), double(Betasd.Dates) Betasd.SMA]);
 
 % Weekly betas
 [unW,~,subsWeek] = unique([Betas.UnID fix(double(Betas.Date)/1e4) weeknum(yyyymmdd2serial(double(Betas.Date)))'],'rows');
 Res.Week         = accumarray(subsWeek(ikeep), Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
 
+%% Beta quantiles
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 %% Size quantiles
 addpath .\utils\
 
