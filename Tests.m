@@ -179,14 +179,10 @@ end
 Betas = cat(1,res{:});
 save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')), 'Betas')
 %% Smooth Betas
-load(fullfile(resdir, 'taq2crsp.mat'))
-load .\data\TAQ\master -mat
-
 addpath .\utils\
-resdir = '.\results';
-
 
 % Load Betas
+resdir = '.\results';
 dd     = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
 names  = sort({dd.name});
 load(fullfile(resdir,names{end}))
@@ -214,20 +210,54 @@ Betasd.SMA = cat(1,tmp{:});
 % tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
 % Betasd.EMA = cat(1,tmp{:});
 
+% Weekly betas
 
+% Remove overlapping
 [un,~,subs] = unique(Betasd(:,{'ID','Date'}));
 overlap     = un(accumarray(subs,1) > 1,:);
-n = 1024;
-taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
+[~,idx]     = setdiff(Betasd(:,1:2), overlap);
 
-Pivot([double(Betasd.ID), double(Betasd.Dates) Betasd.SMA]);
+year   = fix(double(Betas.Date(ikeep))/1e4);
+week   = weeknum(yyyymmdd2serial(double(Betas.Date(ikeep))))';
+[unW,~,subsWeek] = unique([Betas.UnID(ikeep) year week],'rows');
+dates  = accumarray(subsWeek, Betas.Date(ikeep),[size(unW,1),1],@max);
+tmp    = accumarray(subsWeek, Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
+Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 
-% Weekly betas
-[unW,~,subsWeek] = unique([Betas.UnID fix(double(Betas.Date)/1e4) weeknum(yyyymmdd2serial(double(Betas.Date)))'],'rows');
-Res.Week         = accumarray(subsWeek(ikeep), Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
-
+clearvars -except Betas Betasd Betasw ikeep resdir
+% save debugstate
 %% Beta quantiles
-refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+load debugstate
+% DAILY
+% Remove overlapping
+[un,~,subs] = unique(Betasd(:,{'ID','Date'}));
+overlap     = un(accumarray(subs,1) > 1,:);
+[~,idx]     = setdiff(Betasd(:,1:2), overlap);
+% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
+
+% Pivot
+tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) Betasd.SMA(idx)]);
+
+% Add reference dates
+% refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+alldates       = union(tmp(2:end,1), refdates);
+[~,pdates]     = ismember(tmp(2:end,1),alldates);
+data           = NaN(numel(alldates),size(tmp,2)-1);
+data(pdates,:) = tmp(2:end,2:end);
+tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
+
+% Fill in previous value
+tmp(2:end,2:end) = nanfillts(tmp(2:end,2:end),1);
+
+% Keep reference dates only
+tmp = tmp([true; ismember(tmp(2:end,1), refdates)],:);
+
+% Plot
+plot(yyyymmdd2serial(refdates), prctile(tmp(2:end,2:end),10:10:90,2))
+dynamicDateTicks
+title 'Cross-sectional percentiles of 5-day smoothed (SMA) betas'
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+
 %% Size quantiles
 addpath .\utils\
 
