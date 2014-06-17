@@ -103,7 +103,6 @@ mst.Timestep = ifewtrades | perfew(mst.UnID);
 mst = mst(:, {'File','Id','UnID','MedPrice','Baddays','Timestep'});
 testname = 'sample';
 Analyze(testname,{'ID','Datetime','Price'}, mst);
-
 %% Betas
 addpath '.\utils' '.\utils\nth_element'
 resdir = '.\results';
@@ -211,17 +210,16 @@ Betasd.SMA = cat(1,tmp{:});
 % Betasd.EMA = cat(1,tmp{:});
 
 % Weekly betas
-
 % Remove overlapping
-[un,~,subs] = unique(Betasd(:,{'ID','Date'}));
+[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
 overlap     = un(accumarray(subs,1) > 1,:);
-[~,idx]     = setdiff(Betasd(:,1:2), overlap);
-
-year   = fix(double(Betas.Date(ikeep))/1e4);
-week   = weeknum(yyyymmdd2serial(double(Betas.Date(ikeep))))';
-[unW,~,subsWeek] = unique([Betas.UnID(ikeep) year week],'rows');
-dates  = accumarray(subsWeek, Betas.Date(ikeep),[size(unW,1),1],@max);
-tmp    = accumarray(subsWeek, Betas.Beta(ikeep),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
+ioverlap    = ismember(Betas(:,{'UnID','Date'}), overlap);
+% Calculate weekly
+year   = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
+week   = weeknum(yyyymmdd2serial(double(Betas.Date(ikeep & ~ioverlap))))';
+[unW,~,subsWeek] = unique([Betas.UnID(ikeep & ~ioverlap) year week],'rows');
+dates  = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
+tmp    = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
 Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 
 clearvars -except Betas Betasd Betasw ikeep resdir
@@ -239,7 +237,7 @@ overlap     = un(accumarray(subs,1) > 1,:);
 tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) Betasd.SMA(idx)]);
 
 % Add reference dates
-% refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 alldates       = union(tmp(2:end,1), refdates);
 [~,pdates]     = ismember(tmp(2:end,1),alldates);
 data           = NaN(numel(alldates),size(tmp,2)-1);
@@ -304,6 +302,65 @@ shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
 
 % Get reference dates
 shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
+%% SP500 betas
+resdir = '.\results';
+spdir  = '.\data\SP500';
+
+% Load TAQ2CRSP
+load(fullfile(resdir, 'taq2crsp.mat'))
+
+% Load SP consituents
+SPconst = dataset('File',fullfile(spdir,'dsp500list.csv'),'Delimiter',',','ReadVarNames',1);
+% Keep those with enddate > 31/12/1992
+SPconst = SPconst(SPconst.ending > 19921231,:);
+
+% Load Betas
+dd    = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
+names = sort({dd.name});
+load(fullfile(resdir,names{end}))
+
+% Filter out betas
+selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}));
+Betas    = Betas(ismember(Betas.UnID, selected.ID),{'UnID','Date','Beta'});
+
+% Overlapping Betas
+[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
+overlap     = un(accumarray(subs,1) > 1,:);
+Betas       = Betas(~ismember(Betas(:, {'UnID','Date'}), overlap),:);
+% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.UnID(1))),:)
+
+% Pivot betas
+tmp            = Pivot([double(Betas.UnID), double(Betas.Date), Betas.Beta]);
+refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+alldates       = union(tmp(2:end,1), refdates);
+[~,pdates]     = ismember(tmp(2:end,1),alldates);
+data           = NaN(numel(alldates),size(tmp,2)-1);
+data(pdates,:) = tmp(2:end,2:end);
+tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
+% Fill in previous value and get only reference dates
+tmp(2:end,2:end) = nanfillts(tmp(2:end,2:end),1);
+Betas = tmp([true; ismember(tmp(2:end,1), refdates)],:);
+
+% Pivot SP membership
+SPconst        = [[double(SPconst.PERMNO)  double(SPconst.start)   ones(size(SPconst,1),1)];
+                  [double(SPconst.PERMNO)  double(SPconst.ending) -ones(size(SPconst,1),1)]];
+tmp            = Pivot(SPconst,[],[],0);
+refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+alldates       = union(tmp(2:end,1), refdates);
+[~,pdates]     = ismember(tmp(2:end,1),alldates);
+data           = zeros(numel(alldates),size(tmp,2)-1);
+data(pdates,:) = tmp(2:end,2:end);
+tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
+% Fill in previous value and get only reference dates
+tmp(2:end,2:end) = cumsum(tmp(2:end,2:end));
+SPconst = tmp([true; ismember(tmp(2:end,1), refdates)],:);
+
+
+[~,pos] = ismember(Betas(1,2:end), taq2crsp.ID);
+header = [Betas(1,2:end); taq2crsp.permno(pos)'];
+Betas(1,2:end) = taq2crsp.permno(pos);
+Betas = Pivot(unPivot(Betas));
+
 
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
