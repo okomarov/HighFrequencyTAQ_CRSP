@@ -10,12 +10,10 @@ resdir = '.\results\';
 % Map unique ID to mst
 testname = 'uniqueID';
 try
-    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
-    names = sort({dd.name});
-    load(fullfile(resdir,names{end}))
+    loadresults(testname,'res')
 catch
     % Re-create mapping
-    load(fullfile(resdir,'taq2crsp.mat'))
+    loadresults('taq2crsp')
     taq2crsp = replacedata(taq2crsp,@uint32,'ID');
     % Preallocate
     unID = zeros(size(mst,1),1,'uint16');
@@ -52,9 +50,7 @@ mst = [mst, res];
 % Median and other dailystats
 testname = 'dailystats';
 try 
-    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
-    names = sort({dd.name});
-    load(fullfile(resdir,names{end}))
+    loadresults(testname,'res')
 catch
     res = Analyze(testname,{'Min','Max','MedPrice','Nrets'});
 end
@@ -63,9 +59,7 @@ mst = [mst, res];
 % Bad prices days 
 testname = 'badprices';
 try 
-    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
-    names = sort({dd.name});
-    load(fullfile(resdir,names{end}))
+    loadresults(testname,'res')
 catch
     res = Analyze(testname,'Baddays',mst(:, {'File','MedPrice'}));
 end
@@ -85,9 +79,7 @@ mst.Baddays = mst.Baddays | badseries(mst.UnID);
 % Average time step
 testname = 'avgtimestep';
 try 
-    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
-    names = sort({dd.name});
-    load(fullfile(resdir,names{end}))
+    loadresults(testname,'res')
 catch
     res = Analyze(testname,'Timestep', mst(:, {'File','MedPrice'}));
 end
@@ -111,9 +103,7 @@ d      = '.\data\';
 % Load SPX (tickwrite)
 testname = 'SP500';
 try 
-    dd    = dir(fullfile(resdir, sprintf('*%s.mat', testname)));
-    names = sort({dd.name});
-    load(fullfile(resdir,names{end}))
+    loadresults(testname)
 catch
     
     filename  = unzip(fullfile(d,'Tickwrite','SP.zip'), fullfile(d,'Tickwrite'));
@@ -181,10 +171,7 @@ save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')),
 addpath .\utils\
 
 % Load Betas
-resdir = '.\results';
-dd     = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
-names  = sort({dd.name});
-load(fullfile(resdir,names{end}))
+loadresults('Betas')
 
 % Sort betas
 Betas = sortrows(Betas,{'UnID','Date'});
@@ -259,12 +246,11 @@ legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 %% Size quantiles
 addpath .\utils\
 
-resdir = '.\results';
 vars = {'cusip','symbol','datef'};
-load(fullfile(resdir, 'taq2crsp.mat'))
+loadresults('taq2crsp')
 
 % Load shrout getting rid of 0s
-load(fullfile(resdir, 'TAQshrout.mat'))
+loadresults('TAQshrout')
 TAQshrout.Properties.VarNames = [vars, 'shrout'];
 
 % Filter out matches (max score 42, so 100 takes all)
@@ -303,21 +289,18 @@ shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
 % Get reference dates
 shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
 %% SP500 betas
-resdir = '.\results';
+addpath .\utils\
 spdir  = '.\data\SP500';
 
 % Load TAQ2CRSP
-load(fullfile(resdir, 'taq2crsp.mat'))
+loadresults('taq2crsp')
 
-% Load SP consituents
+% Load SP consituents > 31/12/1992
 SPconst = dataset('File',fullfile(spdir,'dsp500list.csv'),'Delimiter',',','ReadVarNames',1);
-% Keep those with enddate > 31/12/1992
 SPconst = SPconst(SPconst.ending > 19921231,:);
 
 % Load Betas
-dd    = dir(fullfile(resdir, sprintf('*%s.mat', 'Betas')));
-names = sort({dd.name});
-load(fullfile(resdir,names{end}))
+loadresults('Betas')
 
 % Filter out betas
 selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}));
