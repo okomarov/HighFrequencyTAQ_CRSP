@@ -302,18 +302,20 @@ SPconst = SPconst(SPconst.ending > 19921231,:);
 % Load Betas
 loadresults('Betas')
 
-% Filter out betas
-selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}));
+% Filter out betas (lowest UnID for each PERMNO)
+selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}), 'permno','first');
 Betas    = Betas(ismember(Betas.UnID, selected.ID),{'UnID','Date','Beta'});
+[~,pos]  = ismember(Betas.UnID,selected.ID);
+Betas.PERMNO = selected.permno(pos);
 
 % Overlapping Betas
-[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
+[un,~,subs] = unique(Betas(:,{'PERMNO','Date'}));
 overlap     = un(accumarray(subs,1) > 1,:);
-Betas       = Betas(~ismember(Betas(:, {'UnID','Date'}), overlap),:);
+Betas       = Betas(~ismember(Betas(:, {'PERMNO','Date'}), overlap),:);
 % taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.UnID(1))),:)
 
 % Pivot betas
-tmp            = Pivot([double(Betas.UnID), double(Betas.Date), Betas.Beta]);
+tmp            = Pivot([double(Betas.PERMNO), double(Betas.Date), Betas.Beta]);
 refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 alldates       = union(tmp(2:end,1), refdates);
 [~,pdates]     = ismember(tmp(2:end,1),alldates);
@@ -338,13 +340,19 @@ tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
 tmp(2:end,2:end) = cumsum(tmp(2:end,2:end));
 SPconst = tmp([true; ismember(tmp(2:end,1), refdates)],:);
 
+% Intersect matrices
+[~,ia,ib] = intersect(Betas(1,:),SPconst(1,:));
 
-[~,pos] = ismember(Betas(1,2:end), taq2crsp.ID);
-header = [Betas(1,2:end); taq2crsp.permno(pos)'];
-Betas(1,2:end) = taq2crsp.permno(pos);
-Betas = Pivot(unPivot(Betas));
+% NaN out when non members
+mask = ~logical(SPconst(2:end, ib));
+tmp = Betas(2:end, ia);
+tmp(mask) = NaN;
 
-
+% Plot
+plot(yyyymmdd2serial(refdates), prctile(tmp,10:10:90,2))
+dynamicDateTicks
+title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
