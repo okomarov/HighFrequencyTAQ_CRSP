@@ -353,12 +353,86 @@ plot(yyyymmdd2serial(refdates), prctile(tmp,10:10:90,2))
 dynamicDateTicks
 title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+%% Check Betas
+addpath .\utils\ .\utils\MFE
+
+symbol = 'AAPL';
+
+% Load SP500
+loadresults('SP500')
+
+% Which files to loop for
+d      = '.\data\TAQ';
+load(fullfile(d, 'master'), '-mat');
+idx    = mst.Id == find(strcmpi(ids,symbol));
+mst    = mst(idx,:);
+files  = unique(mst.File);
+nfiles = numel(files);
+
+% Sampling grid (until 3:15!)
+grid = (9.5/24:5/(60*24):(15+15/60)/24)';
+
+betas2 = cell(nfiles);
+
+tic
+% LOOP by files
+parfor (f = 1:nfiles, 4)
+
+    disp(f)
+    % Load data 
+    s = load(fullfile(d, sprintf('T%04d.mat',files(f))));
+    % Select symbol
+    idx   = s.mst.Id == find(strcmpi(s.ids,symbol));
+    s.mst = s.mst(idx,:);
+    nmst  = size(s.mst,1);
+    
+    res = NaN(nmst,2);
+    
+    % LOOP by days 
+    for ii = 1:nmst
+        % Data selection
+        from = s.mst.From(ii);
+        to   = s.mst.To(ii);
+        data = s.data(from:to,:);
+        data = data(~selecttrades(data),{'Time','Price'});
+        % Datetime
+        day           = yyyymmdd2serial(double(s.mst.Date(ii)));
+        data.Datetime = day + hhmmssmat2serial(data.Time);
+        % Median
+        [dates, ~,subs] = unique(data.Datetime);
+        prices          = accumarray(subs,data.Price,[],@fast_median);
+        
+        % SP500
+        iday = SP500.Date == day;
+        rc   = realized_covariance(SP500.Price(iday), SP500.Datetime(iday), prices, dates,...
+                                   'unit','fixed', grid+day,1); 
+        % Overnight
+        if ii ~= 1
+             onp  = prices(1)/s.data.Price(s.mst.To(ii-1))-1;
+             
+             pos  = find(iday,1,'first');
+             onsp = SP500.Price(pos)./ SP500.Price(pos-1)-1;
+        else
+            onp = 0;
+            onsp = 0;
+        end
+        res(ii,:) = [day (rc(2)+onp*onsp)/(rc(1)+onsp^2)];    
+    end
+    betas2{f,1} = res;
+end
+betas2 = cat(1, betas2{:});
+
+% Compare against saved betas [Different!]
+loadresults('taq2crsp')
+loadresults('Betas')
+ID = taq2crsp.ID(strcmpi(taq2crsp.symbol,symbol),:);
+Betas = Betas(Betas.UnID == ID,:);
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
 % Load automatic betas
-load .\data\TAQ\master -mat
 load .\results\20131231_1338_betas.mat
+load .\data\TAQ\master -mat
 mst.Date = yyyymmdd2serial(double(mst.Date));
 idx      = mst.Date >= 730124 &...
            mst.Date <= 730485 &...
