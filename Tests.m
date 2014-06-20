@@ -354,9 +354,9 @@ dynamicDateTicks
 title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 %% Check Betas
-addpath .\utils\ .\utils\MFE
+addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
-symbol = 'AAPL';
+symbol = {'AAPL','SPY'};
 
 % Load SP500
 loadresults('SP500')
@@ -370,9 +370,9 @@ files  = unique(mst.File);
 nfiles = numel(files);
 
 % Sampling grid (until 3:15!)
-grid = (9.5/24:5/(60*24):(15+15/60)/24)';
+grid = (9.5/24:30/(60*24):(15+15/60)/24)';
 
-betas2 = cell(nfiles);
+betas6 = cell(nfiles);
 
 tic
 % LOOP by files
@@ -404,23 +404,34 @@ parfor (f = 1:nfiles, 4)
         
         % SP500
         iday = SP500.Date == day;
-        rc   = realized_covariance(SP500.Price(iday), SP500.Datetime(iday), prices, dates,...
-                                   'unit','fixed', grid+day,1); 
+        [~, rcss] = realized_covariance(SP500.Price(iday), SP500.Datetime(iday), prices, dates,...
+                                   'unit','fixed', grid+day,5); 
         % Overnight
         if ii ~= 1
-             onp  = prices(1)/s.data.Price(s.mst.To(ii-1))-1;
-             
+            if prices(1)/s.data.Price(s.mst.To(ii-1))-1 < 0.1
+                onp = prices(1)/s.data.Price(s.mst.To(ii-1))-1;
+            else
+                onp = 0;
+            end
              pos  = find(iday,1,'first');
              onsp = SP500.Price(pos)./ SP500.Price(pos-1)-1;
         else
             onp = 0;
             onsp = 0;
         end
-        res(ii,:) = [day (rc(2)+onp*onsp)/(rc(1)+onsp^2)];    
+        res(ii,:) = [day (rcss(2)+onp*onsp)/(rcss(1)+onsp^2)];    
     end
-    betas2{f,1} = res;
+    betas6{f,1} = res;
 end
-betas2 = cat(1, betas2{:});
+betas6 = cat(1, betas6{:});
+
+refdates = datenum(1993,2:234,1)-1;
+out = interp1(betas2(:,1), [betas betas2(:,2) betas3(:,2)  betas4(:,2) betas6(:,2)], refdates');
+plot(refdates, out)
+dynamicDateTicks
+legend('w/o overnight','W/ on','10 min w/ on', 'w/on subsampled 5','w/ on 30 min')
+
+
 
 % Compare against saved betas [Different!]
 loadresults('taq2crsp')
