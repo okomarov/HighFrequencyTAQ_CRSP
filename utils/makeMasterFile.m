@@ -1,4 +1,6 @@
 function makeMasterFile(path2matfiles)
+% MAKEMASTERFILE Groups all master records from single *.mat files into one master table
+
 mstname = 'mst';
 idsname = 'ids';
 % Read .mat filenames
@@ -21,29 +23,35 @@ parfor f = 1:nfiles
     mst{f}  = s.(mstname);
     ids{f}  = s.(idsname);
 end
-matlabpool close
 toc
 
 % Number of rows per block
-len = cellfun(@(x) size(x,1),mst);
+lenmst = cellfun(@(x) size(x,1),mst);
+lenids = cumsum(cellfun(@(x) size(x,1),ids));
 
 % Add number of file as 4th column to mst{2} and cat all mst
-mst = arrayfun(@(x) [mst{x} dataset({repmat(x,len(x),1),'File'})],(1:numel(len))','un',0);
+mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],(1:nfiles)','un',0);
+
+% Re-index Id
+parfor f = 2:nfiles
+    mst{f}.Id = mst{f}.Id + lenids(f-1);
+end
+matlabpool close
+
+% Concatenate
 ids = cat(1,ids{:});
 fprintf('Concatenating master records.\n')
 tic
 mst = cat(1,mst{:}); 
 toc
 
-% Re-index id to whole block
-cumpos           = cumsum(len(1:end-1));
-mst.Id           = [1; diff(mst.Id)~= 0];
-mst.Id(cumpos+1) = 1;
-mst.Id           = cumsum(mst.Id);
-
 % Make unique tickers
 [ids,~,long2unique] = unique(ids);
 mst.Id              = long2unique(mst.Id);
+
+% Drop tickers without data
+ikeep = ismember(1:max(mst.Id), mst.Id);
+ids   = ids(ikeep);
 
 % Sort according to id-date pair
 mst = sortrows(mst,{'Id','Date'});
