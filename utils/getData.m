@@ -1,4 +1,4 @@
-function out = getPrice(master, tickers, from, to, varnames, path2data)
+function out = getData(master, tickers, from, to, varnames, path2data)
 
 if nargin < 5 
     varnames = ''; 
