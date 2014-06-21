@@ -50,8 +50,8 @@ toc
 mst.Id              = long2unique(mst.Id);
 
 % Drop tickers without data
-ikeep = ismember(1:max(mst.Id), mst.Id);
-ids   = ids(ikeep);
+idrop = ~ismember(1:numel(ids), mst.Id);
+ids(idrop) = {''};
 
 % Sort according to id-date pair
 mst = sortrows(mst,{'Id','Date'});
