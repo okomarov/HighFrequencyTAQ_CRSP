@@ -30,11 +30,11 @@ lenmst = cellfun(@(x) size(x,1),mst);
 lenids = cumsum(cellfun(@(x) size(x,1),ids));
 
 % Add number of file as 4th column to mst{2} and cat all mst
-mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],(1:nfiles)','un',0);
+mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],uint16((1:nfiles))','un',0);
 
 % Re-index Id
 parfor f = 2:nfiles
-    mst{f}.Id = mst{f}.Id + lenids(f-1);
+    mst{f}.Id = uint64(mst{f}.Id) + lenids(f-1);
 end
 matlabpool close
 
@@ -47,7 +47,7 @@ toc
 
 % Make unique tickers
 [ids,~,long2unique] = unique(ids);
-mst.Id              = long2unique(mst.Id);
+mst.Id              = uint16(long2unique(mst.Id));
 
 % Drop tickers without data
 idrop = ~ismember(1:numel(ids), mst.Id);
