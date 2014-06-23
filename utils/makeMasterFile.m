@@ -20,7 +20,8 @@ fprintf('Loading .mat files.\n')
 parfor f = 1:nfiles
     disp(f)
     s = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
-    mst{f}  = s.(mstname);
+    mst{f}  = sortrows(s.(mstname),'Id');
+    mst{f}  = int64(mst{f}.Id);
     ids{f}  = s.(idsname);
 end
 matlabpool close
@@ -38,7 +39,7 @@ mst = cat(1,mst{:});
 toc
 
 % Re-index id to whole block
-cumpos           = cumsum(len(1:end-1));
+cumpos           = cumsum(lenmst(1:end-1));
 mst.Id           = [1; diff(mst.Id)];
 mst.Id(cumpos+1) = 1;
 mst.Id           = cumsum(mst.Id);
