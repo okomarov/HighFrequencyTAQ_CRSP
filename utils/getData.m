@@ -39,6 +39,9 @@ if isempty(varnames)
     varnames = setdiff(fieldnames(tmp.data),{'Time','Properties'},'stable');
 end
 
+% Check if it already has Datetime
+idatetime = strcmpi(varnames, 'Datetime');
+
 % Preallocate output
 nrows = cblocks(end);
 out   = table(zeros(nrows,1,'uint16'),... 
@@ -96,8 +99,10 @@ for ii = 1:nfiles
         idata = mstfile.From(jj):mstfile.To(jj);
 
         % Retrieve data
-        out.Id      (iout) = mstfile.Id(jj);
-        out.Datetime(iout) = dates(jj) + hhmmssmat2serial(s.data.Time(idata,:));
+        out.Id(iout) = mstfile.Id(jj);
+        if ~any(idatetime)
+            out.Datetime(iout) = dates(jj) + hhmmssmat2serial(s.data.Time(idata,:));
+        end
         for v = 1:numel(varnames)
             field = varnames{v};
             out.(field)(iout) = s.data.(field)(idata);
