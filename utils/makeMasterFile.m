@@ -20,9 +20,9 @@ fprintf('Loading .mat files.\n')
 parfor f = 1:nfiles
     disp(f)
     s = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
-    mst{f}  = sortrows(s.(mstname),'Id');
-    mst{f}  = int64(mst{f}.Id);
-    ids{f}  = s.(idsname);
+    mst{f}     = sortrows(s.(mstname),'Id');
+    mst{f}.Id  = int64(mst{f}.Id);
+    ids{f}     = s.(idsname);
 end
 matlabpool close
 toc
