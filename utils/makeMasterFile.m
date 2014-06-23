@@ -20,30 +20,29 @@ fprintf('Loading .mat files.\n')
 parfor f = 1:nfiles
     disp(f)
     s = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
-    mst{f}  = s.(mstname);
-    ids{f}  = s.(idsname);
+    mst{f}     = sortrows(s.(mstname),'Id');
+    mst{f}.Id  = int64(mst{f}.Id);
+    ids{f}     = s.(idsname);
 end
+matlabpool close
 toc
 
 % Number of rows per block
 lenmst = cellfun(@(x) size(x,1),mst);
-lenids = [0; cumsum(cellfun(@(x) size(x,1),ids))];
 
 % Add number of file as 4th column to mst{2} and cat all mst
 mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],uint16((1:nfiles))','un',0);
-
-% Re-index Id (make sure it's int for negative offsets)
-parfor f = 1:nfiles
-    mst{f}.Id = int64(mst{f}.Id) + lenids(f);
-end
-matlabpool close
-
-% Concatenate
 ids = cat(1,ids{:});
 fprintf('Concatenating master records.\n')
 tic
 mst = cat(1,mst{:}); 
 toc
+
+% Re-index id to whole block
+cumpos           = cumsum(lenmst(1:end-1));
+mst.Id           = [1; diff(mst.Id)];
+mst.Id(cumpos+1) = 1;
+mst.Id           = cumsum(mst.Id);
 
 % Make unique tickers
 [ids,~,long2unique] = unique(ids);
