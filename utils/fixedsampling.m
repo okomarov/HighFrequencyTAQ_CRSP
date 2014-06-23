@@ -204,7 +204,7 @@ switch scheme
         out         = [grid(2:end), reshape(tmp{1}(1:end-1),ngrid*nseries-1,1)];
         if nargout == 2
             tmp{2}(idx)           = data(pos,1);
-            actdates              = reshape(prevprice(tmp{2}),ngrid*nseries,1);
+            actdates              = reshape(nanfillts(tmp{2}),ngrid*nseries,1);
             actdates(ngrid:ngrid:end) = [];
         end
         % Exclude beginning-of-day to first gridpoint artificial overflow bucket
