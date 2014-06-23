@@ -1,4 +1,6 @@
 function makeMasterFile(path2matfiles)
+% MAKEMASTERFILE Groups all master records from single *.mat files into one master table
+
 mstname = 'mst';
 idsname = 'ids';
 % Read .mat filenames
@@ -25,10 +27,10 @@ matlabpool close
 toc
 
 % Number of rows per block
-len = cellfun(@(x) size(x,1),mst);
+lenmst = cellfun(@(x) size(x,1),mst);
 
 % Add number of file as 4th column to mst{2} and cat all mst
-mst = arrayfun(@(x) [mst{x} dataset({repmat(x,len(x),1),'File'})],(1:numel(len))','un',0);
+mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],uint16((1:nfiles))','un',0);
 ids = cat(1,ids{:});
 fprintf('Concatenating master records.\n')
 tic
@@ -43,10 +45,14 @@ mst.Id           = cumsum(mst.Id);
 
 % Make unique tickers
 [ids,~,long2unique] = unique(ids);
-mst.Id              = long2unique(mst.Id);
+mst.Id              = uint16(long2unique(mst.Id));
+
+% Drop tickers without data
+idrop = ~ismember(1:numel(ids), mst.Id);
+ids(idrop) = {''};
 
 % Sort according to id-date pair
-mst = sortrows(mst,1:2);
+mst = sortrows(mst,{'Id','Date'});
 
 % Save
 save(fullfile(path2matfiles,'master'),mstname, idsname,'-v6','-mat')

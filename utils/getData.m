@@ -1,6 +1,11 @@
-function out = getPrice(master, tickers, from, to)
+function out = getData(master, tickers, from, to, varnames, path2data)
 
-narginchk(2,4)
+if nargin < 5 
+    varnames = ''; 
+end
+if nargin < 6 || isempty(path2data),  path2data  = '.\data\TAQ'; end
+    
+narginchk(2,6)
 if nargin < 3 || isempty(from), from = 0; end
 if nargin < 4 || isempty(to),   to = inf; end
 if ischar(tickers) && isrow(tickers)
@@ -24,12 +29,31 @@ master = master(master.Date <= to & master.Date >= from,:);
 blocks  = master.To - master.From + 1;
 cblocks = [0; cumsum(blocks)];
 
+% List files
+dd       = dir(fullfile(path2data,'*.mat'));
+matnames = {dd.name};
+
+% Retrieve varnames
+tmp = load(fullfile(path2data, matnames{end}),'data');
+if isempty(varnames)
+    varnames = setdiff(fieldnames(tmp.data),{'Time','Properties'},'stable');
+end
+
 % Preallocate output
 nrows = cblocks(end);
 out   = table(zeros(nrows,1,'uint16'),... 
                NaN(nrows,1),...
-               NaN(nrows,1,'single'),...
-               'VariableNames',{'Id','Datetime','Price'});
+               'VariableNames',{'Id','Datetime'});
+for ii = 1:numel(varnames)
+    field = varnames{ii};
+    if isinteger(tmp.data.(field))
+        out.(field) = zeros(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
+    elseif isfloat(tmp.data.(field))
+        out.(field) = NaN(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
+    else
+        out.(field) = repmat(' ', nrows,size(tmp.data.(field),2));
+    end
+end
 
 % Display waitbar
 h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
@@ -51,13 +75,13 @@ for ii = 1:nfiles
     end
     
     % Update waitbar
-    matname  = sprintf('T%04d.mat',files(ii));
+    matname  = matnames{ii};
     x        = (ii-1)/nfiles;
     time2end = elapsed(ii)*(1-x)/x;
     waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
     
     % Load .mat file
-    s = load(fullfile('.\data\TAQ', matname),'data');
+    s = load(fullfile(path2data, matname),'data');
             
     % Records within the loaded data file
     mstfile = master(master.File == files(ii),:);
@@ -74,7 +98,10 @@ for ii = 1:nfiles
         % Retrieve data
         out.Id      (iout) = mstfile.Id(jj);
         out.Datetime(iout) = dates(jj) + hhmmssmat2serial(s.data.Time(idata,:));
-        out.Price   (iout) = s.data.Price(idata);
+        for v = 1:numel(varnames)
+            field = varnames{v};
+            out.(field)(iout) = s.data.(field)(idata);
+        end
     end
     % Update waitbar 
     waitbar(ii/nfiles,h)
