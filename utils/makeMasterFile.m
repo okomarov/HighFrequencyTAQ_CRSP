@@ -34,7 +34,7 @@ mst = arrayfun(@(x) [mst{x} dataset({repmat(x,lenmst(x),1),'File'})],uint16((1:n
 
 % Re-index Id (make sure it's int for negative offsets)
 parfor f = 1:nfiles
-    mst{f}.Id = int64(mst{f}.Id) + lenids(f-1);
+    mst{f}.Id = int64(mst{f}.Id) + lenids(f);
 end
 matlabpool close
 
