@@ -248,39 +248,3 @@ if ~all(inan)
     save(fname, 'data','ids', 'mst')
 end    
 end
-% %% Analyze flagged
-% % Good example: TESTC
-% f    = 147;
-% d    = '.\data\TAQ';
-% dd   = dir(fullfile(d,'*.mat'));
-% s    = load(fullfile(d,dd(f).name));
-% meta = s.mst{2}(43003,:);
-% idx  = 18558662:18559223;
-% plot(s.data{2}(idx))
-% 
-% load('C:\HFbetas\results\flagged.mat')
-% baddays = cellfun(@find, baddays,'un',0);
-% 
-% f = 147;
-% disp(baddays{f})
-% d       = '.\data\TAQ';
-% dd      = dir(fullfile(d,'*.mat'));
-% s = load(fullfile(d,dd(f).name));
-% scrollto('s.mst{2}',42995)
-% idx = 18555526:18555737;
-% s.data{2}(idx)
-% dates = datenum(double([zeros(numel(idx),3) s.data{1}(idx,:)]));
-% fltout(dates,s.data{2}(idx),20,4)
-function inspect(ret)
-% f = 1;
-% s = load(fullfile(d,dd(f).name));
-% ret  = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
-% ret(setdiff(s.mst.From-1,[-1,0])) = NaN;
-
-[~,pos] = nanmin(ret);
-r = find(s.mst.From <= pos & s.mst.To>= pos);
-scrollto('s.mst' ,[r ,1])
-idx = s.mst.From(r):s.mst.To(r);
-s.data.Price(idx)
-s.data.Exchange(idx)
-end

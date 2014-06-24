@@ -11,10 +11,14 @@ resdir = '.\results\';
 testname = 'uniqueID';
 try
     loadresults(testname,'res')
+
+% Re-create mapping
 catch
-    % Re-create mapping
+    tic
+    % Get taq2crsp ready
     loadresults('taq2crsp')
-    taq2crsp = replacedata(taq2crsp,@uint32,'ID');
+    taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
+    
     % Preallocate
     unID = zeros(size(mst,1),1,'uint16');
     % LOOP for each symbol in mst
@@ -22,13 +26,13 @@ catch
         symbol   = ids{ii};
         % Extract records from taq2crsp corresponding to TAQ's symbol
         isymbol  = strcmpi(symbol,taq2crsp.symbol);
-        tmp      = sortrows(taq2crsp(isymbol, {'ID','datef'}),'datef');
-        if isempty(tmp)
-            % Preferred stocks symbol use sometimes the lowercase suffix
-            % 'p' instead of 'PR' (see daily TAQ guide)
-            isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
-            tmp     = sortrows(taq2crsp(isymbol, {'ID','datef'}),'datef');
-        end
+        tmp      = taq2crsp(isymbol, {'ID','datef'});
+%         if isempty(tmp)
+%             % Preferred stocks symbol use sometimes the lowercase suffix
+%             % 'p' instead of 'PR' (see daily TAQ guide)
+%             isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
+%             tmp     = taq2crsp(isymbol, {'ID','datef'});
+%         end
         if isempty(tmp),fprintf('%d\n',ii),continue,end
         imst     = find(mst.Id == ii);
         % Find to which intervals the records belong
@@ -43,7 +47,7 @@ catch
     save(fullfile(resdir, sprintf('%s_%s.mat', datestr(now,'yyyymmdd_HHMM'),testname)), 'res')
 end
 mst = [mst, res];
-
+sec2time(toc)
 % clearvars -except mst d ids resdir
 % save debugstate 
 
