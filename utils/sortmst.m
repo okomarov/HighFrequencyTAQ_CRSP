@@ -5,17 +5,20 @@ function sortmst(path2data)
 
 if nargin < 1 || isempty(path2data),  path2data = '.\data\TAQ'; end
 
+setupemail
+
 % Open matlabpool
-if matlabpool('size') == 0
-    matlabpool('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+if isempty(gcp('nocreate'))
+    parpool(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
 end
 
-dd  = dir(fullfile(path2data,'*.mat'));
-N   = numel(dd);
+files = dir(fullfile(path2data,'*.mat'));
+N     = numel(files);
+tic
 parfor f = 1:N
     disp(f)
     % Load data
-    fname = fullfile(path2data,dd(f).name);
+    fname = fullfile(path2data,files(f).name);
     s     = load(fname);
     if ~issorted(s.mst.From)
         disp('Sorting')
@@ -23,8 +26,18 @@ parfor f = 1:N
         s.mst = sortrows(s.mst,'From');
         % Save
         fileattrib(fname,'+w')
-        save(fname, '-struct','s')
-        fileattrib(fname,'-w +h')
+        mysave(fname, s)
     end
+    fileattrib(fname,'-w +h')
 end
+% Cleanup and feedback
+delete(gcp)
+message = sprintf('Task ''sortmst'' terminated in %s',sec2time(toc));
+disp(message)
+sendmail('o.komarov11@imperial.ac.uk', message,'');
+rmpref('Internet','SMTP_Password')
+end
+
+function mysave(fname, s)
+save(fname, '-struct','s')
 end
