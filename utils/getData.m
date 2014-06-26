@@ -78,7 +78,7 @@ for ii = 1:nfiles
     end
     
     % Update waitbar
-    matname  = matnames{ii};
+    matname  = matnames{files(ii)};
     x        = (ii-1)/nfiles;
     time2end = elapsed(ii)*(1-x)/x;
     waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
