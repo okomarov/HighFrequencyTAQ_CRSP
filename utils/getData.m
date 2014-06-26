@@ -36,11 +36,11 @@ matnames = {dd.name};
 % Retrieve varnames
 tmp = load(fullfile(path2data, matnames{end}),'data');
 if isempty(varnames)
-    varnames = setdiff(fieldnames(tmp.data),{'Time','Properties'},'stable');
+    varnames = setdiff(tmp.data.Properties.VarNames,{'Time','Properties'},'stable');
 end
 
 % Check if it already has Datetime
-idatetime = strcmpi(varnames, 'Datetime');
+idatetime = strcmpi(tmp.data.Properties.VarNames, 'Datetime');
 
 % Preallocate output
 nrows = cblocks(end);
