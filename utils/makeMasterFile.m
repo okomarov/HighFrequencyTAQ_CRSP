@@ -21,39 +21,27 @@ tic
 fprintf('Loading .mat files.\n')
 parfor f = 1:nfiles
     disp(f)
-    s = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
-    mst{f}     = sortrows(s.(mstname),'Id');
-    mst{f}.Id  = int64(mst{f}.Id);
-    ids{f}     = s.(idsname);
+    s      = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
+    mst{f} = dataset2table(s.(mstname));
+    ids{f} = s.(idsname);
 end
 delete(gcp)
 toc
 
-% Number of rows per block
-lenmst = cellfun(@(x) size(x,1),mst);
-
-% Shift in Ids from a block to another, i.e. not all ids are in mst.Id
-lenids    = cellfun(@(x) size(x,1),ids);
-maxids    = cellfun(@(x) max(x.Id),mst);
-endshifts = cast(lenids,'like',maxids) - maxids + 1;
+% Match id to unique ids
+% Note: keep the matching algo simple (had enough of debugging)
+lenids      = cellfun('prodofsize', ids);
+[ids,~,pos] = unique(cat(1,ids{:}));
+pos         = uint16(pos);
+pos         = mat2cell(pos,lenids);
+for f = uint16(1:nfiles)
+   mst{f}.Id   = pos{f}(mst{f}.Id);
+   mst{f}.File = repmat(f, size(mst{f},1),1);
+end
 
 % Concatenate all
 fprintf('Concatenating records.\n')
-ids = cat(1,ids{:});
 mst = cat(1,mst{:}); 
-
-% Add number of file to mst
-mst.File(:,1) = RunLength(uint16(1:nfiles), lenmst);
-
-% Re-index id to whole block
-cumpos           = cumsum(lenmst(1:end-1));
-mst.Id           = [1; diff(mst.Id)];
-mst.Id(cumpos+1) = endshifts(1:end-1);
-mst.Id           = cumsum(mst.Id);
-
-% Make unique tickers
-[ids,~,long2unique] = unique(ids);
-mst.Id              = uint16(long2unique(mst.Id));
 
 % Drop tickers without data
 idrop = ~ismember(1:numel(ids), mst.Id);
