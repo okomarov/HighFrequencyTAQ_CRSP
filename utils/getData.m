@@ -1,14 +1,16 @@
 function out = getData(master, tickers, from, to, varnames, path2data)
-
-if nargin < 5 
-    varnames = ''; 
-end
-if nargin < 6 || isempty(path2data),  path2data  = '.\data\TAQ'; end
-    
 narginchk(2,6)
+
 if nargin < 3 || isempty(from), from = 0; end
 if nargin < 4 || isempty(to),   to = inf; end
-if ischar(tickers) && isrow(tickers)
+if nargin < 5 || isempty(varnames)
+    varnames = '';
+elseif isstring(varnames)
+    varnames = {varnames};
+end
+if nargin < 6 || isempty(path2data),  path2data  = '.\data\TAQ'; end
+   
+if isstring(tickers)
     tickers = {tickers};
 end
     
@@ -40,7 +42,12 @@ if isempty(varnames)
 end
 
 % Check if it already has Datetime
-idatetime = strcmpi(tmp.data.Properties.VarNames, 'Datetime');
+idatetime = any(strcmpi(tmp.data.Properties.VarNames, 'Datetime'));
+if idatetime
+    varnames = unique(['Datetime' varnames],'stable');
+else
+    varnames = unique(['Time' varnames],'stable');
+end
 
 % Preallocate output
 nrows = cblocks(end);
