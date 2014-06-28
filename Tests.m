@@ -101,41 +101,27 @@ testname = 'sample';
 Analyze(testname,{'ID','Datetime','Price'}, mst);
 %% Betas
 addpath '.\utils' '.\utils\nth_element'
-resdir = '.\results';
-d      = '.\data\';
+resdir    = '.\results';
 
-% Load SPX (tickwrite)
-testname = 'SP500';
+% Load SPY (etf)
+testname = 'SPY';
 try 
     loadresults(testname)
 catch
-    
-    filename  = unzip(fullfile(d,'Tickwrite','SP.zip'), fullfile(d,'Tickwrite'));
-    SP500tick = dataset('File',filename{:},'Delimiter',',','ReadVarNames',1,'format','%f%f%f%*[^\n]');
-    SP500tick = replacedata(SP500tick,@(x) yyyymmdd2serial(x + ((x>9e5).*19e6 + (x<=9e5).*20e6)),'Date');
-    SP500tick = replacedata(SP500tick,@(x) hhmmssfff2serial(x),'Time');
-    SP500tick.Datetime = SP500tick.Date + SP500tick.Time;
-    delete(filename{:})
-    
-    % Median price for same timestamp
-    [SP500,~,subsID] = unique(SP500tick(:,{'Date','Datetime'}));
-    SP500.Price = accumarray(subsID,SP500tick.Price,[],@fast_median);
-    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),testname)), 'SP500')
+    path2data = '.\data\TAQ\sampled';
+    master    = load(fullfile(path2data,'master'),'-mat');
+    spy       = getData(master, 'SPY',[],[],'Price',path2data);
+    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),testname)), 'spy')
 end
 
-% Sample SP500 (until 3:15 PM!)
-grid  = (9.5/24:5/(60*24):(15+15/60)/24)';
-ngrid = numel(grid);
-SP500 = fixedsampling(double([SP500.Datetime, SP500.Price]), 'Previous', grid);
-SP500 = mat2dataset(SP500,'VarNames',{'Datetime','Price'});
-
 % SP500 ret (zeroing overnight)
-SPret = [SP500.Datetime(2:end) SP500.Price(2:end)./SP500.Price(1:end-1)-1];
-SPret = SPret(diff(fix(SP500.Datetime)) == 0,:);
+spyret = [SPY.Datetime(2:end) SPY.Price(2:end)./SPY.Price(1:end-1)-1];
+spyret = spyret(diff(rem(SPY.Datetime,1)) >= 0,:);
 
 % Cache SP500 returns by days
-SPdays = unique(fix(SPret(:,1)),'stable');
-SPret  = mat2cell(SPret(:,2),repmat(ngrid-1,size(SPret,1)/(ngrid-1),1));
+ngrid  = 79;
+spdays = unique(fix(spyret(:,1)),'stable');
+spyret = mat2cell(spyret(:,2),repmat(ngrid-1,size(spyret,1)/(ngrid-1),1));
 
 % LOOP by sampled data 
 d = '.\data\TAQ\sampled';
@@ -147,23 +133,26 @@ parfor f = 1:numel(dd)
     disp(f)
     % Load data 
     s      = load(fullfile(d,dd(f).name));
-    dates  = s.data.Datetime(2:end);
+    dates  = s.data.Datetime;
     ret    = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
     % Limit to <= 3:15 PM
-    idx    = rem(dates,1) <= (15+16/60)/24;
-    ret    = ret(idx,:);
-    dates  = dates(idx,:);
+%     idx    = rem(dates,1) <= (15+16/60)/24;
+%     ret    = ret(idx,:);
+%     dates  = dates(idx,:);
     % Keep all except overnight
-    idx    = [true; diff(rem(dates,1)) >= 0];
+    idx    = diff(rem(dates,1)) >= 0;
     ret    = ret(idx,:);
     
     % Map SP500 rets to stock rets
     days    = yyyymmdd2serial(double(s.mst.Date));
-    spret   = cat(1,SPret{ismembc2(days, SPdays)});
-    prodret = spret.*ret;
+    idx     = RunLength(ismembc(days, spdays),repmat(ngrid-1,numel(days),1));
+    pos     = ismembc2(days, spdays);
+    spret   = cat(1,spyret{pos(pos~=0)});
+    prodret = spret.*ret(idx);
     subsID  = reshape(repmat(1:size(s.mst,1),ngrid-1,1),[],1);
+    subsID  = subsID(idx);
     ikeep   = ~isnan(prodret);
-    beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2);
+    beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
     
     % Store results
     res{f} = s.mst;
@@ -360,10 +349,10 @@ legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 %% Check Betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
-symbol = {'AAPL','SPY'};
+symbol = 'AAPL';
 
 % Load SP500
-loadresults('SP500')
+loadresults('SPY')
 
 % Which files to loop for
 d      = '.\data\TAQ';
@@ -374,9 +363,12 @@ files  = unique(mst.File);
 nfiles = numel(files);
 
 % Sampling grid (until 3:15!)
-grid = (9.5/24:30/(60*24):(15+15/60)/24)';
+grid = (9.5/24:5/(60*24):16/24)';
+betas = cell(nfiles,1);
 
-betas6 = cell(nfiles);
+if isempty(gcp('nocreate'))
+    parpool(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+end
 
 tic
 % LOOP by files
@@ -407,8 +399,9 @@ parfor (f = 1:nfiles, 4)
         prices          = accumarray(subs,data.Price,[],@fast_median);
         
         % SP500
-        iday = SP500.Date == day;
-        [~, rcss] = realized_covariance(SP500.Price(iday), SP500.Datetime(iday), prices, dates,...
+        iday = fix(SPY.Datetime) == day;
+        if ~any(iday), continue, end
+        [~, rcss] = realized_covariance(SPY.Price(iday), SPY.Datetime(iday), prices, dates,...
                                    'unit','fixed', grid+day,5); 
         % Overnight
         if ii ~= 1
@@ -418,19 +411,19 @@ parfor (f = 1:nfiles, 4)
                 onp = 0;
             end
              pos  = find(iday,1,'first');
-             onsp = SP500.Price(pos)./ SP500.Price(pos-1)-1;
+             onsp = SPY.Price(pos)./ SPY.Price(pos-1)-1;
         else
             onp = 0;
             onsp = 0;
         end
         res(ii,:) = [day (rcss(2)+onp*onsp)/(rcss(1)+onsp^2)];    
     end
-    betas6{f,1} = res;
+    betas{f,1} = res;
 end
-betas6 = cat(1, betas6{:});
+betas = cat(1, betas{:});
 
 refdates = datenum(1993,2:234,1)-1;
-out = interp1(betas2(:,1), [betas betas2(:,2) betas3(:,2)  betas4(:,2) betas6(:,2)], refdates');
+out = interp1(betas(:,1), betas(:,2), refdates');
 plot(refdates, out)
 dynamicDateTicks
 legend('w/o overnight','W/ on','10 min w/ on', 'w/on subsampled 5','w/ on 30 min')
