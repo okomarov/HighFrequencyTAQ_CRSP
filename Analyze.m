@@ -1,44 +1,50 @@
-function res = Analyze(fun, varnames, cached, debug)
+function res = Analyze(fun, varnames, cached, path2data, debug)
 
-% ANALYZE Executes specified fun in parallel on the whole database (all .mat files) 
-% 
-%   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of 
+% ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
+%
+%   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of
 %                          the following sub-functions:
-%                               - 'dailystats'            
+%                               - 'dailystats'
 %                               - 'badprices'
 %                               - 'avgtimestep'
 %                          VARNAMES is a cell-array of strings (or string)
 %                          with the VarNames of the dataset with the results
 %
+%   ANALYZE(..., PATH2DATA) If you wanna use other than '.\data\TAQ\T*.mat'
+%                           files (default), then specify a different 
+%                           PATH2DATA with the initial pattern of the name, 
+%                           e.g '.\data\TAQ\sampled\S5m_*.mat'
+%
 %   ANALYZE(..., CACHED) Some FUN might require pre-cached results which where
 %                        run on the whole database.
-%                        Check the specific sub-function for the format of the 
+%                        Check the specific sub-function for the format of the
 %                        needed CACHED results.
-%   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be 
+%   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
 
 
-if nargin < 3; cached = [];    end
-if nargin < 4; debug  = false; end   
+if nargin < 3; cached    = [];                  end
+if nargin < 4; path2data = '.\data\TAQ\T*.mat'; end
+if nargin < 5; debug     = false;               end
 
 % Simply call the specific subroutine
 addpath(genpath('.\utils'))
 writeto = '.\results\';
+root    = fileparts(path2data);
 
 % Open matlabpool
 if matlabpool('size') == 0 && ~debug
-     matlabpool('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+    matlabpool('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'})
 end
 
 % Get email credentials if not in debug
 if ~debug; setupemail; end
-    
+
 fhandle = str2func(fun);
 
 try
     tic
-    d   = '.\data\TAQ';
-    dd  = dir(fullfile(d,'T*.mat'));
+    dd  = dir(path2data);
     N   = numel(dd);
     res = deal(cell(N,1));
     
@@ -53,7 +59,7 @@ try
     parfor f = 1:N
         disp(f)
         % Load data
-        s      = load(fullfile(d,dd(f).name));
+        s      = load(fullfile(root,dd(f).name));
         % Apply function
         res{f} = fhandle(s, [cached(f), f]);
     end
@@ -87,7 +93,7 @@ function res = dailystats(s,~)
 
 % STEP 1) Selection
 inan = selecttrades(s.data);
-  
+
 % Select non nans
 prices = s.data.Price(~inan);
 % Set to NaN overnight
@@ -197,6 +203,14 @@ fprintf('\t\t\t\t\t\t\t %.1f - %.1f\n',selper,badserper)
 end
 %% Sampling
 function res = sample(s,cached)
+
+% Sampling params
+% -----------------------------------
+grid     = (9.5/24:5/(60*24):16/24)';
+savepath = '.\data\TAQ\sampled';
+fmtname  = 'S5m_%04d.mat';
+% -----------------------------------
+
 nfile  = cached{end};
 cached = cached{1};
 % Number of observations per day
@@ -221,30 +235,29 @@ inan = inan | RunLength(cached.Timestep,nobs);
 % s.data.Price(inan) = NaN;
 
 if ~all(inan)
-
+    
     % STEP 6) Median prices for same timestamps
     mstrow           = RunLength((1:nmst)',nobs);
     [unTimes,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
     price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
-        
-    % STEP 7) Sample on fixed grid (easier to match sp500) 
-    grid  = (9.5/24:5/(60*24):16/24)';
+    
+    % STEP 7) Sample on fixed grid (easier to match sp500)
     ngrid = numel(grid);
     price = fixedsampling(double([unTimes, price]), 'Previous', grid);
     idx   = fix(price(:,1));
     dates = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(price(:,1),1);
     
+    % Reorganize output
+    res        = [];
+    s.data     = dataset({dates,'Datetime'},{price(:,2),'Price'});
+    imst       = RunLength(idx);
+    s.mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
+    s.mst.From = (1:ngrid:size(s.data,1))';
+    s.mst.To   = (ngrid:ngrid:size(s.data,1))';
+    
     % Save
-    res   = [];
-    fname = fullfile('.\data\TAQ\sampled',sprintf('S5m_%04d.mat',nfile));
-    data  = dataset({dates,'Datetime'},{price(:,2),'Price'});
-    
-    imst     = RunLength(idx);
-    mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
-    mst.From = (1:ngrid:size(data,1))';
-    mst.To   = (ngrid:ngrid:size(data,1))';
-    
-    ids = s.ids;
-    save(fname, 'data','ids', 'mst')
-end    
+    fname = fullfile(savepath,sprintf(fmtname,nfile));
+    save(fname, '-struct','s')
+end
+end
 end
