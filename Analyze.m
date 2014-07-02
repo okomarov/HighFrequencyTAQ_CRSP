@@ -260,4 +260,29 @@ if ~all(inan)
     save(fname, '-struct','s')
 end
 end
+
+function res = betas(s,cached)
+spdays = cached{1}{2};
+spyret = cached{1}{1};
+ngrid  = size(spyret{1},1);
+
+dates  = s.data.Datetime;
+ret    = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
+
+% Keep all except overnight
+idx    = diff(rem(dates,1)) >= 0;
+ret    = ret(idx,:);
+
+% Map SP500 rets to stock rets
+days    = yyyymmdd2serial(double(s.mst.Date));
+pos     = ismembc2(days, spdays);
+spret   = cat(1,spyret{pos(pos~=0)});
+prodret = spret.*ret;
+subsID  = reshape(repmat(1:size(s.mst,1),ngrid,1),[],1);
+ikeep   = ~isnan(prodret);
+beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
+
+% Store results
+res = s.mst(:,{'Id','UnID','Date'});
+res.Beta = beta;
 end

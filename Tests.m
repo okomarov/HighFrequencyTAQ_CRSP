@@ -103,63 +103,46 @@ Analyze(testname,{'ID','Datetime','Price'}, mst);
 addpath '.\utils' '.\utils\nth_element'
 resdir    = '.\results';
 
-% Load SPY (etf)
-testname = 'SPY';
-try 
+testname = 'betas';
+try
     loadresults(testname)
 catch
     path2data = '.\data\TAQ\sampled';
-    master    = load(fullfile(path2data,'master'),'-mat');
-    spy       = getData(master, 'SPY',[],[],'Price',path2data);
-    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),testname)), 'spy')
-end
-
-% SP500 ret (zeroing overnight)
-spyret = [SPY.Datetime(2:end) SPY.Price(2:end)./SPY.Price(1:end-1)-1];
-spyret = spyret(diff(rem(SPY.Datetime,1)) >= 0,:);
-
-% Cache SP500 returns by days
-ngrid  = 79;
-spdays = unique(fix(spyret(:,1)),'stable');
-spyret = mat2cell(spyret(:,2),repmat(ngrid-1,size(spyret,1)/(ngrid-1),1));
-
-% LOOP by sampled data 
-d = '.\data\TAQ\sampled';
-% d = 'D:\TAQ\HFbetas\data\TAQ\sampled'
-dd = dir(fullfile(d,'S*.mat'));
-res = cell(numel(dd),1);
-% parpool(4)
-parfor f = 1:numel(dd)
-    disp(f)
-    % Load data 
-    s      = load(fullfile(d,dd(f).name));
-    dates  = s.data.Datetime;
-    ret    = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
-    % Limit to <= 3:15 PM
-%     idx    = rem(dates,1) <= (15+16/60)/24;
-%     ret    = ret(idx,:);
-%     dates  = dates(idx,:);
-    % Keep all except overnight
-    idx    = diff(rem(dates,1)) >= 0;
-    ret    = ret(idx,:);
     
-    % Map SP500 rets to stock rets
-    days    = yyyymmdd2serial(double(s.mst.Date));
-    idx     = RunLength(ismembc(days, spdays),repmat(ngrid-1,numel(days),1));
-    pos     = ismembc2(days, spdays);
-    spret   = cat(1,spyret{pos(pos~=0)});
-    prodret = spret.*ret(idx);
-    subsID  = reshape(repmat(1:size(s.mst,1),ngrid-1,1),[],1);
-    subsID  = subsID(idx);
-    ikeep   = ~isnan(prodret);
-    beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
+    % Load SPY (etf)
+    loadname = 'spysampled';
+    try
+        loadresults(loadname, 'SPY')
+    catch
+        master    = load(fullfile(path2data,'master'),'-mat');
+        SPY       = getData(master, 'SPY',[],[],'Price',path2data);
+        save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
+    end
     
-    % Store results
-    res{f} = s.mst;
-    res{f}.Beta = beta;
+    % SP500 ret (zeroing overnight)
+    spyret = [SPY.Datetime(2:end) SPY.Price(2:end)./SPY.Price(1:end-1)-1];
+    spyret = spyret(diff(rem(SPY.Datetime,1)) >= 0,:);
+    
+    % Cache SP500 returns by days
+    load(fullfile(path2data,'master'),'-mat','mst');
+    nfiles   = max(mst.File);
+    cached   = cell(nfiles,1);
+    
+    dates  = fix(spyret(:,1)); 
+    [spdays,~,subs] = unique(dates,'stable');
+    spyret = mat2cell(spyret(:,2), accumarray(subs,1),1);
+    
+    unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(double(unique(x)))});
+    for ii = 1:nfiles
+        pos        = ismembc2(unMstDates{ii}, spdays);
+        nnzero     = pos ~= 0;
+        ispy       = ismembc(spdays, unMstDates{ii});
+        cached{ii} = {spyret(ispy) spdays(pos(nnzero))};
+    end
+    
+    % Calculate betas
+    Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'),1);
 end
-Betas = cat(1,res{:});
-save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'Betas')), 'Betas')
 %% Smooth Betas
 addpath .\utils\
 
