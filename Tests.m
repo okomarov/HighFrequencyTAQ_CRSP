@@ -141,7 +141,7 @@ catch
     end
     
     % Calculate betas
-    Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'),1);
+    Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'));
 end
 %% Smooth Betas
 addpath .\utils\
@@ -428,6 +428,40 @@ betas2 = betas2(~isnan(betas2.Beta),:);
 refdates = serial2yyyymmdd(refdates);
 out = interp1(double(betas2.Date), betas2.Beta, refdates');
 plot(yyyymmdd2serial(refdates), out,'r')
+%% Detailed check 
+date = 19930201;
+step = 5/(60*24);
+grid = (9.5/24:step:16/24)';
+
+% Sampled
+path2data = '.\data\TAQ\sampled';
+master    = load(fullfile(path2data, 'master'), '-mat');
+spys      = getData(struct(master), 'spy', date, date,[], path2data);
+aapls     = getData(struct(master), 'aapl', date, date,[], path2data);
+
+% Full
+path2data = '.\data\TAQ\';
+master    = load(fullfile(path2data, 'master'), '-mat');
+spy       = getData(struct(master), 'spy', date, date,[], path2data);
+aapl      = getData(struct(master), 'aapl', date, date,[], path2data);
+
+% Select
+spy  = spy(~selecttrades(spy),{'Datetime','Price'});
+aapl = aapl(~selecttrades(aapl),{'Datetime','Price'});
+
+% Median
+[dates, ~,subs] = unique(spy.Datetime);
+prices          = accumarray(subs,spy.Price,[],@fast_median);
+spy             = table(dates,prices,'VariableNames', spy.Properties.VariableNames);
+
+[dates, ~,subs] = unique(aapl.Datetime);
+prices          = accumarray(subs,aapl.Price,[],@fast_median);
+aapl            = table(dates,prices,'VariableNames', aapl.Properties.VariableNames);
+
+[~, rcss] = realized_covariance(spy.Price, spy.Datetime, aapl.Price,aapl.Datetime,...
+                                   'unit','fixed', grid+yyyymmdd2serial(date),1); 
+save debugstate
+
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
