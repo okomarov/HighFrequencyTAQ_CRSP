@@ -38,11 +38,16 @@ matnames = {dd.name};
 % Retrieve varnames
 tmp = load(fullfile(path2data, matnames{end}),'data');
 if isempty(varnames)
-    varnames = setdiff(tmp.data.Properties.VarNames,{'Time','Properties'},'stable');
+    if isa(tmp.data, 'dataset')
+        vnames = tmp.data.Properties.VarNames;
+    else
+        vnames = tmp.data.Properties.VariableNames;
+    end
+    varnames = setdiff(vnames,{'Time','Properties'},'stable');
 end
 
 % Check if it already has Datetime
-idatetime = any(strcmpi(tmp.data.Properties.VarNames, 'Datetime'));
+idatetime = any(strcmpi(vnames, 'Datetime'));
 if idatetime
     varnames = unique(['Datetime' varnames],'stable');
 else

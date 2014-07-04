@@ -242,14 +242,14 @@ if ~all(inan)
     price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
     
     % STEP 7) Sample on fixed grid (easier to match sp500)
-    ngrid = numel(grid);
-    price = fixedsampling(unTimes, price, grid);
-    idx   = fix(price(:,1));
-    dates = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(price(:,1),1);
+    ngrid          = numel(grid);
+    [price, dates] = fixedsampling(unTimes, price, grid);
+    idx            = fix(dates);
+    dates          = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(dates,1);
     
     % Reorganize output
     res        = [];
-    s.data     = dataset({dates,'Datetime'},{price(:,2),'Price'});
+    s.data     = table(dates,price,'VariableNames',{'Datetime','Price'});
     imst       = RunLength(idx);
     s.mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
     s.mst.From = (1:ngrid:size(s.data,1))';

@@ -147,7 +147,7 @@ end
 addpath .\utils\
 
 % Load Betas
-loadresults('Betas')
+loadresults('betas','Betas')
 
 % Sort betas
 Betas = sortrows(Betas,{'UnID','Date'});
@@ -197,7 +197,7 @@ overlap     = un(accumarray(subs,1) > 1,:);
 % taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
 
 % Pivot
-tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) Betasd.SMA(idx)]);
+tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) double(Betasd.SMA(idx))]);
 
 % Add reference dates
 refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
@@ -411,7 +411,7 @@ parfor (f = 1:nfiles, 4)
 end
 betas = cat(1, betas{:});
 betas = betas(~isnan(betas(:,2)),:);
-save debugstate
+save debugstate2
 
 refdates = datenum(1993,2:234,1)-1;
 out = interp1(betas(:,1), betas(:,2), refdates');
@@ -429,7 +429,7 @@ refdates = serial2yyyymmdd(refdates);
 out = interp1(double(betas2.Date), betas2.Beta, refdates');
 plot(yyyymmdd2serial(refdates), out,'r')
 %% Detailed check 
-date = 19930201;
+date = 19970806;
 step = 5/(60*24);
 grid = (9.5/24:step:16/24)';
 
@@ -462,116 +462,6 @@ aapl            = table(dates,prices,'VariableNames', aapl.Properties.VariableNa
                                    'unit','fixed', grid+yyyymmdd2serial(date),1); 
 save debugstate
 
-%% Verify MANUAL vs AUTOMATIC betas
-addpath .\utils\ .\utils\nth_element\ .\utils\MFE
-
-% Load automatic betas
-load .\results\20131231_1338_betas.mat
-load .\data\TAQ\master -mat
-mst.Date = yyyymmdd2serial(double(mst.Date));
-idx      = mst.Date >= 730124 &...
-           mst.Date <= 730485 &...
-           mst.Id == find(strcmpi(ids,'AAPL'));
-autobetas = res.Beta(idx);
-clear res mst
-
-% Load AAPL sample from 1999
-filename = unzip('.\data\TAQ\datachk\1999\AAPL_csv.zip');
-fid        = fopen(filename{end});
-data       = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c','Delimiter',',','HeaderLines',1);
-data{1,10} = char(data{1,10});
-szCond     = size(data{1,10});
-data{1,10} = [data{1,10} repmat(' ',szCond(1),2-szCond(2))];
-data       = [data(2) cat(2,data{3:5}) data(6:7) cat(2,data{8:9}) data(10:11)];
-fclose(fid);
-delete(filename{1});
-% Into dataset
-data = dataset({yyyymmdd2serial(double(data{1})), 'Date'},...
-                { yyyymmdd2serial(double(data{1})) ...
-                + hhmmssmat2serial(data{2}), 'Datetime'},...
-                {data{3},'Price'},...
-                {data{4},'Volume'},...
-                {data{5},'G127_Correction'},...
-                {data{6},'Condition'});
-% Select trades
-data = data(~selecttrades(data),:);
-load .\results\20131230_1732_dailystats.mat
-mst  = res(idx,:);
-nobs = diff([0; find(diff(data.Date)); size(data,1)]);
-[~,ibadprice] = histc(data.Price./RunLength(mst.MedPrice, nobs), [.65,1.51]);
-ibadprice     = ibadprice ~= 1;
-data(ibadprice,:) = [];
-     
-% Load SP 
-d         = '.\data\';
-filename  = unzip(fullfile(d,'Tickwrite','SP.zip'), fullfile(d,'Tickwrite'));
-SP500tick = dataset('File',filename{:},'Delimiter',',','ReadVarNames',1,'format','%f%f%f%*[^\n]');
-SP500tick = replacedata(SP500tick,@(x) yyyymmdd2serial(x + ((x>9e5).*19e6 + (x<=9e5).*20e6)),'Date');
-SP500tick = replacedata(SP500tick,@(x) hhmmssfff2serial(x),'Time');
-SP500tick.Datetime = SP500tick.Date + SP500tick.Time;
-delete(filename{:})
-
-idx = SP500tick.Date >= fix(data.Datetime(1)) & SP500tick.Date <= fix(data.Datetime(end));
-SP500tick = SP500tick(idx,:);
-
-save .\results\checkBetasData SP500tick data autobetas
-
-load .\results\checkBetasData
-
-% Median price for same timestamp
-[SP500new,~,subs] = unique(SP500tick(:,{'Date','Datetime'}));
-SP500new.Price    = accumarray(subs,SP500tick.Price,[],@fast_median);
-
-[datanew,~,subs] = unique(data(:,{'Date','Datetime'}));
-datanew.Price    = accumarray(subs,data.Price,[],@fast_median);
-
-% Sample
-grid  = (9.5/24:5/(60*24):16/24)';
-SP500sampled = fixedsampling([SP500new.Datetime, double(SP500new.Price)], 'Previous', grid);
-SP500sampled = mat2dataset(SP500sampled,'VarNames',{'Datetime','Price'});
-
-datasampled = fixedsampling([datanew.Datetime, double(datanew.Price)], 'Previous', grid);
-datasampled = mat2dataset(datasampled,'VarNames',{'Datetime','Price'});
-
-% Returns
-len                   = length(grid);
-dataret               = datasampled.Price(2:end)./datasampled.Price(1:end-1)-1;
-dataret(len:len:end)  = [];
-SP500ret              = SP500sampled.Price(2:end)./SP500sampled.Price(1:end-1)-1;
-SP500ret(len:len:end) = [];
-
-% Beta
-subs       = repmat(1:length(dataret)/(len-1),len-1,1);
-rcmanual   = accumarray(subs(:),dataret.*SP500ret,[],@nansum);
-vmanual    = accumarray(subs(:),SP500ret.^2,[],@nansum);
-betamanual = rcmanual./vmanual;
-             
-
-% Compare against MFE toolbox by Sheppard
-undays = unique(SP500new.Date)';
-ndays  = numel(undays);
-[rc,v] = deal(zeros(ndays,1));
-type = 'fixed';%'CalendarTime';
-ggrid = grid;%5/(60*24);
-
-nsamples = 1;
-for ii = 1:ndays
-    idata  = undays(ii) == datanew.Date;
-    isp500 = undays(ii) == SP500new.Date;
-    if ~isscalar(ggrid)
-        ggrid = undays(ii) + grid;
-    end
-    
-    tmp    = realized_covariance( datanew.Price(idata), datanew.Datetime(idata), ...
-                                 SP500new.Price(isp500), SP500new.Datetime(isp500),...
-                                 'unit',type,ggrid,nsamples);
-    rc(ii) = tmp(2);
-    v(ii)  = realized_variance(SP500new.Price(isp500), SP500new.Datetime(isp500),...
-                                 'unit',type,ggrid,nsamples);
-end
-betaSheppard = rc./v;
-
-plot([betamanual,  autobetas,betaSheppard]), legend('manual','auto','mfe')
 %% SPX (tickwrte) vs SP500 (CRSP)
 d     = '.\data\';
 opts  = {'Delimiter',',','ReadVarNames',1};
