@@ -112,7 +112,7 @@ for ii = 1:nfiles
         end
         for v = 1:numel(varnames)
             field = varnames{v};
-            out.(field)(iout) = s.data.(field)(idata);
+            out.(field)(iout,:) = s.data.(field)(idata,:);
         end
     end
     % Update waitbar 
