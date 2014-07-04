@@ -24,7 +24,7 @@ function res = Analyze(fun, varnames, cached, path2data, debug)
 
 
 if nargin < 3; cached    = [];                  end
-if nargin < 4; path2data = '.\data\TAQ\T*.mat'; end
+if nargin < 4 || isempty(path2data ); path2data = '.\data\TAQ\T*.mat'; end
 if nargin < 5; debug     = false;               end
 
 % Simply call the specific subroutine
@@ -243,7 +243,7 @@ if ~all(inan)
     
     % STEP 7) Sample on fixed grid (easier to match sp500)
     ngrid = numel(grid);
-    price = fixedsampling(double([unTimes, price]), 'Previous', grid);
+    price = fixedsampling(unTimes, price, grid);
     idx   = fix(price(:,1));
     dates = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(price(:,1),1);
     
