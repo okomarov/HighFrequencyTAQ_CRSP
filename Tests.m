@@ -333,9 +333,10 @@ legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
 symbol = 'AAPL';
+dovernight = false;
 
 % Load SP500
-loadresults('SPY')
+loadresults('spysampled','SPY')
 
 % Which files to loop for
 d      = '.\data\TAQ';
@@ -345,8 +346,9 @@ mst    = mst(idx,:);
 files  = unique(mst.File);
 nfiles = numel(files);
 
-% Sampling grid (until 3:15!)
-grid = (9.5/24:5/(60*24):16/24)';
+% Sampling grid
+step  = 5/(60*24);
+grid  = (9.5/24:step:16/24)';
 betas = cell(nfiles,1);
 
 if isempty(gcp('nocreate'))
@@ -384,10 +386,14 @@ parfor (f = 1:nfiles, 4)
         % SP500
         iday = fix(SPY.Datetime) == day;
         if ~any(iday), continue, end
-        [~, rcss] = realized_covariance(SPY.Price(iday), SPY.Datetime(iday), prices, dates,...
-                                   'unit','fixed', grid+day,5); 
+        
+        SPprices  = SPY.Price(iday);
+        SPdates   = SPY.Datetime(iday);
+        notnan    = ~isnan(SPprices);
+        [~, rcss] = realized_covariance(SPprices(notnan), SPdates(notnan), prices, dates,...
+                                   'unit','fixed', grid+day,1); 
         % Overnight
-        if ii ~= 1
+        if ii ~= 1 && dovernight
             if prices(1)/s.data.Price(s.mst.To(ii-1))-1 < 0.1
                 onp = prices(1)/s.data.Price(s.mst.To(ii-1))-1;
             else
@@ -404,20 +410,24 @@ parfor (f = 1:nfiles, 4)
     betas{f,1} = res;
 end
 betas = cat(1, betas{:});
+betas = betas(~isnan(betas(:,2)),:);
+save debugstate
 
 refdates = datenum(1993,2:234,1)-1;
 out = interp1(betas(:,1), betas(:,2), refdates');
 plot(refdates, out)
 dynamicDateTicks
-legend('w/o overnight','W/ on','10 min w/ on', 'w/on subsampled 5','w/ on 30 min')
-
-
+hold on
 
 % Compare against saved betas [Different!]
 loadresults('taq2crsp')
-loadresults('Betas')
+loadresults('betas','betas2')
 ID = taq2crsp.ID(strcmpi(taq2crsp.symbol,symbol),:);
-Betas = Betas(Betas.UnID == ID,:);
+betas2 = betas2(betas2.UnID == ID,:);
+betas2 = betas2(~isnan(betas2.Beta),:);
+refdates = serial2yyyymmdd(refdates);
+out = interp1(double(betas2.Date), betas2.Beta, refdates');
+plot(yyyymmdd2serial(refdates), out,'r')
 %% Verify MANUAL vs AUTOMATIC betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
