@@ -34,6 +34,30 @@ for ii = 1:size(res,2)-1
     dynamicDateTicks, axis tight
     legend(vnames,'Location','west');
 end
+%% Display Book (G127 - 40) Keep? [YES]
+path2data = '.\data\TAQ';
+master    = load(fullfile(path2data, 'master'), '-mat');
+s         = load(fullfile(path2data, 'T0300.mat'));
+
+% Count DB trades by Id
+[~,pmst]    = histc(find(s.data.G127_Correction(:,1) == 40), [s.mst.From; s.mst.To(end)]);
+mst         = s.mst(unique(pmst),:);
+[un,~,subs] = unique(s.mst.Id(pmst));
+dbtrades    = table(un, accumarray(subs,1),'VariableNames', {'Id','Count'});
+[~,imax]    = max(dbtrades.Count);
+% imax      = 100;
+disp(dbtrades(imax,:))
+id          = dbtrades.Id(imax);
+symbol      = s.ids{id}
+date        = mst.Date(find(mst.Id == id,1,'first'));
+
+% Plot
+sample = getData(master, symbol, date,date);
+i40    = sample.G127_Correction(:,1) == 40;
+igood  = sample.G127_Correction(:,1) == 0;
+x      = hhmmssmat2serial(sample.Time);
+plot(x(i40), sample.Price(i40),'xr', x(igood), sample.Price(igood),'.b',...
+     x, sample.Price, '-g')
 
 %% Type counts
 try

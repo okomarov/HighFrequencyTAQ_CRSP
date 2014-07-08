@@ -1,6 +1,6 @@
 function idx = selecttrades(data)
 
-% SELECTTRADES Select valid TAQ trades
+% SELECTTRADES Select invalid TAQ trades
 %
 %   SELCTTRADES(DATA) where DATA should be a dataset with the 
 %                     following varnames (case-sensitive):
@@ -18,8 +18,10 @@ function idx = selecttrades(data)
 % See also:
 
 % Exclude:
+% - condition all but 0 (not a “G”, Rule 127, or stopped stock trade) 
+%   and 40 (Display Book trade)
 % - corrections, i.e. all but 0
 % - anomalous sale conditions, i.e. all but 'E' (69) Automatic Execution, 'F' (70) Intermarket Sweep Order, ' ' (32) No Sale Condition required or '@' (64) Regular Trade
 % - 0 prices
-idx = data.G127_Correction(:,2) ~= 0 | ~all(data.Condition == ' ' | data.Condition == 'E' | data.Condition == 'F' | data.Condition == '@', 2) | data.Price == 0;
+idx = (data.G127_Correction(:,1) ~= 0 & data.G127_Correction(:,1) ~= 40) | data.G127_Correction(:,2) ~= 0 | ~all(data.Condition == ' ' | data.Condition == 'E' | data.Condition == 'F' | data.Condition == '@', 2) | data.Price == 0;
 end
