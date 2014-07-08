@@ -6,8 +6,34 @@ try
 catch
     res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'));
 end
-cat(1,res{:,1});
 
+% Plot 
+for ii = 1:size(res,2)-1
+    if ii == 3
+        data          = cat(1,res{:,ii});
+        idx           = all(data.Val == ' ' | data.Val == 'E' | data.Val == 'F' | data.Val == '@',2);
+        data.Val      = cellstr(data.Val); 
+        data.Val(idx) = {'  '};
+        data = unstack(data,'Count','Val');
+    else
+        data = unstack(cat(1,res{:,ii}),'Count','Val');
+    end
+    vnames = data.Properties.VariableNames(2:end);
+    dates  = datenum(double(data.yyyymm/100), double(rem(data.yyyymm,100)+1), 1)-1;
+    data   = table2array(data(:,2:end));
+    data(isnan(data)) = 0;
+    
+    figure
+    subplot(211)
+    title('Montly counts of price observations by type (absolute and %)')
+    area(dates, data)
+    dynamicDateTicks, axis tight
+    
+    subplot(212)
+    area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
+    dynamicDateTicks, axis tight
+    legend(vnames,'Location','west');
+end
 
 %% Type counts
 try
