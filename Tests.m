@@ -9,23 +9,84 @@ end
 cat(1,res{:,1});
 
 
-% Type feature
+%% Type counts
 try
     loadresults('TAQmaster')
 catch
     TAQmaster = importMst('.\data\TAQ\raw');
 end
-% TYPE
+
 TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
 
 % Time consolidation
 idx        =  [true; ~(strcmpi(TAQmaster.SYMBOL(2:end), TAQmaster.SYMBOL(1:end-1)) & ...
-                               TAQmaster.TYPE  (2:end)==TAQmaster.TYPE(1:end-1))];
+    TAQmaster.TYPE  (2:end)==TAQmaster.TYPE(1:end-1))];
 TAQmaster = TAQmaster(idx,:);
 
 % Link to number of records
 master = load(fullfile(path2data, 'master'), '-mat');
 
+% Subscripts by date
+[unDates, ~, subs] = unique(master.mst.Date/100);
+master.mst.Subs    = uint8(subs);
+
+% Preallocation
+master.mst.Val     = zeros(numel(subs),1,'uint8');
+master.ids = regexprep(master.ids,'p','PR');
+
+% LOOP by symbol
+for ii = 1:numel(master.ids)
+    symbol   = master.ids{ii};
+    iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
+    if ~any(iTAQ)
+        fprintf('No match: %s - iter %d\n', symbol,ii), continue
+    end
+    types = TAQmaster.TYPE(iTAQ);
+    if types == 0, continue, end
+    % Map mst records to date bins from TAQmaster
+    imst     = master.mst.Id == ii;
+    if numel(types) == 1
+        master.mst.Val(imst) = types;
+        continue
+    end
+    dates    = master.mst.Date(imst,:);
+    datebins = [TAQmaster.FDATE(iTAQ); inf];
+    [~,dmap] = histc(dates, datebins);
+    if dmap(1) == 0
+        fprintf('Data before type: %s - iter %d\n', symbol,ii)
+        dmap(dmap == 0) = ones(1,'uint8');
+    end
+    % Count by month
+    master.mst.Val(imst) = types(dmap);
+end
+% Group by month and type and count
+[typecounts, ~, subs] = unique(master.mst(:,{'Subs','Val'}));
+typecounts.Subs       = unDates(typecounts.Subs);
+typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+
+% Unstack
+typecounts   = dataset2table(unstack(typecounts,'Counts','Val'));
+vnames = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
+typecounts.Properties.VariableNames = ['Dates' vnames];
+
+% Save
+save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
+
+% Plot
+dates = datenum(double(typecounts.Dates/100), double(rem(typecounts.Dates,100)+1), 1)-1;
+data  = table2array(typecounts(:,2:end));
+data(isnan(data)) = 0;
+subplot(211)
+area(dates, data)
+dynamicDateTicks
+axis tight
+title('Montly counts of price observations by type (absolute and %)')
+l = legend({'common', 'preferred', 'warrant', 'right', 'other', 'derivative'});
+set(l,'Location','NorthWest')
+subplot(212)
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
+dynamicDateTicks
+axis tight
 %% Selection/filtering
 
 % Load big master file
@@ -39,8 +100,8 @@ resdir = '.\results\';
 testname = 'uniqueID';
 try
     loadresults(testname,'res')
-
-% Re-create mapping
+    
+    % Re-create mapping
 catch
     tic
     % Get taq2crsp ready
@@ -55,12 +116,12 @@ catch
         % Extract records from taq2crsp corresponding to TAQ's symbol
         isymbol  = strcmpi(symbol,taq2crsp.symbol);
         tmp      = taq2crsp(isymbol, {'ID','datef'});
-%         if isempty(tmp)
-%             % Preferred stocks symbol use sometimes the lowercase suffix
-%             % 'p' instead of 'PR' (see daily TAQ guide)
-%             isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
-%             tmp     = taq2crsp(isymbol, {'ID','datef'});
-%         end
+        %         if isempty(tmp)
+        %             % Preferred stocks symbol use sometimes the lowercase suffix
+        %             % 'p' instead of 'PR' (see daily TAQ guide)
+        %             isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
+        %             tmp     = taq2crsp(isymbol, {'ID','datef'});
+        %         end
         if isempty(tmp),fprintf('%d\n',ii),continue,end
         imst     = find(mst.Id == ii);
         % Find to which intervals the records belong
@@ -77,20 +138,20 @@ end
 mst = [mst, res];
 sec2time(toc)
 % clearvars -except mst d ids resdir
-% save debugstate 
+% save debugstate
 
 % Median and other dailystats
 testname = 'dailystats';
-try 
+try
     loadresults(testname,'res')
 catch
     res = Analyze(testname,{'Min','Max','MedPrice','Nrets'});
 end
 mst = [mst, res];
 
-% Bad prices days 
+% Bad prices days
 testname = 'badprices';
-try 
+try
     loadresults(testname,'res')
 catch
     res = Analyze(testname,'Baddays',mst(:, {'File','MedPrice'}));
@@ -100,7 +161,7 @@ mst = [mst, res];
 % Bad series
 totbad      = accumarray(mst.UnID, mst.Baddays);
 totobs      = accumarray(mst.UnID, mst.To - mst.From +1);
-% hist(totbad./totobs,100) 
+% hist(totbad./totobs,100)
 badseries   = totbad./totobs > .1;
 badseries(end) = true; % for the unmatched
 mst.Baddays = mst.Baddays | badseries(mst.UnID);
@@ -110,7 +171,7 @@ mst.Baddays = mst.Baddays | badseries(mst.UnID);
 
 % Average time step
 testname = 'avgtimestep';
-try 
+try
     loadresults(testname,'res')
 catch
     res = Analyze(testname,'Timestep', mst(:, {'File','MedPrice'}));
@@ -156,7 +217,7 @@ catch
     nfiles   = max(mst.File);
     cached   = cell(nfiles,1);
     
-    dates  = fix(spyret(:,1)); 
+    dates  = fix(spyret(:,1));
     [spdays,~,subs] = unique(dates,'stable');
     spyret = mat2cell(spyret(:,2), accumarray(subs,1),1);
     
@@ -332,7 +393,7 @@ Betas = tmp([true; ismember(tmp(2:end,1), refdates)],:);
 
 % Pivot SP membership
 SPconst        = [[double(SPconst.PERMNO)  double(SPconst.start)   ones(size(SPconst,1),1)];
-                  [double(SPconst.PERMNO)  double(SPconst.ending) -ones(size(SPconst,1),1)]];
+    [double(SPconst.PERMNO)  double(SPconst.ending) -ones(size(SPconst,1),1)]];
 tmp            = Pivot(SPconst,[],[],0);
 refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 alldates       = union(tmp(2:end,1), refdates);
@@ -386,9 +447,9 @@ end
 tic
 % LOOP by files
 parfor (f = 1:nfiles, 4)
-
+    
     disp(f)
-    % Load data 
+    % Load data
     s = load(fullfile(d, sprintf('T%04d.mat',files(f))));
     % Select symbol
     idx   = s.mst.Id == find(strcmpi(s.ids,symbol));
@@ -397,7 +458,7 @@ parfor (f = 1:nfiles, 4)
     
     res = NaN(nmst,2);
     
-    % LOOP by days 
+    % LOOP by days
     for ii = 1:nmst
         % Data selection
         from = s.mst.From(ii);
@@ -419,7 +480,7 @@ parfor (f = 1:nfiles, 4)
         SPdates   = SPY.Datetime(iday);
         notnan    = ~isnan(SPprices);
         [~, rcss] = realized_covariance(SPprices(notnan), SPdates(notnan), prices, dates,...
-                                   'unit','fixed', grid+day,1); 
+            'unit','fixed', grid+day,1);
         % Overnight
         if ii ~= 1 && dovernight
             if prices(1)/s.data.Price(s.mst.To(ii-1))-1 < 0.1
@@ -427,13 +488,13 @@ parfor (f = 1:nfiles, 4)
             else
                 onp = 0;
             end
-             pos  = find(iday,1,'first');
-             onsp = SPY.Price(pos)./ SPY.Price(pos-1)-1;
+            pos  = find(iday,1,'first');
+            onsp = SPY.Price(pos)./ SPY.Price(pos-1)-1;
         else
             onp = 0;
             onsp = 0;
         end
-        res(ii,:) = [day (rcss(2)+onp*onsp)/(rcss(1)+onsp^2)];    
+        res(ii,:) = [day (rcss(2)+onp*onsp)/(rcss(1)+onsp^2)];
     end
     betas{f,1} = res;
 end
@@ -456,7 +517,7 @@ betas2 = betas2(~isnan(betas2.Beta),:);
 refdates = serial2yyyymmdd(refdates);
 out = interp1(double(betas2.Date), betas2.Beta, refdates');
 plot(yyyymmdd2serial(refdates), out,'r')
-%% Detailed check 
+%% Detailed check
 date = 19970806;
 step = 5/(60*24);
 grid = (9.5/24:step:16/24)';
@@ -487,7 +548,7 @@ prices          = accumarray(subs,aapl.Price,[],@fast_median);
 aapl            = table(dates,prices,'VariableNames', aapl.Properties.VariableNames);
 
 [~, rcss] = realized_covariance(spy.Price, spy.Datetime, aapl.Price,aapl.Datetime,...
-                                   'unit','fixed', grid+yyyymmdd2serial(date),1); 
+    'unit','fixed', grid+yyyymmdd2serial(date),1);
 save debugstate
 
 %% SPX (tickwrte) vs SP500 (CRSP)
@@ -527,8 +588,8 @@ perATE = abs(tick2ret(SP500crsp.spindx(icrsp)) - tick2ret(SP500tick.Price(itick)
 boxplot(gca,perATE)
 set(gca,'pos',[.7,.12,.25,.65])
 str = {'PERcentage Absolute Tracking Error'
-       sprintf('%-10s%5.2f%%','mean:',mean(perATE))
-       sprintf('%-10s%5.2f%%','std:',std(perATE))};
+    sprintf('%-10s%5.2f%%','mean:',mean(perATE))
+    sprintf('%-10s%5.2f%%','std:',std(perATE))};
 h = title(str,'hor','left');
 oldpos = get(h,'pos');
 set(h,'pos',[0.5,oldpos(2:end)])
@@ -544,7 +605,7 @@ load(fullfile(d,'master'),'-mat')
 load .\results\20131121_1703_avgtimestep.mat
 
 % Number of few trades per month
-ifewtrades = isnan(res.Timestep) | res.Timestep > 1/48; 
+ifewtrades = isnan(res.Timestep) | res.Timestep > 1/48;
 [unym,~,subs] = unique(mst.Date(ifewtrades)/100);
 dates = yyyymmdd2serial( double(unym)*100+1);
 area(dates, accumarray(subs,1))
@@ -579,7 +640,7 @@ try
     mst        = mst(:,{'Id','File'});
     [idx, pos] = unique(mst.Id,'last');
     tozip      = arrayfun(@(x) ids(idx(mst.File(pos)==x)),1:max(mst.File),'un',0);
-
+    
     
     % Create all files, then append
     filenames = cellfun(@(x) sprintf('%s_.csv',x),ids,'un',0);
@@ -598,7 +659,7 @@ try
     filenames = setdiff(filenames,{existing.name});
     
     clear mst ids existing
-        
+    
     % Load file
     for f = 1:N
         disp(f)
