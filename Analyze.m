@@ -11,8 +11,8 @@ function res = Analyze(fun, varnames, cached, path2data, debug)
 %                          with the VarNames of the dataset with the results
 %
 %   ANALYZE(..., PATH2DATA) If you wanna use other than '.\data\TAQ\T*.mat'
-%                           files (default), then specify a different 
-%                           PATH2DATA with the initial pattern of the name, 
+%                           files (default), then specify a different
+%                           PATH2DATA with the initial pattern of the name,
 %                           e.g '.\data\TAQ\sampled\S5m_*.mat'
 %
 %   ANALYZE(..., CACHED) Some FUN might require pre-cached results which where
@@ -289,4 +289,59 @@ beta    = accumarray(subsID(ikeep), prodret(ikeep))./accumarray(subsID(ikeep), s
 % Store results
 res = s.mst(:,{'Id','UnID','Date'});
 res.Beta = single(beta);
+end
+
+function res = selrulecounts(s,cached)
+nfile  = uint16(cached{end});
+vnames = {'yyyymm','Val','Count'};
+
+% Sort mst
+if ~issorted(s.mst.From)
+    s.mst = sortrows(s.mst,'From');
+end
+s.mst.Date = s.mst.Date/100;
+dates      = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+
+% G127
+[g127,~,subs] = unique(table(dates,s.data.G127_Correction(:,1)));
+g127.Count    = accumarray(subs,1);
+g127.Properties.VariableNames = vnames;
+
+% Check if unique date
+onedate = size(g127,1) == 1;
+
+if onedate
+    yyyymm = g127.yyyymm;
+    
+    % Correction
+    [un,~,subs] = unique(s.data.G127_Correction(:,2));
+    correction  = table(repmat(yyyymm,size(un,1),1), un, accumarray(subs,1),'VariableNames',vnames);
+    
+    % Condition
+    [un,~,subs] = unique(s.data.Condition,'rows');
+    condition   = table(repmat(yyyymm,size(un,1),1),un, accumarray(subs,1),'VariableNames',vnames);
+    
+    % Null price
+    un     = uint8(1:3);
+    counts = histc(s.data.Price, [-inf,0,inf]);
+    nullprice = table(repmat(yyyymm,nnz(counts),1), un(counts ~= 0), counts(counts ~= 0), 'VariableNames', vnames);
+else
+    % Correction
+    [correction,~,subs] = unique(table(dates, s.data.G127_Correction(:,2)));
+    correction.Count    = accumarray(subs,1);
+    correction.Properties.VariableNames = vnames;
+    
+    % Condition
+    [condition,~,subs] = unique(table(dates, s.data.Condition));
+    condition.Count    = accumarray(subs,1);
+    condition.Properties.VariableNames = vnames;
+    
+    % Null price
+    [~,bins]           = histc(s.data.Price, [-inf,0,inf]);
+    [nullprice,~,subs] = unique(table(dates, bins));
+    nullprice.Count    = accumarray(subs,1);
+    nullprice.Properties.VariableNames = vnames;
+end
+
+res = {g127, correction, condition, nullprice, nfile};
 end

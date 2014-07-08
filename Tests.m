@@ -1,3 +1,31 @@
+%% Selection rule counts
+path2data = '.\data\TAQ';
+testname  = 'selrulecounts';
+try
+    loadresults(testname,'res')
+catch
+    res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'));
+end
+cat(1,res{:,1});
+
+
+% Type feature
+try
+    loadresults('TAQmaster')
+catch
+    TAQmaster = importMst('.\data\TAQ\raw');
+end
+% TYPE
+TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
+
+% Time consolidation
+idx        =  [true; ~(strcmpi(TAQmaster.SYMBOL(2:end), TAQmaster.SYMBOL(1:end-1)) & ...
+                               TAQmaster.TYPE  (2:end)==TAQmaster.TYPE(1:end-1))];
+TAQmaster = TAQmaster(idx,:);
+
+% Link to number of records
+master = load(fullfile(path2data, 'master'), '-mat');
+
 %% Selection/filtering
 
 % Load big master file
