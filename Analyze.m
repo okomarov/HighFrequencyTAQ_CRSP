@@ -323,7 +323,7 @@ if onedate
     
     % Null price
     un     = uint8(1:3);
-    counts = histc(s.data.Price, [-inf,0,inf]);
+    counts = histc(s.data.Price, [0,0,inf]);
     nullprice = table(repmat(yyyymm,nnz(counts),1), un(counts ~= 0), counts(counts ~= 0), 'VariableNames', vnames);
 else
     % Correction
@@ -337,7 +337,7 @@ else
     condition.Properties.VariableNames = vnames;
     
     % Null price
-    [~,bins]           = histc(s.data.Price, [-inf,0,inf]);
+    [~,bins]           = histc(s.data.Price, [0,0,inf]);
     [nullprice,~,subs] = unique(table(dates, bins));
     nullprice.Count    = accumarray(subs,1);
     nullprice.Properties.VariableNames = vnames;
