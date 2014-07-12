@@ -1,4 +1,4 @@
-%% Selection rule counts
+%% Counts selection rule
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
 try
@@ -58,8 +58,7 @@ igood  = sample.G127_Correction(:,1) == 0;
 x      = hhmmssmat2serial(sample.Time);
 plot(x(i40), sample.Price(i40),'xr', x(igood), sample.Price(igood),'.b',...
      x, sample.Price, '-g')
-
-%% Type counts
+%% Counts by type
 try
     loadresults('TAQmaster')
 catch
@@ -137,6 +136,84 @@ subplot(212)
 area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
 dynamicDateTicks
 axis tight
+%% TAQ master vs data
+% Check for how many symbols in master there is no actual data
+
+% TAQmaster symbol and min date
+loadresults('TAQmaster')
+[unsymb,~,subs] = unique(TAQmaster(:,'SYMBOL'));
+unsymb.Date     = accumarray(subs, TAQmaster.FDATE,[],@min);
+
+% Master
+path2data  = '.\data\TAQ';
+master     = load(fullfile(path2data, 'master'), '-mat');
+
+[~,ia,ib] = intersect(unsymb.SYMBOL, master.ids);
+
+% Traded but not in master records
+anomalous = setdiff(1:numel(master.ids),ib); 
+
+% Did not trade but in master records
+nontraded = setdiff(1:size(unsymb,1),ia); 
+unsymb.SYMBOL(nontraded)
+
+% Matched but outside the date
+for ii = 1:numel(master.ids)
+    symbol = master.ids{ii};
+    
+end
+
+%% CRSP link coverage
+
+% TAQ2CRSP link
+loadresults('taq2crsp')
+taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
+taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
+
+% Master file
+path2data  = '.\data\TAQ';
+master     = load(fullfile(path2data, 'master'), '-mat');
+
+% Subscripts by date
+[unDates, ~, subs] = unique(master.mst.Date/100);
+master.mst.Subs    = uint8(subs);
+
+% Preallocation
+master.ids       = regexprep(master.ids,'p','PR');
+master.mst.Score = zeros(numel(subs),1,'uint8');
+
+% 
+[unsymbols,~,subsymbols] = unique(taq2crsp.symbol);
+mindates = accumarray(subsymbols, taq2crsp.datef,[],@min);
+
+for ii = 1:numel(unsymbols)
+    % taq2crsp info
+    symbol = unsymbols{ii};
+    itaq   = subsymbols == ii;
+    dates  = [taq2crsp.datef(itaq);inf];
+    scores = uint8([0; taq2crsp.score(itaq)]);
+    
+    % master info
+    id = find(strcmpi(master.ids,symbol));
+    if isempty(id)
+        fprintf('No match: %s - iter %d\n', symbol,ii), continue
+    end
+    imst = master.mst.Id == id;
+    tmp  = master.mst(imst, {'Date','Score'});
+    [~, datebin] = histc(tmp.Date, dates);
+    master.mst.Score(imst) = scores(datebin+1);
+end
+%% SHRCD counts
+try
+    loadresults('msenames')
+catch
+    TAQmaster = importMsenames('.\data\CRSP\');
+end
+
+
+
+
+
 %% Selection/filtering
 
 % Load big master file
