@@ -33,9 +33,7 @@ writeto = '.\results\';
 root    = fileparts(path2data);
 
 % Open matlabpool
-if matlabpool('size') == 0 && ~debug
-    matlabpool('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'})
-end
+poolStartup('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
 % Get email credentials if not in debug
 if ~debug; setupemail; end
