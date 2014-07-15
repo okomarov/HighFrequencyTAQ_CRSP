@@ -152,17 +152,11 @@ master     = load(fullfile(path2data, 'master'), '-mat');
 
 % Traded but not in master records
 anomalous = setdiff(1:numel(master.ids),ib); 
+master.ids(anomalous)
 
 % Did not trade but in master records
 nontraded = setdiff(1:size(unsymb,1),ia); 
 unsymb.SYMBOL(nontraded)
-
-% Matched but outside the date
-for ii = 1:numel(master.ids)
-    symbol = master.ids{ii};
-    
-end
-
 %% CRSP link coverage
 
 % TAQ2CRSP link
@@ -180,40 +174,181 @@ master.mst.Subs    = uint8(subs);
 
 % Preallocation
 master.ids       = regexprep(master.ids,'p','PR');
+master.ids       = regexprep(master.ids,'\.','');
 master.mst.Score = zeros(numel(subs),1,'uint8');
 
 % 
 [unsymbols,~,subsymbols] = unique(taq2crsp.symbol);
-mindates = accumarray(subsymbols, taq2crsp.datef,[],@min);
-
 for ii = 1:numel(unsymbols)
     % taq2crsp info
     symbol = unsymbols{ii};
     itaq   = subsymbols == ii;
     dates  = [taq2crsp.datef(itaq);inf];
-    scores = uint8([0; taq2crsp.score(itaq)]);
+    permnos = uint8([0; taq2crsp.score(itaq)]);
     
     % master info
     id = find(strcmpi(master.ids,symbol));
     if isempty(id)
         fprintf('No match: %s - iter %d\n', symbol,ii), continue
     end
-    imst = master.mst.Id == id;
-    tmp  = master.mst(imst, {'Date','Score'});
-    [~, datebin] = histc(tmp.Date, dates);
-    master.mst.Score(imst) = scores(datebin+1);
+    if numel(id) == 1
+        imst = master.mst.Id == id;
+    else
+        imst = ismember(master.mst.Id,id);
+    end
+    tmp  = master.mst.Date(imst);
+    [~, datebin] = histc(tmp, dates);
+    master.mst.Score(imst) = permnos(datebin+1);
 end
+
+% Group by month and score and count
+[counts, ~, subs] = unique(master.mst(:,{'Subs','Score'}));
+counts.Subs       = unDates(counts.Subs);
+counts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+
+% Unstack
+counts   = dataset2table(unstack(counts,'Counts','Score'));
+vnames = {'0. Unmatched', '1. CUSIP', '2. 1 + expand exact name',...
+          '3. 2 + expand through new cusip', '4. SYMBOL + DATE',...
+          '5. SYMBOL + lev(NAME)','6. 5 + expand through new cusip',...
+          '7. lev(NAME)', '8. 7 + expand through new cusip'};
+counts.Properties.VariableNames{1} = 'Dates';
+
+% Save
+save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'matchcounts')), 'counts')
+
+% Plot
+dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
+data  = table2array(counts(:,2:end));
+data(isnan(data)) = 0;
+subplot(211)
+area(dates, data)
+dynamicDateTicks
+axis tight
+title('Montly counts of price observations by taq2crsp match (absolute and %)')
+l = legend(vnames);
+set(l,'Location','NorthWest')
+subplot(212)
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
+dynamicDateTicks
+axis tight
+
 %% SHRCD counts
 try
     loadresults('msenames')
 catch
-    TAQmaster = importMsenames('.\data\CRSP\');
+    msenames = importMsenames('.\data\CRSP\');
 end
+msenames = unique(msenames(:,{'PERMNO','NAMEDT','SHRCD'}));
 
+% Time consolidation
+idx      =  [true; ~(msenames.PERMNO(2:end)== msenames.PERMNO(1:end-1) & ...
+                     msenames.SHRCD (2:end)==msenames.SHRCD(1:end-1))];
+msenames = msenames(idx,:);
 
+% TAQ2CRSP link
+loadresults('taq2crsp')
+taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
+taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
 
+% Master file
+path2data  = '.\data\TAQ';
+master     = load(fullfile(path2data, 'master'), '-mat');
 
+% Subscripts by date
+[unDates, ~, subs] = unique(master.mst.Date/100);
+master.mst.Subs    = uint8(subs);
 
+% Preallocation
+master.ids        = regexprep(master.ids,'p','PR');
+master.ids        = regexprep(master.ids,'\.','');
+master.mst.Permno = zeros(numel(subs),1,'uint32');
+
+% p = poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'}, 'debug',false);
+
+% Link to CRSP
+[unsymbols,~,subsymbols] = unique(taq2crsp.symbol);
+tic
+for ii = 1:numel(unsymbols)
+    % taq2crsp info
+    symbol = unsymbols{ii};
+    itaq   = subsymbols == ii;
+    dates  = [taq2crsp.datef(itaq);inf];
+    permnos = uint32([0; taq2crsp.permno(itaq)]);
+    
+    % master info
+    id = find(strcmpi(master.ids,symbol));
+    if isempty(id)
+        fprintf('No match: %s - iter %d\n', symbol,ii), continue
+    end
+    if numel(id) == 1
+        imst = master.mst.Id == id;
+    else
+        imst = ismember(master.mst.Id,id);
+    end
+    tmp  = master.mst.Date(imst);
+    [~, datebin] = histc(tmp, dates);
+    master.mst.Permno(imst) = permnos(datebin+1);
+end
+toc
+
+% Link to msenames
+master.mst.Shrcd = zeros(size(master.mst,1),1,'uint8');
+[unpermnos,~,subspermno] = unique(master.mst.Permno);
+tic
+for ii = 1:numel(unpermnos)
+    % master info
+    permno = unpermnos(ii);
+    imst   = subspermno == ii;
+    
+    % msenames info
+    imse = permno == msenames.PERMNO;
+    if ~any(imse)
+        fprintf('No match: %d - iter %d\n', permno,ii), continue
+    end
+    dates    = [msenames.NAMEDT(imse);inf];
+    shrclass = uint8([0; msenames.SHRCD(imse)]);
+    
+    % Assign back
+    tmp                    = master.mst.Date(imst);
+    [~, datebin]           = histc(tmp, dates);
+    master.mst.Shrcd(imst) = shrclass(datebin+1);
+end
+toc
+
+% Group by month and score and count
+[counts, ~, subs] = unique(master.mst(:,{'Subs','Shrcd'}));
+counts.Subs       = unDates(counts.Subs);
+counts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+
+% Unstack
+counts   = dataset2table(unstack(counts,'Counts','Shrcd'));
+counts.Properties.VariableNames{1} = 'Dates';
+vnames = counts.Properties.VariableNames(2:end);
+
+% Save
+save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
+
+% Select a few
+map = table({'not matched';'common-undefined';'common';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x0','x10','x11','x12','x31','x73'});
+idx = ismember(vnames,  map.Properties.RowNames);
+
+% Plot
+dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
+data  = table2array(counts(:,2:end));
+data  = [data(:,idx), nansum(data(:,~idx),2)];
+data(isnan(data)) = 0;
+subplot(211)
+area(dates, data)
+dynamicDateTicks
+axis tight
+title('Montly counts of price observations by Share Type Code (absolute and %)')
+l = legend([map.Var1; 'other']);
+set(l,'Location','NorthWest')
+subplot(212)
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
+dynamicDateTicks
+axis tight
 %% Selection/filtering
 
 % Load big master file
@@ -567,9 +702,7 @@ step  = 5/(60*24);
 grid  = (9.5/24:step:16/24)';
 betas = cell(nfiles,1);
 
-if isempty(gcp('nocreate'))
-    parpool(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
-end
+p = poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'}, 'debug',false);
 
 tic
 % LOOP by files
