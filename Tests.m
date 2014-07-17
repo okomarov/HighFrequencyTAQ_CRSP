@@ -234,121 +234,112 @@ dynamicDateTicks
 axis tight
 
 %% SHRCD counts
+
+% Load msenames
 try
     loadresults('msenames')
 catch
     msenames = importMsenames('.\data\CRSP\');
 end
 msenames = unique(msenames(:,{'PERMNO','NAMEDT','SHRCD'}));
-
 % Time consolidation
 idx      =  [true; ~(msenames.PERMNO(2:end)== msenames.PERMNO(1:end-1) & ...
                      msenames.SHRCD (2:end)==msenames.SHRCD(1:end-1))];
 msenames = msenames(idx,:);
 
-% TAQ2CRSP link
+% Load taq2crsp
 loadresults('taq2crsp')
-taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
+taq2crsp       = taq2crsp(~isnan(taq2crsp.permno),:);
+
+% Sort (match by permno)
+taq2crsp       = sortrows(taq2crsp,{'permno','datef'});
+taq2crsp.Shrcd = zeros(size(taq2crsp,1),1,'uint8');
+
+% Add SHRCD to TAQ2CRSP
+% -------------------------------------------------------------------------
+% Single entry link between msenames and TAQ2CRSP
+idx = [true; logical(diff(msenames.PERMNO))];
+for ii = 2:numel(idx)
+    if ~idx(ii)
+        idx(ii-1) = false;
+    end
+end
+[~,posAll] = ismember(taq2crsp.permno, msenames.PERMNO);
+idirect    = ismember(posAll, find(idx));
+taq2crsp.Shrcd(idirect) = msenames.SHRCD(posAll(idirect));
+
+% Multiple entry link
+for ii = 1:numel(idx)
+    if ~idx(ii)
+        permno = msenames.PERMNO(ii);
+        to     = find(msenames.PERMNO == permno,1, 'last');
+        dates  = [msenames.NAMEDT(ii:to); inf];
+        shrcd  = [0; msenames.SHRCD(ii:to)];
+        
+        itaq                 = taq2crsp.permno == permno;
+        [~,datebin]          = histc(taq2crsp.datef(itaq), dates);
+        taq2crsp.Shrcd(itaq) = shrcd(datebin+1);
+    end
+end
+
+% Add SHRCD to MASTER
+% -------------------------------------------------------------------------
+% Re-sort (match by symbol)
+taq2crsp = unique(taq2crsp(:,{'symbol','datef','Shrcd'}));
+% Time consolidation
+idx      =  [true; ~(strcmpi(taq2crsp.symbol(2:end), taq2crsp.symbol(1:end-1)) & ...
+                             taq2crsp.Shrcd (2:end)==taq2crsp.Shrcd(1:end-1))];
+taq2crsp = taq2crsp(idx,:);
 
 % Master file
 path2data  = '.\data\TAQ';
-master     = load(fullfile(path2data, 'master'), '-mat');
+load(fullfile(path2data, 'master'), '-mat');
 
 % Subscripts by date
-[unDates, ~, subs] = unique(master.mst.Date/100);
-master.mst.Subs    = uint8(subs);
+[unDates, ~, subsdates] = unique(mst.Date/100);
+subsdates = uint8(subsdates);
 
 % Preallocation
-master.ids        = regexprep(master.ids,'p','PR');
-master.ids        = regexprep(master.ids,'\.','');
-master.mst.Permno = zeros(numel(subs),1,'uint32');
+ids = regexprep(ids,'p','PR');
+ids = regexprep(ids,'\.','');
+Shrcd = zeros(size(mst,1),1,'uint8');
 
 % p = poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'}, 'debug',false);
 
-% Link to CRSP
+% Link to CRSP ~1hr
 [unsymbols,~,subsymbols] = unique(taq2crsp.symbol);
 tic
 for ii = 1:numel(unsymbols)
+    disp(ii)
     % taq2crsp info
     symbol = unsymbols{ii};
-    itaq   = subsymbols == ii;
-    dates  = [taq2crsp.datef(itaq);inf];
-    permnos = uint32([0; taq2crsp.permno(itaq)]);
-    
+
     % master info
-    id = find(strcmpi(master.ids,symbol));
+    id = find(strcmpi(ids,symbol));
     if isempty(id)
         fprintf('No match: %s - iter %d\n', symbol,ii), continue
     end
     if numel(id) == 1
-        imst = master.mst.Id == id;
+        imst = mst.Id == id;
     else
-        imst = ismember(master.mst.Id,id);
+        imst = ismember(mst.Id,id);
     end
-    tmp  = master.mst.Date(imst);
-    [~, datebin] = histc(tmp, dates);
-    master.mst.Permno(imst) = permnos(datebin+1);
+    
+    itaq   = subsymbols == ii;
+    dates  = [taq2crsp.datef(itaq);inf];
+    shrcds = uint32([0; taq2crsp.Shrcd(itaq)]);
+    
+    [~, datebin] = histc(mst.Date(imst), dates);
+    Shrcd(imst)  = shrcds(datebin+1);
 end
 toc
 
-% Link to msenames
-master.mst.Shrcd = zeros(size(master.mst,1),1,'uint8');
-[unpermnos,~,subspermno] = unique(master.mst.Permno);
-tic
-for ii = 1:numel(unpermnos)
-    % master info
-    permno = unpermnos(ii);
-    imst   = subspermno == ii;
-    
-    % msenames info
-    imse = permno == msenames.PERMNO;
-    if ~any(imse)
-        fprintf('No match: %d - iter %d\n', permno,ii), continue
-    end
-    dates    = [msenames.NAMEDT(imse);inf];
-    shrclass = uint8([0; msenames.SHRCD(imse)]);
-    
-    % Assign back
-    tmp                    = master.mst.Date(imst);
-    [~, datebin]           = histc(tmp, dates);
-    master.mst.Shrcd(imst) = shrclass(datebin+1);
-end
-toc
-
-% Group by month and score and count
-[counts, ~, subs] = unique(master.mst(:,{'Subs','Shrcd'}));
-counts.Subs       = unDates(counts.Subs);
-counts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
-
-% Unstack
-counts   = dataset2table(unstack(counts,'Counts','Shrcd'));
-counts.Properties.VariableNames{1} = 'Dates';
-vnames = counts.Properties.VariableNames(2:end);
+res = mst(:,{'Id','Date'});
+res.Shrcd = Shrcd;
 
 % Save
-save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
+save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcd')), 'res')
 
-% Select a few
-map = table({'not matched';'common-undefined';'common';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x0','x10','x11','x12','x31','x73'});
-idx = ismember(vnames,  map.Properties.RowNames);
-
-% Plot
-dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
-data  = table2array(counts(:,2:end));
-data  = [data(:,idx), nansum(data(:,~idx),2)];
-data(isnan(data)) = 0;
-subplot(211)
-area(dates, data)
-dynamicDateTicks
-axis tight
-title('Montly counts of price observations by Share Type Code (absolute and %)')
-l = legend([map.Var1; 'other']);
-set(l,'Location','NorthWest')
-subplot(212)
-area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-dynamicDateTicks
-axis tight
 %% Selection/filtering
 
 % Load big master file
