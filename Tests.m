@@ -232,8 +232,7 @@ subplot(212)
 area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
 dynamicDateTicks
 axis tight
-
-%% SHRCD counts
+%% SHRCD selection/counts
 
 % Load msenames
 try
@@ -295,10 +294,6 @@ taq2crsp = taq2crsp(idx,:);
 path2data  = '.\data\TAQ';
 load(fullfile(path2data, 'master'), '-mat');
 
-% Subscripts by date
-[unDates, ~, subsdates] = unique(mst.Date/100);
-subsdates = uint8(subsdates);
-
 % Preallocation
 ids = regexprep(ids,'p','PR');
 ids = regexprep(ids,'\.','');
@@ -340,6 +335,46 @@ res.Shrcd = Shrcd;
 % Save
 save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcd')), 'res')
 
+% Counts 
+% -------------------------------------------------------------------------
+% Subscripts by date
+[unDates, ~, Subs] = unique(mst.Date/100);
+res.Subs = uint8(Subs);
+
+% Group by month and score and count
+
+[counts, ~, subs] = unique(res(:,{'Subs','Shrcd'}));
+counts.Subs       = unDates(counts.Subs);
+counts.Counts     = accumarray(subs, mst.To-mst.From+1);
+
+% Unstack
+counts   = dataset2table(unstack(counts,'Counts','Shrcd'));
+counts.Properties.VariableNames{1} = 'Dates';
+vnames = counts.Properties.VariableNames(2:end);
+
+% Save
+save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
+
+% Select a few
+map = table({'not matched';'common-undefined';'common';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x0','x10','x11','x12','x31','x73'});
+idx = ismember(vnames,  map.Properties.RowNames);
+
+% Plot
+dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
+data  = table2array(counts(:,2:end));
+data  = [data(:,idx), nansum(data(:,~idx),2)];
+data(isnan(data)) = 0;
+subplot(211)
+area(dates, data)
+dynamicDateTicks
+axis tight
+title('Montly counts of price observations by Share Type Code (absolute and %)')
+l = legend([map.Var1; 'other']);
+set(l,'Location','NorthWest')
+subplot(212)
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
+dynamicDateTicks
+axis tight
 %% Selection/filtering
 
 % Load big master file
