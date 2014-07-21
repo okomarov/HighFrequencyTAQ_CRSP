@@ -109,7 +109,7 @@ end
 if nargout == 3
     actdates      = NaN(ngrid,nseries);
     actdates(idx) = dates(pos);
-    actdates      = reshape(nanfillts(actdates),ngrid*nseries-1,1);
+    actdates      = reshape(nanfillts(actdates(1:end-1)),ngrid*nseries-1,1);
     actdates(ngrid:ngrid:end,:) = [];
 end
 end
