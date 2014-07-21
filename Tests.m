@@ -565,13 +565,21 @@ Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 clearvars -except Betas Betasd Betasw ikeep resdir
 % save debugstate
 %% Beta quantiles
-load debugstate
 % DAILY
 % Remove overlapping
 [un,~,subs] = unique(Betasd(:,{'ID','Date'}));
 overlap     = un(accumarray(subs,1) > 1,:);
 [~,idx]     = setdiff(Betasd(:,1:2), overlap);
 % taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
+
+% Select based on Shrcd
+loadresults('shrcd')
+loadresults('uniqueID')
+shrcd.ID = uniqueID.UnID;
+shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'ID','Date'});
+
+[~,pos] = ismember(Betasd(:,{'ID','Date'}), shrcd);
+idx = intersect(idx, pos);
 
 % Pivot
 tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) double(Betasd.SMA(idx))]);
@@ -593,7 +601,7 @@ tmp = tmp([true; ismember(tmp(2:end,1), refdates)],:);
 % Plot
 plot(yyyymmdd2serial(refdates), prctile(tmp(2:end,2:end),10:10:90,2))
 dynamicDateTicks
-title 'Cross-sectional percentiles of 5-day smoothed (SMA) betas'
+title 'Cross-sectional percentiles of 5-day smoothed (SMA) betas - filtered by share type'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 
 %% Size quantiles
