@@ -716,7 +716,7 @@ title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 %% SP500 momentum
 addpath .\utils\
-spdir  = '.\data\SP500';
+spdir  = '.\data\CRSP';
 
 % Load TAQ2CRSP
 loadresults('taq2crsp')
@@ -742,17 +742,60 @@ catch
     save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
 end
 
-spy = spy(~isnan(spy.Price),:);
-[undates,~,subs] = unique(fix(spy.Datetime));
-accumarray(subs, spy.Price,[],@(x) x(end)/x(1)-1);
+% Betas*spy
+spy              = spy(~isnan(spy.Price),:);
+[undates,~,subs] = unique(serial2yyyymmdd(spy.Datetime));
+spydayret        = accumarray(subs, spy.Price,[],@(x) x(end)/x(1)-1);
+[~,pos]          = ismember(Betas.Date,undates);
+spydayret        = [NaN; spydayret];
+Betas.Sysret     = spydayret(pos+1).*double(Betas.Beta);
 
-% Add File number 
-path2data  = '.\data\TAQ\sampled';
-master     = load(fullfile(path2data, 'master'), '-mat');
-[~,pos]    = ismember(dataset2table(Betas(:,{'UnID','Date'})), master.mst(:,{'UnID','Date'}));
-Betas.File = master.mst.File(pos);
+% Add File number and cache
+path2data   = '.\data\TAQ\sampled';
+master      = load(fullfile(path2data, 'master'), '-mat');
+[~,pos]     = ismember(dataset2table(Betas(:,{'UnID','Date'})), master.mst(:,{'UnID','Date'}));
+Betas.File  = master.mst.File(pos);
+f           = @(rowidx) {Betas(rowidx,{'UnID','Date','Sysret'})};
+Betascached = accumarray(Betas.File,(1:size(Betas,1))',[1815,1],f);
+clear master
 
-Analyze('sp500momentum', [], Betas, fullfile(path2data,'S5m*.mat'), true)
+% Net returns
+isyncrets = Analyze('idiosyncrets', [], Betascached, fullfile(path2data,'S5m*.mat'));
+
+% Rank on previous month and hold next
+[un, ~, subs] = unique([uint32(isyncrets.UnID), fix(isyncrets.Date/100)],'rows');
+
+monthlyNetRet = accumarray(subs, isyncrets.Netret, [],@(x) prod(x(~isnan(x))+1)-1);
+panelNetRet   = table(un(:,1),un(:,2), monthlyNetRet, 'VariableNames',{'UnID','Yearmonth','Ret'});
+panelNetRet   = unstack(panelNetRet,'Ret','UnID');
+dataNetRet    = table2array(panelNetRet(:,2:end));
+
+monthlyAllRet = accumarray(subs, isyncrets.Dayret, [],@(x) prod(x(~isnan(x))+1)-1);
+panelAllRet   = table(un(:,1),un(:,2), monthlyAllRet, 'VariableNames',{'UnID','Yearmonth','Ret'});
+panelAllRet   = unstack(panelAllRet,'Ret','UnID');
+dataAllRet    = table2array(panelAllRet(:,2:end));
+
+ptiles = prctile(dataNetRet',[10,90])';
+
+ishortNet = bsxfun(@le, dataNetRet, ptiles(:,1)); 
+ilongNet  = bsxfun(@ge, dataNetRet, ptiles(:,2)); 
+
+ishortAll = bsxfun(@le, dataAllRet, ptiles(:,1)); 
+ilongAll  = bsxfun(@ge, dataAllRet, ptiles(:,2)); 
+
+nperiods = size(dataNetRet,1) - 1;
+dates    = datenum(double(panelAllRet.Yearmonth(1)/100), 2:nperiods+2, 1)-1;
+stratret = NaN(nperiods + 1,2);
+
+for r = 1:nperiods
+    stratret(r+1,1) = nanmean([dataAllRet(r+1,ilongNet(r,:)), -dataAllRet(r+1,ishortNet(r,:))],2);
+    stratret(r+1,2) = nanmean([dataAllRet(r+1,ilongAll(r,:)), -dataAllRet(r+1,ishortAll(r,:))],2);
+end
+plot(dates, cumprod([ones(1,2); stratret(2:end,:)+1]))
+dynamicDateTicks
+legend('R - beta*mkt','Whole returns')
+title('Long/short 90th/10th percentile based on previous month performance (no overnight)')
+
 %% Check Betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
@@ -930,6 +973,8 @@ set(h,'pos',[0.5,oldpos(2:end)])
 print(gcf,fullfile(cd,'results','SP500 vs SPX - tracking error.png'),'-dpng','-r300')
 % Clean
 delete(filename{:})
+%% TAQspy vs TICKWRITEspy
+
 %% Discard first years [No]
 cd C:\HFbetas
 addpath .\utils\

@@ -33,7 +33,7 @@ writeto = '.\results\';
 root    = fileparts(path2data);
 
 % Open matlabpool
-poolStartup('open', 4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
 % Get email credentials if not in debug
 if ~debug; setupemail; end
@@ -54,12 +54,13 @@ try
     end
     
     % LOOP in parallel
-    for f = 1:N
+    parfor f = 1:N
         disp(f)
         % Load data
         s      = load(fullfile(root,dd(f).name));
+        cache  = [cached(f), f];
         % Apply function
-        res{f} = fhandle(s, [cached(f), f]);
+        res{f} = fhandle(s, cache);
     end
     % Collect all results and convert to dataset
     res = cat(1,res{:});
@@ -343,12 +344,31 @@ end
 
 res = {g127, correction, condition, nullprice, nfile};
 end
-function res = sp500momentum(s,cached)
-betas = cached{1};
 
+function res = idiosyncrets(s,cached)
+sysret = cached{1};
 
+if isempty(sysret)
+    res = dataset({zeros(0,2,'uint32'), 'UnID','Date'}, {zeros(0,3), 'Dayret', 'Sysret','Netret'});
+    return
+end
 
+% Select only existing UnID
+[idx,pos] = ismember(s.mst(:,{'UnID','Date'}), sysret(:,{'UnID','Date'}));
+s.mst     = s.mst(idx,:);
+pos       = pos(idx);
 
+% Calculate daily return with daily initial NaNs offset
+pnan   = find(isnan(s.data.Price));
+offset = histc(pnan,[s.mst.From, s.mst.To+1]');
+offset = offset(1:2:end);
+to     = s.mst.To;
+from   = s.mst.From + offset;
+s.mst.Dayret = s.data.Price(to)./s.data.Price(from)-1;
 
+% Net returns (idiosyncratic)
+sysret.Netret = s.mst.Dayret - sysret.Sysret(pos);
+
+res = [sysret(pos,{'UnID','Date'}) s.mst(:,'Dayret'), sysret(pos,{'Sysret','Netret'})];
 
 end
