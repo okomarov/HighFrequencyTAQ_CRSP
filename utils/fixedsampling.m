@@ -4,19 +4,20 @@ function [newprices, newdates, actdates] = fixedsampling(dates,prices, grid)
 %
 %   ... = FIXEDSAMPLING(DATES,PRICES,GRID)
 %
-%       DATA    is an m by 2 double matrix:
-%                   - column 1      increasing serial dates
-%                   - column 2      values
+%       DATES   double vector of dates:
 %
+%       PRICES  numeric vector of prices. Must have the same number of
+%               elements as DATES.
 %
 %       GRID    a vector of intraday times, i.e. values in [0 1], sorted in
 %               ascending order. The grid will be replicated for all days in
-%               DATA.
+%               DATES.
 %               Note: 1 second = 1/86400. 18:39 = (3600* 18+39 *60)/86400.
 %
-%   [OUT,ACTDATES] = ...
+%   [NEWPRICES, NEWDATES, ACTDATES] = ...
 %
-%       OUT         filtered DATA with fixed grid times.
+%       NEWPRICES   sampled prices at gridpoints with last-price interpolation
+%       NEWDATES    gridpoint dates
 %       ACTDATES    actual dates picked for each gridpoint
 %
 % Examples:
@@ -26,6 +27,8 @@ function [newprices, newdates, actdates] = fixedsampling(dates,prices, grid)
 % Author: Oleg Komarov (oleg.komarov@hotmail.it)
 % Tested on R2013a.
 % 13 Dec 2013 - Created
+%  4 Jul 2014 - Changed in/out arguments, simplified, cleaned up, added warnings
+
 
 % Ninput
 narginchk(3,3)
@@ -79,7 +82,7 @@ grid      = grid(:);
 n = histc(dates, grid + tol);
 
 % -------------------------------------------------------------------------
-% ENGINE: select observations from the grid according to the SCHEME
+% ENGINE: select observations from the grid with last-price interpolation
 % -------------------------------------------------------------------------
 
 % Preallocate
@@ -97,7 +100,7 @@ newprices      = reshape(newprices(1:end-1),ngrid*nseries-1,1);
 newprices(ngrid:ngrid:end,:) = [];
 
 % New dates
-if nargout == 2
+if nargout >= 2
     grid(1:ngrid:end,:) = [];
     newdates = grid;
 end
@@ -106,7 +109,7 @@ end
 if nargout == 3
     actdates      = NaN(ngrid,nseries);
     actdates(idx) = dates(pos);
-    actdates      = reshape(nanfillts(actdates),ngrid*nseries-1,1);
+    actdates      = reshape(nanfillts(actdates(1:end-1)),ngrid*nseries-1,1);
     actdates(ngrid:ngrid:end,:) = [];
 end
 end
