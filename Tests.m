@@ -706,6 +706,45 @@ plot(yyyymmdd2serial(refdates), prctile(tmp,10:10:90,2))
 dynamicDateTicks
 title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+%% SP500 momentum
+addpath .\utils\
+spdir  = '.\data\SP500';
+
+% Load TAQ2CRSP
+loadresults('taq2crsp')
+
+% Load SP consituents > 31/12/1992
+SPconst = dataset('File',fullfile(spdir,'dsp500list.csv'),'Delimiter',',','ReadVarNames',1);
+SPconst = SPconst(SPconst.ending > 19921231,:);
+
+% Load Betas
+loadresults('Betas')
+
+% Filter out betas (lowest UnID for each PERMNO)
+selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}), 'permno','first');
+Betas    = Betas(ismember(Betas.UnID, selected.ID),{'UnID','Date','Beta'});
+
+% Load SPY (etf)
+loadname = 'spysampled';
+try
+    loadresults(loadname, 'spy')
+catch
+    master    = load(fullfile(path2data,'master'),'-mat');
+    spy       = getData(master, 'SPY',[],[],'Price',path2data);
+    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
+end
+
+spy = spy(~isnan(spy.Price),:);
+[undates,~,subs] = unique(fix(spy.Datetime));
+accumarray(subs, spy.Price,[],@(x) x(end)/x(1)-1);
+
+% Add File number 
+path2data  = '.\data\TAQ\sampled';
+master     = load(fullfile(path2data, 'master'), '-mat');
+[~,pos]    = ismember(dataset2table(Betas(:,{'UnID','Date'})), master.mst(:,{'UnID','Date'}));
+Betas.File = master.mst.File(pos);
+
+Analyze('sp500momentum', [], Betas, fullfile(path2data,'S5m*.mat'), true)
 %% Check Betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 

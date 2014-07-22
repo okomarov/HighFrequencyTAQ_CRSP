@@ -54,7 +54,7 @@ try
     end
     
     % LOOP in parallel
-    parfor f = 1:N
+    for f = 1:N
         disp(f)
         % Load data
         s      = load(fullfile(root,dd(f).name));
@@ -342,4 +342,13 @@ else
 end
 
 res = {g127, correction, condition, nullprice, nfile};
+end
+function res = sp500momentum(s,cached)
+betas = cached{1};
+
+
+
+
+
+
 end
