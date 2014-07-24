@@ -96,7 +96,7 @@ for ii = 1:nfiles
             
     % Records within the loaded data file
     mstfile = master(master.File == files(ii),:);
-    dates   = yyyymmdd2serial(double(mstfile.Date));
+    dates   = yyyymmdd2serial(mstfile.Date);
     nrec    = size(mstfile,1);
     
     % Loop for each record

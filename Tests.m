@@ -509,7 +509,7 @@ catch
     [spdays,~,subs] = unique(dates,'stable');
     spyret = mat2cell(spyret(:,2), accumarray(subs,1),1);
     
-    unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(double(unique(x)))});
+    unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(unique(x))});
     for ii = 1:nfiles
         pos        = ismembc2(unMstDates{ii}, spdays);
         nnzero     = pos ~= 0;
@@ -556,7 +556,7 @@ overlap     = un(accumarray(subs,1) > 1,:);
 ioverlap    = ismember(Betas(:,{'UnID','Date'}), overlap);
 % Calculate weekly
 year   = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
-week   = weeknum(yyyymmdd2serial(double(Betas.Date(ikeep & ~ioverlap))))';
+week   = weeknum(yyyymmdd2serial(Betas.Date(ikeep & ~ioverlap)))';
 [unW,~,subsWeek] = unique([Betas.UnID(ikeep & ~ioverlap) year week],'rows');
 dates  = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
 tmp    = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
@@ -842,7 +842,7 @@ parfor (f = 1:nfiles, 4)
         data = s.data(from:to,:);
         data = data(~selecttrades(data),{'Time','Price'});
         % Datetime
-        day           = yyyymmdd2serial(double(s.mst.Date(ii)));
+        day           = yyyymmdd2serial(s.mst.Date(ii));
         data.Datetime = day + hhmmssmat2serial(data.Time);
         % Median
         [dates, ~,subs] = unique(data.Datetime);
