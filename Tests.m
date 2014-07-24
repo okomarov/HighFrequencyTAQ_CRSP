@@ -113,8 +113,8 @@ typecounts.Subs       = unDates(typecounts.Subs);
 typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
 
 % Unstack
-typecounts   = dataset2table(unstack(typecounts,'Counts','Val'));
-vnames = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
+typecounts = dataset2table(unstack(typecounts,'Counts','Val'));
+vnames     = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
 typecounts = setVariableNames(typecounts, ['Dates' vnames]);
 
 % Save
@@ -594,6 +594,10 @@ tmp(2:end,2:end) = nanfillts(tmp(2:end,2:end),1);
 
 % Keep reference dates only
 tmp = tmp([true; ismember(tmp(2:end,1), refdates)],:);
+
+% Check why not working
+tmp2 = unstack(dataset2table(Betasd(idx,{'Date','SMA','ID'})),'SMA','ID');
+tmp2 = sampledates(tmp2,refdates);
 
 % Plot
 plot(yyyymmdd2serial(refdates), prctile(tmp(2:end,2:end),10:10:90,2))
