@@ -36,12 +36,8 @@ dd       = dir(fullfile(path2data,'*.mat'));
 matnames = {dd.name};
 
 % Retrieve varnames
-tmp = load(fullfile(path2data, matnames{end}),'data');
-if isa(tmp.data, 'dataset')
-    vnames = tmp.data.Properties.VarNames;
-else
-    vnames = tmp.data.Properties.VariableNames;
-end
+tmp    = load(fullfile(path2data, matnames{end}),'data');
+vnames = getVariableNames(tmp);
 if isempty(varnames)
     varnames = setdiff(vnames,{'Time','Properties'},'stable');
 end

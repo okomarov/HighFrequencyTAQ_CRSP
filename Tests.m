@@ -18,7 +18,7 @@ for ii = 1:size(res,2)-1
     else
         data = unstack(cat(1,res{:,ii}),'Count','Val');
     end
-    vnames = data.Properties.VariableNames(2:end);
+    vnames = getVariableNames(data);
     dates  = datenum(double(data.yyyymm/100), double(rem(data.yyyymm,100)+1), 1)-1;
     data   = table2array(data(:,2:end));
     data(isnan(data)) = 0;
@@ -32,7 +32,7 @@ for ii = 1:size(res,2)-1
     subplot(212)
     area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
     dynamicDateTicks, axis tight
-    legend(vnames,'Location','west');
+    legend(vnames(2:end),'Location','west');
 end
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
@@ -116,7 +116,7 @@ typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
 % Unstack
 typecounts   = dataset2table(unstack(typecounts,'Counts','Val'));
 vnames = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
-typecounts.Properties.VariableNames = ['Dates' vnames];
+typecounts = setVariableNames(typecounts, ['Dates' vnames]);
 
 % Save
 save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
@@ -350,14 +350,14 @@ counts.Counts     = accumarray(subs, mst.To-mst.From+1);
 % Unstack
 counts   = dataset2table(unstack(counts,'Counts','Shrcd'));
 counts.Properties.VariableNames{1} = 'Dates';
-vnames = counts.Properties.VariableNames(2:end);
+vnames = getVariableNames(counts);
 
 % Save
 save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
 
 % Select a few
 map = table({'not matched';'common-undefined';'common';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x0','x10','x11','x12','x31','x73'});
-idx = ismember(vnames,  map.Properties.RowNames);
+idx = ismember(vnames(2:end),  map.Properties.RowNames);
 
 % Plot
 dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
@@ -612,7 +612,7 @@ loadresults('taq2crsp')
 
 % Load shrout getting rid of 0s
 loadresults('TAQshrout')
-TAQshrout.Properties.VarNames = [vars, 'shrout'];
+TAQshrout = setVariableNames(TAQshrout, [vars, 'shrout']);
 
 % Filter out matches (max score 42, so 100 takes all)
 iscore = taq2crsp.score < 100 | isnan(taq2crsp.score);
@@ -917,11 +917,11 @@ aapl = aapl(~selecttrades(aapl),{'Datetime','Price'});
 % Median
 [dates, ~,subs] = unique(spy.Datetime);
 prices          = accumarray(subs,spy.Price,[],@fast_median);
-spy             = table(dates,prices,'VariableNames', spy.Properties.VariableNames);
+spy             = table(dates,prices,'VariableNames', getVariableNames(spy));
 
 [dates, ~,subs] = unique(aapl.Datetime);
 prices          = accumarray(subs,aapl.Price,[],@fast_median);
-aapl            = table(dates,prices,'VariableNames', aapl.Properties.VariableNames);
+aapl            = table(dates,prices,'VariableNames', getVariableNames(aapl));
 
 [~, rcss] = realized_covariance(spy.Price, spy.Datetime, aapl.Price,aapl.Datetime,...
     'unit','fixed', grid+yyyymmdd2serial(date),1);
