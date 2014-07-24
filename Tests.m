@@ -68,8 +68,7 @@ end
 TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
 
 % Time consolidation
-idx        =  [true; ~(strcmpi(TAQmaster.SYMBOL(2:end), TAQmaster.SYMBOL(1:end-1)) & ...
-    TAQmaster.TYPE  (2:end)==TAQmaster.TYPE(1:end-1))];
+idx       = isfeatchange(TAQmaster(:,[1,3,2]),2:3);
 TAQmaster = TAQmaster(idx,:);
 
 % Link to number of records
@@ -242,8 +241,7 @@ catch
 end
 msenames = unique(msenames(:,{'PERMNO','NAMEDT','SHRCD'}));
 % Time consolidation
-idx      =  [true; ~(msenames.PERMNO(2:end)== msenames.PERMNO(1:end-1) & ...
-                     msenames.SHRCD (2:end)==msenames.SHRCD(1:end-1))];
+idx      = isfeatchange(msenames(:,[1,3,2]));                 
 msenames = msenames(idx,:);
 
 % Load taq2crsp
@@ -286,8 +284,7 @@ end
 % Re-sort (match by symbol)
 taq2crsp = unique(taq2crsp(:,{'symbol','datef','Shrcd'}));
 % Time consolidation
-idx      =  [true; ~(strcmpi(taq2crsp.symbol(2:end), taq2crsp.symbol(1:end-1)) & ...
-                             taq2crsp.Shrcd (2:end)==taq2crsp.Shrcd(1:end-1))];
+idx      = isfeatchange(taq2crsp(:,{'symbol','Shrcd','datef'}),2:3);
 taq2crsp = taq2crsp(idx,:);
 
 % Master file
