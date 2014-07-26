@@ -41,5 +41,21 @@ dseshares = dseshares(dseshares.Shrout ~= 0, {'Date','Permno','Shrout'});
 % Substitute permno in dseshares with unId, then cache it with file number
 % and write routine in analyze
 
-[idx, pos] = ismember(mst.UnID,taq2crsp.ID);
-Pivot([taq2crsp.permno(pos(idx)), mst.Date(idx), ones(nnz(idx),1)],[],1,0);
+taq2crsp = dataset2table(sortrows(taq2crsp ,{'datef','permno'}));
+[undates,~,subs] = unique(dseshares.Date);
+ndates = numel(undates);
+res = cell(ndates,1);
+
+for ii = 1:ndates
+    idse = subs == ii;
+    date = undates(ii);
+    itaq = taq2crsp.datef >= date;
+    tmp  = dseshares(idse,:);
+    [idx, pos] = ismember(taq2crsp.permno, tmp.Permno);
+    idx = idx & itaq;
+    res{ii} = [tmp(pos(idx),:), taq2crsp(idx,'ID')];
+end
+res = unique(cat(1,res{:}));
+% res less records than dseshares, let the data comand when permno date has 
+% no match? use mst
+
