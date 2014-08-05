@@ -50,21 +50,21 @@ else
     varnames = unique(['Time' varnames],'stable');
 end
 
-% % Preallocate output
-% nrows = cblocks(end);
-% out   = table(zeros(nrows,1,'uint16'),... 
-%                NaN(nrows,1),...
-%                'VariableNames',{'Id','Datetime'});
-% for ii = 1:numel(varnames)
-%     field = varnames{ii};
-%     if isinteger(tmp.data.(field))
-%         out.(field) = zeros(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
-%     elseif isfloat(tmp.data.(field))
-%         out.(field) = NaN(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
-%     else
-%         out.(field) = repmat(' ', nrows,size(tmp.data.(field),2));
-%     end
-% end
+% Preallocate output
+nrows = cblocks(end);
+out   = table(zeros(nrows,1,'uint16'),... 
+               NaN(nrows,1),...
+               'VariableNames',{'Id','Datetime'});
+for ii = 1:numel(varnames)
+    field = varnames{ii};
+    if isinteger(tmp.data.(field))
+        out.(field) = zeros(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
+    elseif isfloat(tmp.data.(field))
+        out.(field) = NaN(nrows,size(tmp.data.(field),2),'like', tmp.data.(field));
+    else
+        out.(field) = repmat(' ', nrows,size(tmp.data.(field),2));
+    end
+end
 
 % Display waitbar
 h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
@@ -98,27 +98,9 @@ for ii = 1:nfiles
     s = load(fullfile(path2data, matname),'data');
             
     % Records within the loaded data file
-    mstfile       = master(master.File == files(ii),:);
-    [mstsqz,isrt] = squeezeFromTo(mstfile(:,{'From','To'}));
-    dates         = yyyymmdd2serial(mstfile.Date(isrt));
-    nrec          = size(mstsqz,1);
-    
-    % Preallocate
-    res{ii} = table(zeros(nrec,1,'uint16'),... 
-                    NaN(nrec,1),...
-                    'VariableNames',{'Id','Datetime'});
-    for v = 1:numel(varnames)
-        fname = varnames{v};
-        field = tmp.data.(fname);
-        ncols = size(field,2);
-        if isinteger(field)
-            res{ii}.(fname) = zeros(nrec,ncols,'like', field);
-        elseif isfloat(field)
-            res{ii}.(fname) = NaN(nrec,ncols,'like', field);
-        else
-            res{ii}.(fname) = repmat(' ', ncols);
-        end
-    end
+    mstfile = master(master.File == files(ii),:);
+    dates   = yyyymmdd2serial(mstfile.Date);
+    nrec    = size(mstfile,1);
     
     % Loop for each record
     for jj = 1:nrec
