@@ -42,101 +42,61 @@ end
 idatetime = any(strcmpi(availablenames, 'Datetime'));
 if idatetime
     varnames   = unique(['Datetime' varnames],'stable');
-    buildtable = '@(r) table(zeros(r,1,''uint16'')';
 else
     varnames   = unique(['Time' varnames],'stable');
-    buildtable = '@(r) table(zeros(r,1,''uint16''), NaN(r,1)';
 end
 
-% Create pre-allocation function for table construction
-for v = 1:numel(varnames)
-    field = tmp.data.(varnames{v});
-    ncols = size(field,2);
-    if isinteger(field)
-        buildtable = [buildtable sprintf(', zeros(r,%d,''%s'')',ncols,class(field))];
-    elseif isfloat(field)
-        buildtable = [buildtable sprintf(', NaN(r,%d,''%s'')',ncols,class(field))];
-    else
-        buildtable = [buildtable sprintf(', repmat('' '',r, %d)',ncols)];
-    end
-end
-buildtable = [buildtable, ', ''VariableNames'', {''Id''', sprintf(',''%s''', varnames{:}), '})'];
-buildtable = str2func(buildtable);
-
-% % Display waitbar
-% h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
-% set(findall(h,'Type','text'),'interpreter','none')
-% setappdata(h,'canceling',false)
+% Display waitbar
+h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
+set(findall(h,'Type','text'),'interpreter','none')
+setappdata(h,'canceling',false)
 
 % Data files to load
 files   = unique(master.File);
 nfiles  = numel(files);
-res     = cell(nfiles,1);
-% elapsed = zeros(nfiles+1,1);
+out     = cell(nfiles,1);
+elapsed = zeros(nfiles+1,1);
 
 % Open matlabpool
 % poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
-% tic
+tic
 % LOOP all .mat files
 % par
 for ii = 1:nfiles
-%     % Check if progress was cancelled
-%     if getappdata(h,'canceling')
-%         break
-%     end
+    % Check if progress was cancelled
+    if getappdata(h,'canceling')
+        break
+    end
     
     % Update waitbar
     matname  = matnames{files(ii)};
-%     x        = (ii-1)/nfiles;
-%     time2end = elapsed(ii)*(1-x)/x;
-%     waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
+    x        = (ii-1)/nfiles;
+    time2end = elapsed(ii)*(1-x)/x;
+    waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
     
     % Load .mat file
     s = load(fullfile(path2data, matname),'data');
             
     % Records within the loaded data file
-    mstfile       = master(master.File == files(ii),:);
-    [mstsqz,isrt] = squeezeFromTo(mstfile(:,{'Id','From','To'}));
-    dates         = yyyymmdd2serial(mstfile.Date(isrt));
-    nrec          = size(mstsqz,1);
+    mstfile = master(master.File == files(ii),:);
+    idata   = mcolon(mstfile.From,mstfile.To);
+    blocks  = mstfile.To - mstfile.From + 1;
+    out{ii} = table(RunLength(mstfile.Id, blocks),'VariableNames',{'Id'}); 
     
-    % Count how many datapoints per master record
-    blocks  = mstsqz.To - mstsqz.From + 1;
-    cblocks = [0; cumsum(blocks)];
-    
-    % Preallocate
-    res{ii} = buildtable(cblocks(end));
-
-    % Assign Id
-    res{ii}.Id = RunLength(mstsqz.Id, blocks);
-    
-    % Assign date
-    res{ii}.Datetime = RunLength(dates,  mstfile.To - mstfile.From + 1);
-    
-    % Loop for each record
-    for jj = 1:nrec
-        % Create indices pointing to the output and input
-        iout  = cblocks(jj)+1:cblocks(jj+1);
-        idata = mstsqz.From(jj):mstsqz.To(jj);
-
-        % Retrieve data
-        if ~any(idatetime)
-            res{ii}.Datetime(iout) = res{ii}.Datetime(iout) + hhmmssmat2serial(s.data.Time(idata,:));
-        end
-        for v = 1:numel(varnames)
-            fname = varnames{v};
-            res{ii}.(fname)(iout,:) = s.data.(fname)(idata,:);
-        end
+    % Retrieve data
+    if ~any(idatetime)
+        out{ii}.Datetime = RunLength(yyyymmdd2serial(mstfile.Date),blocks) + hhmmssmat2serial(s.data.Time(idata,:));
     end
-%     % Update waitbar 
-%     waitbar(ii/nfiles,h)
-%     elapsed(ii+1) = toc;
+    for v = 1:numel(varnames)
+        fname = varnames{v};
+        out{ii}.(fname) = s.data.(fname)(idata,:);
+    end
+
+    % Update waitbar 
+    waitbar(ii/nfiles,h)
+    elapsed(ii+1) = toc;
 end
-
-
-% if getappdata(h,'canceling')
-%     out = out(1:find(out.Id == 0,1,'first')-1,:);
-% end
-% delete(h)
+out = cat(1,out{:});
+delete(h)
 end
