@@ -1,4 +1,5 @@
 function out = getTaqData(master, tickers, from, to, varnames, path2data, debug)
+addpath .\utils\mcolon
 
 % Checks and defaults
 narginchk(2,7)
@@ -82,7 +83,8 @@ for ii = 1:nfiles
     mstfile = master(master.File == files(ii),:);
     idata   = mcolon(mstfile.From,mstfile.To);
     blocks  = mstfile.To - mstfile.From + 1;
-    out{ii} = table(RunLength(mstfile.Id, blocks),'VariableNames',{'Id'}); 
+    ID      = RunLength(mstfile.UnID, blocks);
+    out{ii} = table(ID(:),'VariableNames',{'Id'}); 
     
     % Retrieve data
     if ~any(idatetime)
