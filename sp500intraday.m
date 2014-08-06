@@ -4,9 +4,33 @@ loadresults('dseshares')
 path2data = '.\data\TAQ\sampled';
 master = load(fullfile(path2data, 'master'), '-mat');
 
-% Filter out non members
+% Filter out non members 
 dseshares  = dseshares(ismember(dseshares.PERMNO, spconst.Id),:);
 taq2crsp   = dataset2table(taq2crsp(ismember(taq2crsp.permno, spconst.Id),:));
+
+% Drop tickers with suffixes
+[~,~,subs] = unique(taq2crsp.permno);
+N          = numel(subs);
+idrop      = false(N,1);
+
+for ii = 1:N
+    % Index permno and corresponding tickers
+    isubs   = subs == ii;
+    symbols = taq2crsp.symbol(isubs);
+    symlen  = taq2crsp.symlen(isubs);
+    nsymb   = nnz(isubs);
+        
+    if nsymb > 1
+        idx = false(nsymb, 1);
+        for jj = 1:nsymb
+            if all(idx), break,end
+            % Mark to drop if substring
+            idx = idx | ~cellfun('isempty', regexp(symbols, sprintf('^%s\\w+',symbols{jj}),'once'));
+        end
+        if any(idx), idrop(isubs) = idx; end
+    end
+end
+taq2crsp(idrop,:) = [];
 master.mst = master.mst(ismember(master.mst.UnID, taq2crsp.ID),:);
 
 % Time consolidation
@@ -35,22 +59,17 @@ dseshares = stack(dseshares.Panel,vnames(2:end),...
 dseshares.Permno = permnos;
 dseshares = dseshares(dseshares.Shrout ~= 0, {'Date','Permno','Shrout'});
 
-% Permno to UnID
-% NOTE: it's a 1 - many join 
-dseshares = innerjoin(dseshares, taq2crsp, 'LeftKeys','Permno','RightKeys','permno',...
-                                'RightVariables','ID');
-% Shrink to matching in mst and take unique records
-dseshares = unique(dseshares(ismember(dseshares.ID, master.mst.UnID),:));
-                            
-% Cache
-dseshares = innerjoin(dseshares, master.mst, 'LeftKeys',{'ID','Date'},...
-                                      'RightKeys',{'UnID','Date'},...
-                                      'RightVariables','File');
-                                  
-dseshares = dseshares(:,{'Permno','Date','ID', 'Shrout','File'});
+% Get price data
 tickers = master.ids(unique(master.mst.Id));
-data = getData(master, tickers, [],[],[],path2data); 
+data    = getTaqData(master, tickers, [],[],[],path2data); 
 
-% clearvars -except dseshares path2data
-% Analyze('spproxy',[],dseshares,fullfile(path2data,'S5m_*.mat'),1)
+% Map back data to permno
+data.Id
 
+% Check overlapping
+[un,~,subs] = unique([data.Id fix(data.Datetime)]);
+overlap     = un(accumarray(subs,1) > 1,:);
+[~,idx]     = setdiff(Betasd(:,1:2), overlap);
+
+% Unstack
+data    = unstack(data, 'Price','Id');
