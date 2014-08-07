@@ -52,24 +52,71 @@ for c = 2:size(spconst.Panel,2)
     dseshares.Panel.(field)(~spconst.Panel.(field)) = 0;
 end
 
-% Stack dseshares back to tall dataset (use nshares as implicit membership)
-permnos   = repmat(dseshares.Id, size(dseshares.Panel,1),1);
-dseshares = stack(dseshares.Panel,vnames(2:end),...
-                  'NewDataVariableName','Shrout');
-dseshares.Permno = permnos;
-dseshares = dseshares(dseshares.Shrout ~= 0, {'Date','Permno','Shrout'});
+% Data matrix of number of shares
+sharesdata     = table2array(dseshares.Panel);
 
-% Get price data
-tickers = master.ids(unique(master.mst.Id));
-data    = getTaqData(master, tickers, [],[],[],path2data); 
+% Add permno to master
+[~,pos]           = ismember(master.mst.UnID,taq2crsp.ID);
+master.mst.Permno = taq2crsp.permno(pos);
 
-% Map back data to permno
-data.Id
+% LOOP by date
+[dates,~,subs] = unique(master.mst.Date);
+ndates         = numel(dates);
+res            = cell(ndates,1);
+tic
+pctRunOnAll warning off MATLAB:table:ModifiedVarnames
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+parfor ii = 1:ndates
+    disp(ii)
+    % Retrieve reference permnos for given date
+    row    = ismembc2(dates(ii), spconst.Panel.Date);
+    shares = sharesdata(row,2:end);
+    
+    % Get mst records
+    idates = subs == ii;
+    mst    = master.mst(idates,:);
+    
+    % Restrict to reference permnos (overlapping?)
+    [~, imst, ishares] = intersect(mst.Permno, spconst.Id);
+    mst = mst(imst,:);
+    
+    % Get data
+    data = getTaqData(mst,[],[],[],[],path2data);
+    
+    % Use the backfill price strategy to build proxy (should update
+    % previous day index with gradually changing prices, need overnight return)
+    data.Price = flipud(nanfillts(data.Price(end:-1:1)));
+    
+    % Ensure all datetimes are to the minute
+    dt = datevec(data.Datetime);
+    data.Datetime = datenum(dt(:,1),dt(:,2),dt(:,3),dt(:,4),dt(:,5),0);
+    
+    % Pivot
+    prices     = unstack(data(:,{'Permno','Datetime','Price'}),'Price','Permno');
+    datetimes  = prices.Datetime;
+    prices     = table2array(prices(:,2:end));
+    
+    % (should use pervious day close)
+    capitaliz = double(shares(ishares)).* prices(1,:);
+    index = sum(bsxfun(@times, prices, capitaliz./sum(capitaliz)),2);
+    
+    % Store results
+    res{ii} = table(datetimes, index, 'VariableNames',{'Datetime','Price'});
+end
+pctRunOnAll warning on MATLAB:table:ModifiedVarnames
+delete(gcp)
+res = cat(1,res{:});
 
-% Check overlapping
-[un,~,subs] = unique([data.Id fix(data.Datetime)]);
-overlap     = un(accumarray(subs,1) > 1,:);
-[~,idx]     = setdiff(Betasd(:,1:2), overlap);
+% Plot
+loadresults('spysampled')
 
-% Unstack
-data    = unstack(data, 'Price','Id');
+subplot(211)
+plot(datetime(datevec(res.Datetime)), res.Price)
+title 'sp500 proxy - rebalanced daily with open price'
+
+subplot(212)
+plot(datetime(datevec(spysampled.Datetime)), spysampled.Price)
+title 'spyders'
+
+saveas(gcf,'SP500proxy vs SPY.png')
+toc
