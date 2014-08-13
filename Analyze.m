@@ -372,3 +372,10 @@ sysret.Netret = s.mst.Dayret - sysret.Sysret(pos);
 res = [sysret(pos,{'UnID','Date'}) s.mst(:,'Dayret'), sysret(pos,{'Sysret','Netret'})];
 
 end
+
+function res = countnullrets(s,cached)
+res          = s.mst(:,{'Id','UnID','Date'});
+idx          = mcolon(s.mst.From,1,s.mst.To);
+subs         = RunLength(1:size(s.mst,1),s.mst.To-s.mst.From+1);
+res.Nullrets = accumarray(subs(:), s.data.Price(idx),[],@(x) nnz(x(2:end)./x(1:end-1)==1));
+end

@@ -473,6 +473,45 @@ mst.Timestep = ifewtrades | perfew(mst.UnID);
 mst = mst(:, {'File','Id','UnID','MedPrice','Baddays','Timestep'});
 testname = 'sample';
 Analyze(testname,{'ID','Datetime','Price'}, mst);
+%% Count 0 returns
+
+testname = 'countnullrets';
+try
+    loadresults(testname,'counts')
+catch
+    path2data = '.\data\TAQ\sampled';
+    counts    = Analyze(testname,[],[], fullfile(path2data,'S5m_*.mat'),1);
+end
+
+% All
+[refdates,~,subs] = unique(counts.Date);
+avgcounts      = accumarray(subs, counts.Nullrets,[],@mean);
+
+subplot(311)
+plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),avgcounts)
+title 'ALL: average # of null returns out of 78 daily returns'
+
+% Only sp500 members
+isp500    = issp500member(counts(:,{'Date','UnID'}));
+subs      = ismembc2(counts.Date(isp500),refdates);
+avgcounts = accumarray(subs, counts.Nullrets(isp500),[],@mean);
+
+subplot(312)
+plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),avgcounts)
+title 'SP500 members'
+
+% Spyders
+spy         = sortrows(counts(counts.UnID == 29904,{'Date','Nullrets'}),'Date');
+
+counts      = NaN(numel(refdates),1);
+pos         = ismembc2(spy.Date,refdates);
+counts(pos) = spy.Nullrets;
+
+subplot(313)
+plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),counts)
+title 'SPY'
+
+saveas(gcf,'.\results\NullRetCounts.png')
 %% Betas
 addpath '.\utils' '.\utils\nth_element'
 resdir    = '.\results';
