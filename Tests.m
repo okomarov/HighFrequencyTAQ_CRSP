@@ -512,7 +512,47 @@ plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),counts)
 title 'SPY'
 
 saveas(gcf,'.\results\NullRetCounts.png')
-%% Betas
+%% Betas SP500proxy
+addpath '.\utils' '.\utils\nth_element'
+testname = 'betas';
+try
+    loadresults(testname)
+catch
+    path2data = '.\data\TAQ\sampled';
+    
+    % Load SPY (etf)
+    loadname = 'sp500proxy';
+    try
+        loadresults(loadname, 'spproxy')
+    catch
+        spproxy = sp500intraday;
+    end
+    
+    % SP500 ret (zeroing overnight)
+    spret = [spproxy.Datetime(2:end) spproxy.Price(2:end)./spproxy.Price(1:end-1)-1];
+    spret = spret(diff(rem(spproxy.Datetime,1)) >= 0,:);
+    
+    % Cache SP500 returns by days
+    load(fullfile(path2data,'master'),'-mat','mst');
+    nfiles   = max(mst.File);
+    cached   = cell(nfiles,1);
+    
+    dates  = fix(spret(:,1));
+    [spdays,~,subs] = unique(dates,'stable');
+    spret = mat2cell(spret(:,2), accumarray(subs,1),1);
+    
+    unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(unique(x))});
+    for ii = 1:nfiles
+        pos        = ismembc2(unMstDates{ii}, spdays);
+        nnzero     = pos ~= 0;
+        isp       = ismembc(spdays, unMstDates{ii});
+        cached{ii} = {spret(isp) spdays(pos(nnzero))};
+    end
+    
+    % Calculate betas
+    Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'));
+end
+%% Betas SPY (old)
 addpath '.\utils' '.\utils\nth_element'
 resdir    = '.\results';
 
@@ -691,69 +731,38 @@ shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
 shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
 %% SP500 betas
 addpath .\utils\
-spdir  = '.\data\SP500';
-
-% Load TAQ2CRSP
-loadresults('taq2crsp')
-
-% Load SP consituents > 31/12/1992
-SPconst = dataset('File',fullfile(spdir,'dsp500list.csv'),'Delimiter',',','ReadVarNames',1);
-SPconst = SPconst(SPconst.ending > 19921231,:);
 
 % Load Betas
 loadresults('Betas')
+if isa(Betas,'dataset')
+    Betas = dataset2table(Betas);
+end
 
-% Filter out betas (lowest UnID for each PERMNO)
-selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}), 'permno','first');
-Betas    = Betas(ismember(Betas.UnID, selected.ID),{'UnID','Date','Beta'});
-[~,pos]  = ismember(Betas.UnID,selected.ID);
-Betas.PERMNO = selected.permno(pos);
+% Filter out betas
+isp500 = issp500member(Betas(:,{'Date','UnID'}));
+Betas  = Betas(isp500,{'Date','UnID','Beta'});
 
-% Overlapping Betas
-[un,~,subs] = unique(Betas(:,{'PERMNO','Date'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-Betas       = Betas(~ismember(Betas(:, {'PERMNO','Date'}), overlap),:);
-% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.UnID(1))),:)
+% Convert to single
+Betas.Date = single(Betas.Date);
+Betas.UnID = single(Betas.UnID);
 
 % Pivot betas
-tmp            = Pivot([double(Betas.PERMNO), double(Betas.Date), Betas.Beta]);
-refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-alldates       = union(tmp(2:end,1), refdates);
-[~,pdates]     = ismember(tmp(2:end,1),alldates);
+tmp            = table2array(unstack(Betas,'Beta','UnID'));
+refdates       = single(serial2yyyymmdd(datenum(1993,2:234,1)-1));
+alldates       = union(tmp(:,1), refdates);
+[~,pdates]     = ismember(tmp(:,1),alldates);
 data           = NaN(numel(alldates),size(tmp,2)-1);
-data(pdates,:) = tmp(2:end,2:end);
-tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
+data(pdates,:) = tmp(:,2:end);
 % Fill in previous value and get only reference dates
-tmp(2:end,2:end) = nanfillts(tmp(2:end,2:end),1);
-Betas = tmp([true; ismember(tmp(2:end,1), refdates)],:);
-
-% Pivot SP membership
-SPconst        = [[double(SPconst.PERMNO)  double(SPconst.start)   ones(size(SPconst,1),1)];
-    [double(SPconst.PERMNO)  double(SPconst.ending) -ones(size(SPconst,1),1)]];
-tmp            = Pivot(SPconst,[],[],0);
-refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-alldates       = union(tmp(2:end,1), refdates);
-[~,pdates]     = ismember(tmp(2:end,1),alldates);
-data           = zeros(numel(alldates),size(tmp,2)-1);
-data(pdates,:) = tmp(2:end,2:end);
-tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
-% Fill in previous value and get only reference dates
-tmp(2:end,2:end) = cumsum(tmp(2:end,2:end));
-SPconst = tmp([true; ismember(tmp(2:end,1), refdates)],:);
-
-% Intersect matrices
-[~,ia,ib] = intersect(Betas(1,:),SPconst(1,:));
-
-% NaN out when non members
-mask = ~logical(SPconst(2:end, ib));
-tmp = Betas(2:end, ia);
-tmp(mask) = NaN;
+data           = [alldates nanfillts(data,1)];
+Betas          = data(ismember(data(:,1), refdates),:);
 
 % Plot
-plot(yyyymmdd2serial(refdates), prctile(tmp,10:10:90,2))
+plot(yyyymmdd2serial(refdates), prctile(Betas(:,2:end),10:10:90,2))
 dynamicDateTicks
 title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+saveas(gcf, '.\results\BetasSP500_proxy.png')
 %% SP500 momentum
 addpath .\utils\
 spdir  = '.\data\CRSP';
