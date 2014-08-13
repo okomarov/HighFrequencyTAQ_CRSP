@@ -1,3 +1,4 @@
+function sp500proxy = sp500intraday
 % ISSUES:
 % - Should use previous day close of the index, and update it as soon as
 % constituents start to trade. However, it requires split/merge/divid
@@ -93,16 +94,20 @@ sp500proxy = cat(1,sp500proxy{:});
 % Save
 matname = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'sp500proxy');
 save(fullfile('.\results',matname), 'sp500proxy')
+
 %% Plot vs spyders
-loadresults('spysampled')
-
-subplot(211)
-plot(datetime(datevec(sp500proxy.Datetime)), sp500proxy.Price)
-title 'sp500 proxy - rebalanced daily with open price'
-
-subplot(212)
-plot(datetime(datevec(spysampled.Datetime)), spysampled.Price)
-title 'spyders'
-
-saveas(gcf,'SP500proxy vs SPY.png')
+if nargout == 0
+    loadresults('spysampled')
+    
+    subplot(211)
+    plot(datetime(datevec(sp500proxy.Datetime)), sp500proxy.Price)
+    title 'sp500 proxy - rebalanced daily with open price'
+    
+    subplot(212)
+    plot(datetime(datevec(spysampled.Datetime)), spysampled.Price)
+    title 'spyders'
+    
+    saveas(gcf,'.\results\SP500proxy vs SPY.png')
+end
 toc
+end
