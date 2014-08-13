@@ -1,4 +1,11 @@
-loadresults('taq2crsp')
+% ISSUES:
+% - Should use previous day close of the index, and update it as soon as
+% constituents start to trade. However, it requires split/merge/divid
+% adjustment. Now, using back-filling.
+% - Filtering out by membership should be complemented with dragging of the
+% last avilable number of shares
+
+loadresults('taq2crsp_sp500','taq2crsp')
 loadresults('spconst')
 loadresults('dseshares')
 path2data = '.\data\TAQ\sampled';
@@ -6,32 +13,8 @@ master = load(fullfile(path2data, 'master'), '-mat');
 
 % Filter out non members 
 dseshares  = dseshares(ismember(dseshares.PERMNO, spconst.Id),:);
-taq2crsp   = dataset2table(taq2crsp(ismember(taq2crsp.permno, spconst.Id),:));
-
-% Drop tickers with suffixes
-[~,~,subs] = unique(taq2crsp.permno);
-N          = numel(subs);
-idrop      = false(N,1);
-
-for ii = 1:N
-    % Index permno and corresponding tickers
-    isubs   = subs == ii;
-    symbols = taq2crsp.symbol(isubs);
-    symlen  = taq2crsp.symlen(isubs);
-    nsymb   = nnz(isubs);
-        
-    if nsymb > 1
-        idx = false(nsymb, 1);
-        for jj = 1:nsymb
-            if all(idx), break,end
-            % Mark to drop if substring
-            idx = idx | ~cellfun('isempty', regexp(symbols, sprintf('^%s\\w+',symbols{jj}),'once'));
-        end
-        if any(idx), idrop(isubs) = idx; end
-    end
-end
-taq2crsp(idrop,:) = [];
-master.mst = master.mst(ismember(master.mst.UnID, taq2crsp.ID),:);
+isp500     = issp500member(master.mst(:,{'Date','UnID'}));
+master.mst = master.mst(isp500,:);
 
 % Time consolidation
 idx       = isfeatchange(dseshares(:,{'PERMNO', 'SHROUT','SHRSDT'}));
@@ -62,10 +45,10 @@ master.mst.Permno = taq2crsp.permno(pos);
 % LOOP by date
 [dates,~,subs] = unique(master.mst.Date);
 ndates         = numel(dates);
-res            = cell(ndates,1);
+sp500proxy     = cell(ndates,1);
 tic
-pctRunOnAll warning off MATLAB:table:ModifiedVarnames
 poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+pctRunOnAll warning off MATLAB:table:ModifiedVarnames
 parfor ii = 1:ndates
     disp(ii)
     % Retrieve reference permnos for given date
@@ -101,17 +84,20 @@ parfor ii = 1:ndates
     index = sum(bsxfun(@times, prices, capitaliz./sum(capitaliz)),2);
     
     % Store results
-    res{ii} = table(datetimes, index, 'VariableNames',{'Datetime','Price'});
+    sp500proxy{ii} = table(datetimes, index, 'VariableNames',{'Datetime','Price'});
 end
 pctRunOnAll warning on MATLAB:table:ModifiedVarnames
 delete(gcp)
-res = cat(1,res{:});
+sp500proxy = cat(1,sp500proxy{:});
 
-% Plot
+% Save
+matname = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'sp500proxy');
+save(fullfile('.\results',matname), 'sp500proxy')
+%% Plot vs spyders
 loadresults('spysampled')
 
 subplot(211)
-plot(datetime(datevec(res.Datetime)), res.Price)
+plot(datetime(datevec(sp500proxy.Datetime)), sp500proxy.Price)
 title 'sp500 proxy - rebalanced daily with open price'
 
 subplot(212)
