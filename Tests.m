@@ -485,10 +485,11 @@ end
 
 % All
 [refdates,~,subs] = unique(counts.Date);
-avgcounts      = accumarray(subs, counts.Nullrets,[],@mean);
+avgcounts         = accumarray(subs, counts.Nullrets,[],@mean);
 
 subplot(311)
-plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),avgcounts)
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates,avgcounts)
 title 'ALL: average # of null returns out of 78 daily returns'
 
 % Only sp500 members
@@ -497,7 +498,7 @@ subs      = ismembc2(counts.Date(isp500),refdates);
 avgcounts = accumarray(subs, counts.Nullrets(isp500),[],@mean);
 
 subplot(312)
-plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),avgcounts)
+plot(plotdates,avgcounts)
 title 'SP500 members'
 
 % Spyders
@@ -508,7 +509,7 @@ pos         = ismembc2(spy.Date,refdates);
 counts(pos) = spy.Nullrets;
 
 subplot(313)
-plot(datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum'),counts)
+plot(plotdates,counts)
 title 'SPY'
 
 saveas(gcf,'.\results\NullRetCounts.png')
@@ -641,50 +642,59 @@ Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 clearvars -except Betas Betasd Betasw ikeep resdir
 % save debugstate
 %% Beta quantiles
-% DAILY
+addpath .\utils\
+
+% Load Betas
+loadresults('Betas')
+if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
+
 % Remove overlapping
-[un,~,subs] = unique(Betasd(:,{'ID','Date'}));
+[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
 overlap     = un(accumarray(subs,1) > 1,:);
-[~,idx]     = setdiff(Betasd(:,1:2), overlap);
+[~,idx]     = setdiff(Betas(:,{'UnID','Date'}), overlap);
 % taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
 
 % Select based on Shrcd
 loadresults('shrcd')
+if isa(shrcd,'dataset'), shrcd = dataset2table(shrcd); end
+
 loadresults('uniqueID')
-shrcd.ID = uniqueID.UnID;
-shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'ID','Date'});
+shrcd.UnID = uniqueID.UnID;
+shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'UnID','Date'});
 
-[~,pos] = ismember(Betasd(:,{'ID','Date'}), shrcd);
+[~,pos] = ismember(Betas(:,{'UnID','Date'}), shrcd);
 idx = intersect(idx, pos);
+Betas = Betas(idx,:);
 
-% Pivot
-tmp = Pivot([double(Betasd.ID(idx)), double(Betasd.Date(idx)) double(Betasd.SMA(idx))]);
+% Convert to double
+names = getVariableNames(Betas);
+Betas = varfun(@double, Betas);
+Betas = setVariableNames(Betas, names);
 
-% Add reference dates
-refdates       = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-alldates       = union(tmp(2:end,1), refdates);
-[~,pdates]     = ismember(tmp(2:end,1),alldates);
-data           = NaN(numel(alldates),size(tmp,2)-1);
-data(pdates,:) = tmp(2:end,2:end);
-tmp            = [[NaN; alldates], [tmp(1,2:end); data]];
+% Pivot betas
+Betas = Pivot([Betas.UnID, Betas.Date, Betas.Beta]);
+import matlab.internal.tableUtils.*
+names = ['Date'; makeValidName(cellstr(num2str(Betas(1,2:end)')),'silent')];
+Betas = array2table(Betas(2:end,:));
+Betas = setVariableNames(Betas,names);
 
-% Fill in previous value
-tmp(2:end,2:end) = nanfillts(tmp(2:end,2:end),1);
+% Sample/expand
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+tmp = sampledates(Betas,refdates,1);
+tmp = nanfillts(table2array(tmp),1);
 
-% Keep reference dates only
-tmp = tmp([true; ismember(tmp(2:end,1), refdates)],:);
-
-% Check why not working
-tmp2 = unstack(dataset2table(Betasd(idx,{'Date','SMA','ID'})),'SMA','ID');
-tmp2 = sampledates(tmp2,refdates);
+% All days
+% refdates = Betas.Date;
+% tmp      = table2array(Betas);
 
 % Plot
-plot(yyyymmdd2serial(refdates), prctile(tmp(2:end,2:end),10:10:90,2))
-dynamicDateTicks
-title 'Cross-sectional percentiles of 5-day smoothed (SMA) betas - filtered by share type'
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
+title 'Cross-sectional percentiles of all Betas with proxy'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+saveas(gcf, '.\results\BetasAll_proxy.png')
 
-%% Size quantiles
+%% Size quantiles (unfinished)
 addpath .\utils\
 
 vars = {'cusip','symbol','datef'};
@@ -742,44 +752,45 @@ end
 isp500 = issp500member(Betas(:,{'Date','UnID'}));
 Betas  = Betas(isp500,{'Date','UnID','Beta'});
 
-% Convert to single
-Betas.Date = single(Betas.Date);
-Betas.UnID = single(Betas.UnID);
+% Convert to double
+names = getVariableNames(Betas);
+Betas = varfun(@double, Betas);
+Betas = setVariableNames(Betas, names);
 
 % Pivot betas
-tmp            = table2array(unstack(Betas,'Beta','UnID'));
-refdates       = single(serial2yyyymmdd(datenum(1993,2:234,1)-1));
-alldates       = union(tmp(:,1), refdates);
-[~,pdates]     = ismember(tmp(:,1),alldates);
-data           = NaN(numel(alldates),size(tmp,2)-1);
-data(pdates,:) = tmp(:,2:end);
-% Fill in previous value and get only reference dates
-data           = [alldates nanfillts(data,1)];
-Betas          = data(ismember(data(:,1), refdates),:);
+Betas = unstack(Betas,'Beta','UnID');
+
+% Sample/expand
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+tmp = sampledates(Betas,refdates,1);
+tmp = nanfillts(table2array(tmp),1);
+
+% All days
+% refdates = Betas.Date;
+% tmp      = table2array(Betas);
 
 % Plot
-plot(yyyymmdd2serial(refdates), prctile(Betas(:,2:end),10:10:90,2))
-dynamicDateTicks
-title 'Cross-sectional percentiles of un-smoothed SP500 Betas'
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
+title 'Cross-sectional percentiles of un-smoothed SP500 Betas with proxy'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 saveas(gcf, '.\results\BetasSP500_proxy.png')
 %% SP500 momentum
 addpath .\utils\
 spdir  = '.\data\CRSP';
 
-% Load TAQ2CRSP
-loadresults('taq2crsp')
-
-% Load SP consituents > 31/12/1992
-SPconst = dataset('File',fullfile(spdir,'dsp500list.csv'),'Delimiter',',','ReadVarNames',1);
-SPconst = SPconst(SPconst.ending > 19921231,:);
+% -----------------------------------------------------------------------
+% SPY
+% -----------------------------------------------------------------------
 
 % Load Betas
 loadresults('Betas')
+if isa(Betas,'dataset')
+    Betas = dataset2table(Betas);
+end
 
-% Filter out betas (lowest UnID for each PERMNO)
-selected = unique(taq2crsp(ismember(taq2crsp.permno, SPconst.PERMNO),{'permno','ID'}), 'permno','first');
-Betas    = Betas(ismember(Betas.UnID, selected.ID),{'UnID','Date','Beta'});
+% Filter out betas
+isp500 = issp500member(Betas(:,{'Date','UnID'}));
 
 % Load SPY (etf)
 loadname = 'spysampled';

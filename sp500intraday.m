@@ -32,12 +32,12 @@ spconst.Panel   = sampledates(spconst.Panel,refdates);
 % Filter out by membership
 vnames = getVariableNames(spconst.Panel);
 for c = 2:size(spconst.Panel,2)
-    field = vnames{c};
-    dseshares.Panel.(field)(~spconst.Panel.(field)) = 0;
+    id = vnames{c};
+    dseshares.Panel.(id)(~spconst.Panel.(id)) = 0;
 end
 
 % Data matrix of number of shares
-sharesdata     = table2array(dseshares.Panel);
+sharesdata = table2array(dseshares.Panel);
 
 % Add permno to master
 [~,pos]           = ismember(master.mst.UnID,taq2crsp.ID);
