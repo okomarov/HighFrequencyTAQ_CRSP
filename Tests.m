@@ -694,6 +694,68 @@ title 'Cross-sectional percentiles of all Betas with proxy'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 saveas(gcf, '.\results\BetasAll_proxy.png')
 
+%% Beta quantile cap-weighted
+% Load data
+loadresults('Betas'), if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
+loadresults('taq2crsp'), if isa(taq2crsp,'dataset'), taq2crsp = dataset2table(taq2crsp); end
+taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
+loadresults('dseshares')
+path2data = '.\data\TAQ\sampled';
+master    = load(fullfile(path2data, 'master'), '-mat');
+
+% Filter out non members 
+imember   = ismember(taq2crsp.ID, Betas.UnID);
+taq2crsp  = taq2crsp(imember,:);
+permnos   = uint32(unique(taq2crsp.permno));
+dseshares = dseshares(ismember(dseshares.PERMNO, permnos),:);
+master.mst = master.mst(ismember(master.mst.UnID, Betas.UnID),:);
+
+% Add permno to mst
+[~,pos] = ismember(master.mst.UnID, taq2crsp.ID);
+master.mst.Permno = taq2crsp.permno(pos);
+
+% Time consolidation
+idx       = isfeatchange(dseshares(:,{'PERMNO', 'SHROUT','SHRSDT'}));
+from      = find(idx);
+to        = [from(2:end)-1; numel(idx)];
+dseshares = [dseshares(from,{'PERMNO','SHROUT','SHRSDT'}), dseshares(to,'SHRENDDT')];
+
+% Pivoting
+dseshares = pivotFromTo(dseshares(:,{'PERMNO','SHRSDT','SHRENDDT','SHROUT'}));
+% Betas     = unstack(Betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+
+% Sort betas
+% Betas = sortrows(Betas,'Date');
+
+% Time sampling
+refdates        = unique(Betas.Date);
+dseshares.Panel = sampledates(dseshares.Panel,refdates);
+
+% Stack dseshares back
+names = getVariableNames(dseshares.Panel);
+dsepermnos = dseshares.Id;
+dseshares = stack(dseshares.Panel,names(2:end),'IndexVariableName','Permno','NewDataVariableName','Shares');
+dseshares = dseshares(dseshares.Shares>0,:);
+[~,pos] = ismember(dseshares.Permno,names(2:end));
+dseshares.Permno = dsepermnos(pos); clear pos
+
+% Filter mst
+master.mst = master.mst(ismember(master.mst(:,{'Date','Permno'}), dseshares(:,{'Date','Permno'})),:);
+% Cache
+master = accumarray(master.mst.File,(1:size(master.mst))',[],@(x) {master.mst(x,:)});
+% Retrieve end of day prices
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
+N = numel(master);
+price = cell(N,1);
+parfor f = 1:N
+    disp(f)
+    price{f} = getTaqData(master{f},[],[],[],'Price', path2data);
+    price{f} = price{f}(diff(price{f}.Datetime) < 0,:);
+end
+price = cat(1,price{:});
+price.Date = uint32(fix(price.Datetime));
+price.Datetime = [];
+
 %% Size quantiles (unfinished)
 addpath .\utils\
 
