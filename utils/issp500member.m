@@ -1,4 +1,8 @@
 function tf = issp500member(tb)
+% ISSP500MEMBER Checks which UnID - Date pair are sp500 members
+%
+%   ISSP500MEMBER(TB) TB is a table with UnID and yyyymmdd Date 
+
 
 if isa(tb,'dataset')
     tb = dataset2table(tb);

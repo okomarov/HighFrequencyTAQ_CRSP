@@ -553,7 +553,7 @@ catch
     % Calculate betas
     Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'));
 end
-%% Betas SPY (old)
+%% Betas SPY
 addpath '.\utils' '.\utils\nth_element'
 resdir    = '.\results';
 
@@ -597,50 +597,7 @@ catch
     % Calculate betas
     Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'));
 end
-%% Smooth Betas
-addpath .\utils\
 
-% Load Betas
-loadresults('betas','Betas')
-
-% Sort betas
-Betas = sortrows(Betas,{'UnID','Date'});
-
-% Index by ID
-[unID, ~,subsID] = unique(Betas.UnID);
-
-% Exclude series with less than 20 observations, i.e. one month of data
-ifewdays = accumarray(subsID,1) < 20;
-ikeep    = ~ismember(Betas.UnID, unID(ifewdays));
-
-% Moving averages
-% tmp = accumarray(subsID(ikeep), Betas.Date(ikeep),[],@issorted, true);
-sz     = size(unID);
-Betasd = dataset();
-tmp    = accumarray(subsID(ikeep), Betas.UnID(ikeep),sz,@(x) {x(5:end)});
-Betasd.ID = cat(1,tmp{:});
-tmp    = accumarray(subsID(ikeep), Betas.Date(ikeep),sz,@(x) {x(5:end)});
-Betasd.Date = cat(1,tmp{:});
-tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
-Betasd.SMA = cat(1,tmp{:});
-% tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
-% Betasd.EMA = cat(1,tmp{:});
-
-% Weekly betas
-% Remove overlapping
-[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-ioverlap    = ismember(Betas(:,{'UnID','Date'}), overlap);
-% Calculate weekly
-year   = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
-week   = weeknum(yyyymmdd2serial(Betas.Date(ikeep & ~ioverlap)))';
-[unW,~,subsWeek] = unique([Betas.UnID(ikeep & ~ioverlap) year week],'rows');
-dates  = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
-tmp    = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
-Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
-
-clearvars -except Betas Betasd Betasw ikeep resdir
-% save debugstate
 %% Beta quantiles
 addpath .\utils\
 
@@ -1212,4 +1169,47 @@ catch err
 end
 % matlabpool close
 rmpref('Internet','SMTP_Password')
+%% Smooth Betas [Not using]
+addpath .\utils\
 
+% Load Betas
+loadresults('betas','Betas')
+
+% Sort betas
+Betas = sortrows(Betas,{'UnID','Date'});
+
+% Index by ID
+[unID, ~,subsID] = unique(Betas.UnID);
+
+% Exclude series with less than 20 observations, i.e. one month of data
+ifewdays = accumarray(subsID,1) < 20;
+ikeep    = ~ismember(Betas.UnID, unID(ifewdays));
+
+% Moving averages
+% tmp = accumarray(subsID(ikeep), Betas.Date(ikeep),[],@issorted, true);
+sz     = size(unID);
+Betasd = dataset();
+tmp    = accumarray(subsID(ikeep), Betas.UnID(ikeep),sz,@(x) {x(5:end)});
+Betasd.ID = cat(1,tmp{:});
+tmp    = accumarray(subsID(ikeep), Betas.Date(ikeep),sz,@(x) {x(5:end)});
+Betasd.Date = cat(1,tmp{:});
+tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
+Betasd.SMA = cat(1,tmp{:});
+% tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
+% Betasd.EMA = cat(1,tmp{:});
+
+% Weekly betas
+% Remove overlapping
+[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
+overlap     = un(accumarray(subs,1) > 1,:);
+ioverlap    = ismember(Betas(:,{'UnID','Date'}), overlap);
+% Calculate weekly
+year   = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
+week   = weeknum(yyyymmdd2serial(Betas.Date(ikeep & ~ioverlap)))';
+[unW,~,subsWeek] = unique([Betas.UnID(ikeep & ~ioverlap) year week],'rows');
+dates  = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
+tmp    = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
+Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
+
+clearvars -except Betas Betasd Betasw ikeep resdir
+% save debugstate
