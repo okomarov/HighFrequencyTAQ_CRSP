@@ -52,7 +52,7 @@ symbol      = s.ids{id}
 date        = mst.Date(find(mst.Id == id,1,'first'));
 
 % Plot
-sample = getData(master, symbol, date,date);
+sample = getTaqData(master, symbol, date,date);
 i40    = sample.G127_Correction(:,1) == 40;
 igood  = sample.G127_Correction(:,1) == 0;
 x      = hhmmssmat2serial(sample.Time);
@@ -569,7 +569,7 @@ catch
         loadresults(loadname, 'SPY')
     catch
         master    = load(fullfile(path2data,'master'),'-mat');
-        SPY       = getData(master, 'SPY',[],[],'Price',path2data);
+        SPY       = getTaqData(master, 'SPY',[],[],'Price',path2data);
         save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
     end
     
@@ -650,70 +650,43 @@ plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
 title 'Cross-sectional percentiles of all Betas with proxy'
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 saveas(gcf, '.\results\BetasAll_proxy.png')
+%% Betas quantiles - SP500members
+addpath .\utils\
 
-%% Beta quantile cap-weighted
-% Load data
-loadresults('Betas'), if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
-loadresults('taq2crsp'), if isa(taq2crsp,'dataset'), taq2crsp = dataset2table(taq2crsp); end
-taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-loadresults('dseshares')
-path2data = '.\data\TAQ\sampled';
-master    = load(fullfile(path2data, 'master'), '-mat');
-
-% Filter out non members 
-imember   = ismember(taq2crsp.ID, Betas.UnID);
-taq2crsp  = taq2crsp(imember,:);
-permnos   = uint32(unique(taq2crsp.permno));
-dseshares = dseshares(ismember(dseshares.PERMNO, permnos),:);
-master.mst = master.mst(ismember(master.mst.UnID, Betas.UnID),:);
-
-% Add permno to mst
-[~,pos] = ismember(master.mst.UnID, taq2crsp.ID);
-master.mst.Permno = taq2crsp.permno(pos);
-
-% Time consolidation
-idx       = isfeatchange(dseshares(:,{'PERMNO', 'SHROUT','SHRSDT'}));
-from      = find(idx);
-to        = [from(2:end)-1; numel(idx)];
-dseshares = [dseshares(from,{'PERMNO','SHROUT','SHRSDT'}), dseshares(to,'SHRENDDT')];
-
-% Pivoting
-dseshares = pivotFromTo(dseshares(:,{'PERMNO','SHRSDT','SHRENDDT','SHROUT'}));
-% Betas     = unstack(Betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
-
-% Sort betas
-% Betas = sortrows(Betas,'Date');
-
-% Time sampling
-refdates        = unique(Betas.Date);
-dseshares.Panel = sampledates(dseshares.Panel,refdates);
-
-% Stack dseshares back
-names = getVariableNames(dseshares.Panel);
-dsepermnos = dseshares.Id;
-dseshares = stack(dseshares.Panel,names(2:end),'IndexVariableName','Permno','NewDataVariableName','Shares');
-dseshares = dseshares(dseshares.Shares>0,:);
-[~,pos] = ismember(dseshares.Permno,names(2:end));
-dseshares.Permno = dsepermnos(pos); clear pos
-
-% Filter mst
-master.mst = master.mst(ismember(master.mst(:,{'Date','Permno'}), dseshares(:,{'Date','Permno'})),:);
-% Cache
-master = accumarray(master.mst.File,(1:size(master.mst))',[],@(x) {master.mst(x,:)});
-% Retrieve end of day prices
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
-N = numel(master);
-price = cell(N,1);
-parfor f = 1:N
-    disp(f)
-    price{f} = getTaqData(master{f},[],[],[],'Price', path2data);
-    price{f} = price{f}(diff(price{f}.Datetime) < 0,:);
+% Load Betas
+loadresults('Betas')
+if isa(Betas,'dataset')
+    Betas = dataset2table(Betas);
 end
-price = cat(1,price{:});
-price.Date = uint32(fix(price.Datetime));
-price.Datetime = [];
 
-%% Size quantiles (unfinished)
+% Filter out betas
+isp500 = issp500member(Betas(:,{'Date','UnID'}));
+Betas  = Betas(isp500,{'Date','UnID','Beta'});
+
+% Convert to double
+names = getVariableNames(Betas);
+Betas = varfun(@double, Betas);
+Betas = setVariableNames(Betas, names);
+
+% Pivot betas
+Betas = unstack(Betas,'Beta','UnID');
+
+% Sample/expand
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+tmp = sampledates(Betas,refdates,1);
+tmp = nanfillts(table2array(tmp),1);
+
+% All days
+% refdates = Betas.Date;
+% tmp      = table2array(Betas);
+
+% Plot
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
+title 'Cross-sectional percentiles of un-smoothed SP500 Betas with proxy'
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
+saveas(gcf, '.\results\BetasSP500_proxy.png')
+%% Beta quantiles on mkt cap
 addpath .\utils\
 
 vars = {'cusip','symbol','datef'};
@@ -758,42 +731,47 @@ shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
 
 % Get reference dates
 shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
-%% SP500 betas
-addpath .\utils\
+%% Cap-weighted Beta
 
-% Load Betas
-loadresults('Betas')
-if isa(Betas,'dataset')
-    Betas = dataset2table(Betas);
+% Do SP500
+sp500only = true;
+
+% Load data
+loadresults('Betas'), if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
+
+if sp500only
+    idx = issp500member(Betas(:,{'Date','UnID'}));
+    Betas = Betas(idx,:);
 end
 
-% Filter out betas
-isp500 = issp500member(Betas(:,{'Date','UnID'}));
-Betas  = Betas(isp500,{'Date','UnID','Beta'});
+% Get mkt capitalizations
+refdates = unique(Betas.Date);
+unids    = unique(Betas.UnID);
+mktcap   = getMktCap(unids, refdates);
 
-% Convert to double
-names = getVariableNames(Betas);
-Betas = varfun(@double, Betas);
-Betas = setVariableNames(Betas, names);
+% Unstack betas
+Betas = unstack(Betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+Betas = sortrows(Betas,'Date');
 
-% Pivot betas
-Betas = unstack(Betas,'Beta','UnID');
-
-% Sample/expand
-refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-tmp = sampledates(Betas,refdates,1);
-tmp = nanfillts(table2array(tmp),1);
-
-% All days
-% refdates = Betas.Date;
-% tmp      = table2array(Betas);
+% Intersect/extract data
+[~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));
+Betas  = double(table2array(Betas(:, ibetas(2:end))));
+mktcap = table2array(mktcap(:, icap(2:end)));
+weights = bsxfun(@rdivide, mktcap, nansum(mktcap,2));
+Betas   = Betas.*weights;
+Betas(weights == 0) = NaN;
 
 % Plot
 plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
-plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
-title 'Cross-sectional percentiles of un-smoothed SP500 Betas with proxy'
-legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
-saveas(gcf, '.\results\BetasSP500_proxy.png')
+plot(plotdates, nansum(Betas,2))
+
+if sp500only
+    title 'Cap-weighted sum of SP500 Betas (with proxy)'
+    saveas(gcf, '.\results\BetaCapWeightSP500_proxy.png')
+else
+    title 'Cap-weighted sum of all Betas (with proxy)'
+    saveas(gcf, '.\results\BetaCapWeightAll_proxy.png')
+end
 %% SP500 momentum
 addpath .\utils\
 spdir  = '.\data\CRSP';
@@ -817,7 +795,7 @@ try
     loadresults(loadname, 'spy')
 catch
     master    = load(fullfile(path2data,'master'),'-mat');
-    spy       = getData(master, 'SPY',[],[],'Price',path2data);
+    spy       = getTaqData(master, 'SPY',[],[],'Price',path2data);
     save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
 end
 
@@ -980,14 +958,14 @@ grid = (9.5/24:step:16/24)';
 % Sampled
 path2data = '.\data\TAQ\sampled';
 master    = load(fullfile(path2data, 'master'), '-mat');
-spys      = getData(struct(master), 'spy', date, date,[], path2data);
-aapls     = getData(struct(master), 'aapl', date, date,[], path2data);
+spys      = getTaqData(struct(master), 'spy', date, date,[], path2data);
+aapls     = getTaqData(struct(master), 'aapl', date, date,[], path2data);
 
 % Full
 path2data = '.\data\TAQ\';
 master    = load(fullfile(path2data, 'master'), '-mat');
-spy       = getData(struct(master), 'spy', date, date,[], path2data);
-aapl      = getData(struct(master), 'aapl', date, date,[], path2data);
+spy       = getTaqData(struct(master), 'spy', date, date,[], path2data);
+aapl      = getTaqData(struct(master), 'aapl', date, date,[], path2data);
 
 % Select
 spy  = spy(~selecttrades(spy),{'Datetime','Price'});
