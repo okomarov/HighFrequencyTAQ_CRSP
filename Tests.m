@@ -577,7 +577,6 @@ Betas = getBetas(sp500only, commononly);
 % Sample/expand
 refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 Betas    = sampledates(Betas,refdates,1);
-Betas    = nanfillts(table2array(Betas),1);
 
 % All days
 % refdates = Betas.Date;
@@ -589,7 +588,7 @@ plot(plotdates, prctile(Betas(:,2:end),10:10:90,2))
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
 
 if sp500only
-    title 'Cap-weighted sum of SP500 Betas (with proxy)'
+    title 'Cross-sectional percentiles of SP500 Betas (with proxy)'
     saveas(gcf, '.\results\BetasSP500_proxy.png')
 else
     title 'Cross-sectional percentiles of all Betas (with proxy)'
@@ -599,24 +598,51 @@ end
 addpath .\utils\
 
 % Filter settings
-sp500only  = false;
+sp500only  = true;
 commononly = true;
 
 % Get Betas
 [Betas, unids] = getBetas(sp500only, commononly);
 
 % Sample/expand
-refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+refdates = serial2yyyymmdd(datenum(1993,2:210,1)-1);
 Betas    = sampledates(Betas,refdates,1);
-Betas    = nanfillts(table2array(Betas),1);
 
 % Get mkt capitalizations
-mktcap   = getMktCap(unids,refdates);
+mktcap = getMktCap(unids, refdates);
 
 % Intersect/extract data
 [~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));
-Betas  = double(table2array(Betas(:, ibetas(2:end))));
-mktcap = table2array(mktcap(:, icap(2:end)));
+Betas           = table2array(Betas(:, ibetas(2:end)));
+mktcap          = table2array(mktcap(:, icap(2:end)));
+
+% Intersect NaNs
+inan = isnan(mktcap) | isnan(Betas);
+mktcap(inan) = NaN;
+Betas(inan) = NaN;
+
+% Index Betas by market cap
+ptiles = prctile(mktcap,10:10:90,2);
+N      = size(ptiles,1);
+ptiles = [zeros(N,1), ptiles, inf(N,1)];
+subs = mktcap;
+for r = 1:N
+    [~, subs(r,:)] = histc(mktcap(r,:), ptiles(r,:));
+end
+rsubs = repmat((1:N)',1,size(Betas,2));
+averages = accumarray([rsubs(~inan),subs(~inan)], Betas(~inan),[N, 10],@mean);
+
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates(1:end-2), averages)
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:100,'un',0))
+
+% if sp500only
+%     title 'Cap-weighted sum of SP500 Betas (with proxy)'
+%     saveas(gcf, '.\results\BetasSP500_proxy.png')
+% else
+%     title 'Cross-sectional percentiles of all Betas (with proxy)'
+%     saveas(gcf, '.\results\BetasAll_proxy.png')
+% end
 %% Cap-weighted Beta
 
 % Filter settings
@@ -629,15 +655,13 @@ commononly = false;
 % Sample/expand
 refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 Betas    = sampledates(Betas,refdates,1);
-Betas    = nanfillts(table2array(Betas),1);
 
 % Get mkt capitalizations
-mktcap   = getMktCap(unids, refdates);
+mktcap = getMktCap(unids, refdates);
 
 % Intersect/extract data
-betanames       = matlab.lang.makeValidName(cellstr(num2str(unids)));
-[~,ibetas,icap] = intersect(betanames, getVariableNames(mktcap));
-Betas           = Betas(:, ibetas(2:end));
+[~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));
+Betas           = table2array(Betas(:, ibetas(2:end)));
 mktcap          = table2array(mktcap(:, icap(2:end)));
 
 % Weights
