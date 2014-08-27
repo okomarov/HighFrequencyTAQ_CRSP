@@ -479,7 +479,7 @@ plot(plotdates,counts)
 title 'SPY'
 
 saveas(gcf,'.\results\NullRetCounts.png')
-%% Betas SP500proxy
+%% Betas from SP500proxy
 addpath '.\utils' '.\utils\nth_element'
 testname = 'betas';
 try
@@ -519,7 +519,7 @@ catch
     % Calculate betas
     Betas = Analyze(testname, [], cached, fullfile(path2data,'S5m_*.mat'));
 end
-%% Betas SPY
+%% Betas from SPY
 addpath '.\utils' '.\utils\nth_element'
 resdir    = '.\results';
 
@@ -567,44 +567,17 @@ end
 %% Beta quantiles
 addpath .\utils\
 
-% Load Betas
-loadresults('Betas')
-if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
+% Filter settings
+sp500only  = true;
+commononly = true;
 
-% Remove overlapping
-[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-[~,idx]     = setdiff(Betas(:,{'UnID','Date'}), overlap);
-% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
-
-% Select based on Shrcd
-loadresults('shrcd')
-if isa(shrcd,'dataset'), shrcd = dataset2table(shrcd); end
-
-loadresults('uniqueID')
-shrcd.UnID = uniqueID.UnID;
-shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'UnID','Date'});
-
-[~,pos] = ismember(Betas(:,{'UnID','Date'}), shrcd);
-idx = intersect(idx, pos);
-Betas = Betas(idx,:);
-
-% Convert to double
-names = getVariableNames(Betas);
-Betas = varfun(@double, Betas);
-Betas = setVariableNames(Betas, names);
-
-% Pivot betas
-Betas = Pivot([Betas.UnID, Betas.Date, Betas.Beta]);
-import matlab.internal.tableUtils.*
-names = ['Date'; makeValidName(cellstr(num2str(Betas(1,2:end)')),'silent')];
-Betas = array2table(Betas(2:end,:));
-Betas = setVariableNames(Betas,names);
+% Get Betas
+Betas = getBetas(sp500only, commononly);
 
 % Sample/expand
 refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-tmp = sampledates(Betas,refdates,1);
-tmp = nanfillts(table2array(tmp),1);
+Betas    = sampledates(Betas,refdates,1);
+Betas    = nanfillts(table2array(Betas),1);
 
 % All days
 % refdates = Betas.Date;
@@ -612,119 +585,64 @@ tmp = nanfillts(table2array(tmp),1);
 
 % Plot
 plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
-plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
-title 'Cross-sectional percentiles of all Betas with proxy'
+plot(plotdates, prctile(Betas(:,2:end),10:10:90,2))
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
-saveas(gcf, '.\results\BetasAll_proxy.png')
-%% Betas quantiles - SP500members
-addpath .\utils\
 
-% Load Betas
-loadresults('Betas')
-if isa(Betas,'dataset')
-    Betas = dataset2table(Betas);
+if sp500only
+    title 'Cap-weighted sum of SP500 Betas (with proxy)'
+    saveas(gcf, '.\results\BetasSP500_proxy.png')
+else
+    title 'Cross-sectional percentiles of all Betas (with proxy)'
+    saveas(gcf, '.\results\BetasAll_proxy.png')
 end
-
-% Filter out betas
-isp500 = issp500member(Betas(:,{'Date','UnID'}));
-Betas  = Betas(isp500,{'Date','UnID','Beta'});
-
-% Convert to double
-names = getVariableNames(Betas);
-Betas = varfun(@double, Betas);
-Betas = setVariableNames(Betas, names);
-
-% Pivot betas
-Betas = unstack(Betas,'Beta','UnID');
-
-% Sample/expand
-refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-tmp = sampledates(Betas,refdates,1);
-tmp = nanfillts(table2array(tmp),1);
-
-% All days
-% refdates = Betas.Date;
-% tmp      = table2array(Betas);
-
-% Plot
-plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
-plot(plotdates, prctile(tmp(:,2:end),10:10:90,2))
-title 'Cross-sectional percentiles of un-smoothed SP500 Betas with proxy'
-legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
-saveas(gcf, '.\results\BetasSP500_proxy.png')
 %% Beta quantiles on mkt cap
 addpath .\utils\
 
-vars = {'cusip','symbol','datef'};
-loadresults('taq2crsp')
+% Filter settings
+sp500only  = false;
+commononly = true;
 
-% Load shrout getting rid of 0s
-loadresults('TAQshrout')
-TAQshrout = setVariableNames(TAQshrout, [vars, 'shrout']);
+% Get Betas
+[Betas, unids] = getBetas(sp500only, commononly);
 
-% Filter out matches (max score 42, so 100 takes all)
-iscore = taq2crsp.score < 100 | isnan(taq2crsp.score);
-
-% Direct match
-TAQshrout.ID      = zeros(size(TAQshrout,1),1,'uint16');
-[idx,pos]         = ismember(TAQshrout(:,vars(1:2)), taq2crsp(iscore,vars(1:2)));
-IDs               = taq2crsp.ID(iscore);
-TAQshrout.ID(idx) = IDs(pos(idx));
-
-% Matched
-imatched = TAQshrout.ID ~= 0;
-
-% Exclude overlapping records
-[un,~,subs] = unique(TAQshrout(imatched,{'ID','datef'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-imatched    = imatched & ~ismember(TAQshrout(:, {'ID','datef'}), overlap);
-% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(3))),:)
-
-% Get panel of shrout
-shrout = Pivot([double(TAQshrout.ID(imatched)), double(TAQshrout.datef(imatched)), TAQshrout.shrout(imatched)]);
-
-% Monthly dates of interest
+% Sample/expand
 refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-alldates = union(shrout(2:end,1), refdates);
-
-[~,pdates] = ismember(shrout(2:end,1),alldates);
-data       = NaN(numel(alldates),size(shrout,2)-1);
-data(pdates,:) = shrout(2:end,2:end);
-shrout = [[NaN; alldates], [shrout(1,2:end); data]];
-
-% Fill in previous value
-shrout(2:end,2:end) = nanfillts(shrout(2:end,2:end));
-
-% Get reference dates
-shrout = shrout([true; ismember(shrout(2:end,1), refdates)],:);
-%% Cap-weighted Beta
-
-% Do SP500
-sp500only = true;
-
-% Load data
-loadresults('Betas'), if isa(Betas,'dataset'), Betas = dataset2table(Betas); end
-
-if sp500only
-    idx = issp500member(Betas(:,{'Date','UnID'}));
-    Betas = Betas(idx,:);
-end
+Betas    = sampledates(Betas,refdates,1);
+Betas    = nanfillts(table2array(Betas),1);
 
 % Get mkt capitalizations
-refdates = unique(Betas.Date);
-unids    = unique(Betas.UnID);
-mktcap   = getMktCap(unids, refdates);
-
-% Unstack betas
-Betas = unstack(Betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
-Betas = sortrows(Betas,'Date');
+mktcap   = getMktCap(unids,refdates);
 
 % Intersect/extract data
 [~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));
 Betas  = double(table2array(Betas(:, ibetas(2:end))));
 mktcap = table2array(mktcap(:, icap(2:end)));
-weights = bsxfun(@rdivide, mktcap, nansum(mktcap,2));
-Betas   = Betas.*weights;
+%% Cap-weighted Beta
+
+% Filter settings
+sp500only  = true;
+commononly = false;
+
+% Get Betas
+[Betas, unids] = getBetas(sp500only, commononly);
+
+% Sample/expand
+refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
+Betas    = sampledates(Betas,refdates,1);
+Betas    = nanfillts(table2array(Betas),1);
+
+% Get mkt capitalizations
+mktcap   = getMktCap(unids, refdates);
+
+% Intersect/extract data
+betanames       = matlab.lang.makeValidName(cellstr(num2str(unids)));
+[~,ibetas,icap] = intersect(betanames, getVariableNames(mktcap));
+Betas           = Betas(:, ibetas(2:end));
+mktcap          = table2array(mktcap(:, icap(2:end)));
+
+% Weights
+weights             = bsxfun(@rdivide, mktcap, nansum(mktcap,2));
+Betas               = Betas.*weights;
 Betas(weights == 0) = NaN;
 
 % Plot
