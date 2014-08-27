@@ -378,52 +378,18 @@ axis tight
 d = '.\data\TAQ';
 load(fullfile(d,'master'),'-mat')
 
-% Results directory
-resdir = '.\results\';
-
 % Map unique ID to mst
 testname = 'uniqueID';
 try
     loadresults(testname,'res')
-    
-    % Re-create mapping
+% Re-create mapping
 catch
     tic
-    % Get taq2crsp ready
-    loadresults('taq2crsp')
-    taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
-    
-    % Preallocate
-    unID = zeros(size(mst,1),1,'uint16');
-    % LOOP for each symbol in mst
-    for ii = 1:numel(ids)
-        symbol   = ids{ii};
-        % Extract records from taq2crsp corresponding to TAQ's symbol
-        isymbol  = strcmpi(symbol,taq2crsp.symbol);
-        tmp      = taq2crsp(isymbol, {'ID','datef'});
-        %         if isempty(tmp)
-        %             % Preferred stocks symbol use sometimes the lowercase suffix
-        %             % 'p' instead of 'PR' (see daily TAQ guide)
-        %             isymbol = strcmpi(regexprep(symbol,'p','PR'), taq2crsp.symbol);
-        %             tmp     = taq2crsp(isymbol, {'ID','datef'});
-        %         end
-        if isempty(tmp),fprintf('%d\n',ii),continue,end
-        imst     = find(mst.Id == ii);
-        % Find to which intervals the records belong
-        [~,itmp] = histc(mst.Date(imst), [tmp.datef; 99999999]);
-        nnzero   = itmp ~= 0;
-        % Assgin unique ID to mst
-        unID(imst(nnzero)) = tmp.ID(itmp(nnzero));
-    end
-    % Unmatched
-    unID(unID == 0) = intmax('uint16');
-    res = dataset(unID,'VarNames','UnID');
-    save(fullfile(resdir, sprintf('%s_%s.mat', datestr(now,'yyyymmdd_HHMM'),testname)), 'res')
+    res = mapUnid2mst(mst, ids);
+    sec2time(toc)
 end
-mst = [mst, res];
-sec2time(toc)
+[~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 % clearvars -except mst d ids resdir
-% save debugstate
 
 % Median and other dailystats
 testname = 'dailystats';
