@@ -22,6 +22,11 @@ pos(nullpos) = NaN;
 pos          = nanfillts(pos);
 tspanel      = tspanel(pos,:);
 tspanel.Date = alldates;
+% Fill values
+names = getVariableNames(tspanel);
+tspanel(:,2:end) = varfun(@(x) nanfillts(x,notrail), tspanel(:,2:end));
+tspanel = setVariableNames(tspanel, names);
+
 if notrail
     from = find(~nullpos,1,'last')+1;
     tspanel(from:end,2:end) = {NaN};
