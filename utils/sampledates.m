@@ -16,20 +16,24 @@ alldates = union(dates, refdates);
 % Map to union
 [~,pos] = ismember(alldates,dates);
 
-% Fill stretched periods with previous val
+% Expand
 nullpos      = pos == 0;
 pos(nullpos) = NaN;
 pos          = nanfillts(pos);
 tspanel      = tspanel(pos,:);
 tspanel.Date = alldates;
-% Fill values
-names = getVariableNames(tspanel);
-tspanel(:,2:end) = varfun(@(x) nanfillts(x,notrail), tspanel(:,2:end));
-tspanel = setVariableNames(tspanel, names);
 
+% Fill values
+names            = getVariableNames(tspanel);
+tspanel(:,2:end) = varfun(@(x) nanfillts(x,notrail), tspanel(:,2:end));
+tspanel          = setVariableNames(tspanel, names);
+
+% Eventually cut off the notrail part
 if notrail
     from = find(~nullpos,1,'last')+1;
-    tspanel(from:end,2:end) = {NaN};
+    if ~isempty(from) && from <= size(tspanel,1)
+        tspanel(from:end,2:end) = {NaN};
+    end
 end
 
 % Restrict to refdates
