@@ -31,7 +31,7 @@ dseshares = [dseshares(from,{'PERMNO','SHROUT','SHRSDT'}), dseshares(to,'SHRENDD
 dseshares = pivotFromTo(dseshares(:,{'PERMNO','SHRSDT','SHRENDDT','SHROUT'}));
 
 % Time sampling
-dseshares.Panel = sampledates(dseshares.Panel,refdates,1);
+dseshares.Panel = sampledates(dseshares.Panel,refdates,true);
 
 % Cache
 master = accumarray(master.mst.File,(1:size(master.mst))',[],@(x) {master.mst(x,:)});
@@ -65,7 +65,9 @@ price = sampledates(price,refdates,true);
 for ii = 2:size(price,2)
     unid = price.Properties.VariableNames{ii};
     permno = unid2permno(unid,'Permno').Permno;
-    price.(unid) = double(dseshares.Panel.(permno{:})) .* double(price.(unid)([1 1:end-1]));
+    shares = double(dseshares.Panel.(permno{:}));
+    shares(shares == 0) = NaN;
+    price.(unid) = shares .* double(price.(unid)([1 1:end-1]));
 end
 mktcap = price;
 end
