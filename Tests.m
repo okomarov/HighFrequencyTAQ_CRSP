@@ -660,18 +660,21 @@ end
 addpath .\utils\
 spdir  = '.\data\CRSP';
 
-% -----------------------------------------------------------------------
-% SPY
-% -----------------------------------------------------------------------
+% Betas spy
+s        = load('.\results\20140704_1722_betas.mat');
+Betasspy = dataset2table(s.res);
+clear s
 
-% Load Betas
+% Load Betas proxy
 loadresults('Betas')
 if isa(Betas,'dataset')
     Betas = dataset2table(Betas);
 end
 
 % Filter out betas
-isp500 = issp500member(Betas(:,{'Date','UnID'}));
+isp500   = issp500member(Betas(:,{'Date','UnID'}));
+Betas    = Betas(isp500,:); 
+Betasspy = Betasspy(isp500,:);
 
 % Load SPY (etf)
 loadname = 'spysampled';
@@ -683,25 +686,41 @@ catch
     save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
 end
 
-% Betas*spy
-spy              = spy(~isnan(spy.Price),:);
-[undates,~,subs] = unique(serial2yyyymmdd(spy.Datetime));
-spydayret        = accumarray(subs, spy.Price,[],@(x) x(end)/x(1)-1);
-[~,pos]          = ismember(Betas.Date,undates);
-spydayret        = [NaN; spydayret];
-Betas.Sysret     = spydayret(pos+1).*double(Betas.Beta);
+% Betasspy*spy
+spy             = iprice2dret(spy);
+[~,pos]         = ismember(Betasspy.Date,spy.Date);
+ret             = [NaN; spy.Ret];
+Betasspy.Sysret = ret(pos+1).*double(Betasspy.Beta);
+
+% Load sp500proxy
+loadresults('sp500proxy', 'spproxy')
+
+% Betas*proxy
+spproxy      = iprice2dret(spproxy);
+[~,pos]      = ismember(Betas.Date,spproxy.Date);
+ret          = [NaN; spproxy.Ret];
+Betas.Sysret = ret(pos+1).*double(Betas.Beta);
 
 % Add File number and cache
 path2data   = '.\data\TAQ\sampled';
 master      = load(fullfile(path2data, 'master'), '-mat');
-[~,pos]     = ismember(dataset2table(Betas(:,{'UnID','Date'})), master.mst(:,{'UnID','Date'}));
+
+[~,pos]     = ismember(Betas(:,{'UnID','Date'}), master.mst(:,{'UnID','Date'}));
 Betas.File  = master.mst.File(pos);
-f           = @(rowidx) {Betas(rowidx,{'UnID','Date','Sysret'})};
+f           = @(rowidx) {table2dataset(Betas(rowidx,{'UnID','Date','Sysret'}))};
 Betascached = accumarray(Betas.File,(1:size(Betas,1))',[1815,1],f);
+
+[~,pos]        = ismember(Betasspy(:,{'UnID','Date'}), master.mst(:,{'UnID','Date'}));
+Betasspy.File  = master.mst.File(pos);
+f              = @(rowidx) {table2dataset(Betasspy(rowidx,{'UnID','Date','Sysret'}))};
+Betasspycached = accumarray(Betasspy.File,(1:size(Betasspy,1))',[1815,1],f);
 clear master
 
 % Net returns
 isyncrets = Analyze('idiosyncrets', [], Betascached, fullfile(path2data,'S5m*.mat'));
+isyncretsspy = Analyze('idiosyncrets', [], Betasspycached, fullfile(path2data,'S5m*.mat'));
+
+%% FROM HERE (use debug.mat or tb.mat?)
 
 % Rank on previous month and hold next
 [un, ~, subs] = unique([uint32(isyncrets.UnID), fix(isyncrets.Date/100)],'rows');
