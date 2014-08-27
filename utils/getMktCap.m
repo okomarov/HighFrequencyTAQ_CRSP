@@ -7,8 +7,8 @@ path2data = '.\data\TAQ\sampled';
 master    = load(fullfile(path2data, 'master'), '-mat');
 
 % No permno, no shares
-taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-imember = ismember(taq2crsp.ID, UnIDs);
+taq2crsp  = taq2crsp(~isnan(taq2crsp.permno),:);
+imember   = ismember(taq2crsp.ID, UnIDs);
 taq2crsp  = taq2crsp(imember,:);
 UnIDs     = intersect(taq2crsp.ID, UnIDs);
 permnos   = uint32(unique(taq2crsp.permno));
@@ -31,7 +31,7 @@ dseshares = [dseshares(from,{'PERMNO','SHROUT','SHRSDT'}), dseshares(to,'SHRENDD
 dseshares = pivotFromTo(dseshares(:,{'PERMNO','SHRSDT','SHRENDDT','SHROUT'}));
 
 % Time sampling
-dseshares.Panel = sampledates(dseshares.Panel,refdates);
+dseshares.Panel = sampledates(dseshares.Panel,refdates,1);
 
 % Cache
 master = accumarray(master.mst.File,(1:size(master.mst))',[],@(x) {master.mst(x,:)});
@@ -56,11 +56,16 @@ unid2permno.Permno = matlab.lang.makeValidName(cellstr(num2str(unid2permno.Permn
 price = unstack(price(:,{'UnID','Date','Price'}),'Price','UnID');
 price = sortrows(price, 'Date');
 
+save debugstate
+
+% Time sampling
+price = sampledates(price,refdates,true);
+
 % LOOP by UnID to create weights
 for ii = 2:size(price,2)
     unid = price.Properties.VariableNames{ii};
     permno = unid2permno(unid,'Permno').Permno;
-    price.(unid) = double(dseshares.Panel.(permno{:})) .* nanfillts(double(price.(unid)([1 1:end-1])),1);
+    price.(unid) = double(dseshares.Panel.(permno{:})) .* double(price.(unid)([1 1:end-1]));
 end
 mktcap = price;
 end
