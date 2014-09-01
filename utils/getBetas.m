@@ -18,9 +18,7 @@ end
 
 % Filter for common share (share type code 10 and 11)
 if iscs
-    loadresults('shrcd')
-    shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'UnID','Date'});
-    idx   = ismember(betas(:,{'UnID','Date'}), shrcd);
+    idx   = iscommonshare(betas(:,{'UnID','Date'}));
     betas = betas(idx,:);
 end
 
