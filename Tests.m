@@ -479,6 +479,78 @@ plot(plotdates,counts)
 title 'SPY'
 
 saveas(gcf,'.\results\NullRetCounts.png')
+%% Count 0 returns on mkt cap
+addpath .\utils\
+
+% Filter settings
+sp500only  = true;
+commononly = true;
+
+testname = 'countnullrets';
+try
+    loadresults(testname,'counts')
+    if isa(counts,'dataset'), counts = dataset2table(counts); end
+catch
+    path2data = '.\data\TAQ\sampled';
+    counts    = Analyze(testname,[],[], fullfile(path2data,'S5m_*.mat'),1);
+end
+
+if commononly
+    idx    = iscommonshare(counts(:,{'UnID','Date'}));
+    counts = counts(idx,:);
+end
+
+if sp500only
+    idx    = issp500member(counts(:,{'UnID','Date'}));
+    counts = counts(idx,:);
+end
+
+% Unstack counts
+unids  = unique(counts.UnID);
+counts = unstack(counts(:,{'UnID','Date','Nullrets'}),'Nullrets','UnID');
+
+% Filter out problematic dates
+counts = counts(~isprobdate(counts.Date),:);
+
+% Sample dates
+refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
+counts   = sampledates(counts,refdates,1);
+
+% Get mkt capitalizations
+mktcap = getMktCap(unids, refdates);
+
+% Intersect/extract data
+[~,icount,icap] = intersect(getVariableNames(counts), getVariableNames(mktcap));
+counts          = table2array(counts(:, icount(2:end)));
+mktcap          = table2array(mktcap(:, icap(2:end)));
+
+% Intersect NaNs
+inan = isnan(mktcap) | isnan(counts);
+mktcap(inan) = NaN;
+counts(inan) = NaN;
+
+% Index Betas by market cap
+ptiles = prctile(mktcap,10:10:90,2);
+N      = size(ptiles,1);
+ptiles = [zeros(N,1), ptiles, inf(N,1)];
+subs = mktcap;
+for r = 1:N
+    [~, subs(r,:)] = histc(mktcap(r,:), ptiles(r,:));
+end
+rsubs = repmat((1:N)',1,size(mktcap,2));
+averages = accumarray([rsubs(~inan),subs(~inan)], counts(~inan),[N, 10],@mean);
+
+plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
+plot(plotdates, averages)
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:100,'un',0))
+
+if sp500only
+    title 'Null ret counts: mkt cap percentile averages of SP500 members'
+    saveas(gcf, '.\results\NullRetCounts_SP500member_mktcap.png')
+else
+    title 'Null ret counts: mkt cap percentile averages of all stocks'
+    saveas(gcf, '.\results\NullRetCounts_All_mktcap.png')
+end
 %% Betas from SP500proxy
 addpath '.\utils' '.\utils\nth_element'
 testname = 'betas';
@@ -604,8 +676,11 @@ commononly = true;
 % Get Betas
 [Betas, unids] = getBetas(sp500only, commononly);
 
+% Filter out problematic dates
+Betas = Betas(~isprobdate(Betas.Date),:);
+
 % Sample/expand
-refdates = serial2yyyymmdd(datenum(1993,2:210,1)-1);
+refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
 Betas    = sampledates(Betas,refdates,1);
 
 % Get mkt capitalizations
@@ -633,16 +708,16 @@ rsubs = repmat((1:N)',1,size(Betas,2));
 averages = accumarray([rsubs(~inan),subs(~inan)], Betas(~inan),[N, 10],@mean);
 
 plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
-plot(plotdates(1:end-2), averages)
+plot(plotdates, averages)
 legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:100,'un',0))
 
-% if sp500only
-%     title 'Cap-weighted sum of SP500 Betas (with proxy)'
-%     saveas(gcf, '.\results\BetasSP500_proxy.png')
-% else
-%     title 'Cross-sectional percentiles of all Betas (with proxy)'
-%     saveas(gcf, '.\results\BetasAll_proxy.png')
-% end
+if sp500only
+    title 'Betas: mkt cap percentile averages of SP500 members'
+    saveas(gcf, '.\results\BetasSP500_mktcap_proxy.png')
+else
+    title 'Betas: mkt cap percentile averages of all stocks'
+    saveas(gcf, '.\results\BetasAll_mktcap_proxy.png')
+end
 %% Cap-weighted Beta
 
 % Filter settings
