@@ -65,7 +65,7 @@ try
     % Collect all results and convert to dataset
     res = cat(1,res{:});
     if ~isempty(varnames)
-        res = mat2dataset(res,'VarNames',varnames);
+        res = array2table(res,'VarNames',varnames);
     end
     
     % Export results and notify
@@ -345,31 +345,15 @@ end
 res = {g127, correction, condition, nullprice, nfile};
 end
 
-function res = idiosyncrets(s,cached)
-sysret = cached{1};
-
-if isempty(sysret)
-    res = dataset({zeros(0,2,'uint32'), 'UnID','Date'}, {zeros(0,3), 'Dayret', 'Sysret','Netret'});
-    return
-end
-
-% Select only existing UnID
-[idx,pos] = ismember(s.mst(:,{'UnID','Date'}), sysret(:,{'UnID','Date'}));
-s.mst     = s.mst(idx,:);
-pos       = pos(idx);
-
+function res = dailyret(s,cached)
 % Calculate daily return with daily initial NaNs offset
-pnan   = find(isnan(s.data.Price));
-offset = histc(pnan,[s.mst.From, s.mst.To+1]');
-offset = offset(1:2:end);
-to     = s.mst.To;
-from   = s.mst.From + offset;
-s.mst.Dayret = s.data.Price(to)./s.data.Price(from)-1;
-
-% Net returns (idiosyncratic)
-res        = [sysret(pos,:) s.mst(:,'Dayret')];
-res.Netret = s.mst.Dayret - sysret.Sysret;
-
+pnan     = find(isnan(s.data.Price));
+offset   = histc(pnan,[s.mst.From, s.mst.To+1]');
+offset   = offset(1:2:end);
+to       = s.mst.To;
+from     = s.mst.From + offset;
+res      = dataset2table(s.mst(:,{'UnID','Date'}));
+res.Dret = s.data.Price(to)./s.data.Price(from)-1;
 end
 
 function res = countnullrets(s,cached)
