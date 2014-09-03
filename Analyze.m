@@ -367,9 +367,8 @@ from   = s.mst.From + offset;
 s.mst.Dayret = s.data.Price(to)./s.data.Price(from)-1;
 
 % Net returns (idiosyncratic)
-sysret.Netret = s.mst.Dayret - sysret.Sysret(pos);
-
-res = [sysret(pos,{'UnID','Date'}) s.mst(:,'Dayret'), sysret(pos,{'Sysret','Netret'})];
+res        = [sysret(pos,:) s.mst(:,'Dayret')];
+res.Netret = s.mst.Dayret - sysret.Sysret;
 
 end
 
