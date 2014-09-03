@@ -759,21 +759,12 @@ end
 addpath .\utils\
 spdir  = '.\data\CRSP';
 
+% Filter settings
+sp500only  = true;
+commononly = true;
+
 % Betas spy
-s        = load('.\results\20140704_1722_betas.mat');
-Betasspy = dataset2table(s.res);
-clear s
-
-% Load Betas proxy
-loadresults('Betas')
-if isa(Betas,'dataset')
-    Betas = dataset2table(Betas);
-end
-
-% Filter out betas
-isp500   = issp500member(Betas(:,{'Date','UnID'}));
-Betas    = Betas(isp500,:); 
-Betasspy = Betasspy(isp500,:);
+Betasspy = getBetas(sp500only, commononly,'20140704_1722_betas');
 
 % Load SPY (etf)
 loadname = 'spysampled';
@@ -789,7 +780,10 @@ end
 spy             = iprice2dret(spy);
 [~,pos]         = ismember(Betasspy.Date,spy.Date);
 ret             = [NaN; spy.Ret];
-Betasspy.Sysret = ret(pos+1).*double(Betasspy.Beta);
+Betasspy.Sysret = ret(pos+1).*Betasspy.Beta;
+
+% Get Betas
+[Betas, unids] = getBetas(sp500only, commononly);
 
 % Load sp500proxy
 loadresults('sp500proxy', 'spproxy')
@@ -798,60 +792,28 @@ loadresults('sp500proxy', 'spproxy')
 spproxy      = iprice2dret(spproxy);
 [~,pos]      = ismember(Betas.Date,spproxy.Date);
 ret          = [NaN; spproxy.Ret];
-Betas.Sysret = ret(pos+1).*double(Betas.Beta);
+Betas.Sysret = ret(pos+1).*Betas.Beta;
 
-% Add File number and cache
-path2data   = '.\data\TAQ\sampled';
-master      = load(fullfile(path2data, 'master'), '-mat');
-
-[~,pos]     = ismember(Betas(:,{'UnID','Date'}), master.mst(:,{'UnID','Date'}));
-Betas.File  = master.mst.File(pos);
-f           = @(rowidx) {table2dataset(Betas(rowidx,{'UnID','Date','Sysret'}))};
-Betascached = accumarray(Betas.File,(1:size(Betas,1))',[1815,1],f);
-
-[~,pos]        = ismember(Betasspy(:,{'UnID','Date'}), master.mst(:,{'UnID','Date'}));
-Betasspy.File  = master.mst.File(pos);
-f              = @(rowidx) {table2dataset(Betasspy(rowidx,{'UnID','Date','Sysret'}))};
-Betasspycached = accumarray(Betasspy.File,(1:size(Betasspy,1))',[1815,1],f);
-clear master
-
-% Net returns
-isyncrets = Analyze('idiosyncrets', [], Betascached, fullfile(path2data,'S5m*.mat'));
-isyncretsspy = Analyze('idiosyncrets', [], Betasspycached, fullfile(path2data,'S5m*.mat'));
-
-%% FROM HERE (use debug.mat or tb.mat?)
-
-% Rank on previous month and hold next
-[un, ~, subs] = unique([uint32(isyncrets.UnID), fix(isyncrets.Date/100)],'rows');
-
-monthlyNetRet = accumarray(subs, isyncrets.Netret, [],@(x) prod(x(~isnan(x))+1)-1);
-panelNetRet   = table(un(:,1),un(:,2), monthlyNetRet, 'VariableNames',{'UnID','Yearmonth','Ret'});
-panelNetRet   = unstack(panelNetRet,'Ret','UnID');
-dataNetRet    = table2array(panelNetRet(:,2:end));
-
-monthlyAllRet = accumarray(subs, isyncrets.Dayret, [],@(x) prod(x(~isnan(x))+1)-1);
-panelAllRet   = table(un(:,1),un(:,2), monthlyAllRet, 'VariableNames',{'UnID','Yearmonth','Ret'});
-panelAllRet   = unstack(panelAllRet,'Ret','UnID');
-dataAllRet    = table2array(panelAllRet(:,2:end));
-
-ptiles = prctile(dataNetRet',[10,90])';
-
-ishortNet = bsxfun(@le, dataNetRet, ptiles(:,1)); 
-ilongNet  = bsxfun(@ge, dataNetRet, ptiles(:,2)); 
-
-ishortAll = bsxfun(@le, dataAllRet, ptiles(:,1)); 
-ilongAll  = bsxfun(@ge, dataAllRet, ptiles(:,2)); 
-
-nperiods = size(dataNetRet,1) - 1;
-dates    = datenum(double(panelAllRet.Yearmonth(1)/100), 2:nperiods+2, 1)-1;
-stratret = NaN(nperiods + 1,2);
-
-for r = 1:nperiods
-    stratret(r+1,1) = nanmean([dataAllRet(r+1,ilongNet(r,:)), -dataAllRet(r+1,ishortNet(r,:))],2);
-    stratret(r+1,2) = nanmean([dataAllRet(r+1,ilongAll(r,:)), -dataAllRet(r+1,ishortAll(r,:))],2);
+% Daily rets
+try
+    loadresults('dailyret','rets')
+catch
+    path2data = '.\data\TAQ\sampled';
+    rets = Analyze('dailyret', [], [], fullfile(path2data,'S5m*.mat'));
 end
-plot(dates, cumprod([ones(1,2); stratret(2:end,:)+1]))
-dynamicDateTicks
+[rets.Netprx,rets.Netspy] = deal(NaN(size(rets,1),1));
+
+% Net rets proxy
+[~,pos]          = ismember(Betas(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
+
+% Net rets spy
+[~,pos]          = ismember(Betasspy(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+rets.Netspy(pos) = rets.Dret(pos) - Betasspy.Sysret;
+
+momstrat(setVariableNames(rets(~isnan(rets.Netprx),1:4),{'UnID','Date','Dayret','Netret'}))
+momstrat(setVariableNames(rets(~isnan(rets.Netspy),[1:3, 5]),{'UnID','Date','Dayret','Netret'}))
+
 legend('R - beta*mkt','Whole returns')
 title('Long/short 90th/10th percentile based on previous month performance (no overnight)')
 
