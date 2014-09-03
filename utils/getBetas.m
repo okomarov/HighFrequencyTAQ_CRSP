@@ -1,13 +1,15 @@
-function [betas, unids] = getBetas(issp, iscs)
+function [betas, unids] = getBetas(issp, iscs, keeplong, matname)
 % GETBETAS Loads betas, applies sp500 and/or common shares filers, unstacks
 %
 %   NOTE: Does NOT fill in between NaNs
 
-if nargin < 1 || isempty(issp), issp = false; end
-if nargin < 2 || isempty(iscs), iscs = false; end
+if nargin < 1 || isempty(issp),     issp     = false;   end
+if nargin < 2 || isempty(iscs),     iscs     = false;   end
+if nargin < 3 || isempty(keeplong), keeplong = true;    end
+if nargin < 4 || isempty(matname),  matname  = 'Betas'; end
 
 % Load all betas
-loadresults('Betas','betas')
+loadresults(matname,'betas')
 if isa(betas,'dataset'), betas = dataset2table(betas); end
 
 % Filter for sp500 members
@@ -34,9 +36,11 @@ if nargout == 2
 end
 
 % Unstack betas
-betas = unstack(betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
-betas = sortrows(betas,'Date');
-
+if ~keeplong
+    betas = unstack(betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+    betas = sortrows(betas,'Date');
+end
+    
 % Convert to double
 names = getVariableNames(betas);
 betas = varfun(@double, betas);
