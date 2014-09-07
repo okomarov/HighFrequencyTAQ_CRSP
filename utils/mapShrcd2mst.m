@@ -1,10 +1,6 @@
-% function shrcd = mapShrcd2mst
+function shrcd = mapShrcd2mst
 
-% NOTE: direct match of taq2crsp.ID to uniqueID.unID doesn't care about
-% dates, i.e. if "taq2crsp.ID - datef" later than "uniqueID.UnID - Date",
-% we still assign it the Shrcd. This is also true for permno direct link.
-% In other words, we assume the Shrcd was the first available for past
-% records that don't get a match.
+% MAPSHRCD2MST Maps share code type to master records with Id and Date and Symbol
 
 % Load msenames
 try
@@ -27,7 +23,6 @@ taq2crsp = sortrows(taq2crsp,{'ID','datef'});
 idx      = isfeatchange(taq2crsp);
 taq2crsp = taq2crsp(idx,:);
 
-
 % Unstack msenames into shrcd
 msenames       = msenames(ismember(msenames.PERMNO, taq2crsp.permno),:);
 msenames.SHRCD = single(msenames.SHRCD); % For NaN padding in unstack
@@ -40,7 +35,7 @@ shrcd          = setVariableNames(shrcd,['Date', names(2:end)]);
 
 % Unstack taq2crsp into mask
 id2permno = unique(taq2crsp(:,{'ID','permno'}));
-id2permno.ID = uint32(id2permno.ID);
+id2permno.ID = uint16(id2permno.ID);
 import matlab.lang.*
 id2permno.Properties.RowNames = makeValidName(cellstr(num2str(id2permno.ID)));
 taq2crsp.Val = ones(size(taq2crsp,1),1,'single');
@@ -77,11 +72,17 @@ shrcd = shrcd(shrcd.Shrcd ~= 0,:);
 [~,pos] = ismember(shrcd.UnID,id2permno.Properties.RowNames);
 shrcd.UnID = id2permno.ID(pos); clear pos
 
-% Map to uniqueID
-[idx,pos] = ismember(uniqueID(:,{'Date','UnID'}),shrcd(:,{'Date','UnID'}));
-uniqueID =  zeros(size(uniqueID,1),1,'uint8');
+% Map to uniqueID (in blocks)
+uniqueID.Shrcd =  zeros(size(uniqueID,1),1,'uint8');
+N = 4;
+edges = fix(linspace(0,size(shrcd,1),N+1));
+for ii = 1:N
+    [idx,pos] = ismember(uniqueID(:,{'Date','UnID'}),shrcd(edges(ii)+1:edges(ii+1),{'Date','UnID'}));
+    uniqueID.Shrcd(idx) = shrcd.Shrcd(pos(idx)+edges(ii));
+end
 
-
+% Save
+shrcd = uniqueID;
 save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcd')), 'shrcd')
 
-% end
+end
