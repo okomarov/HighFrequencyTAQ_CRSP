@@ -4,7 +4,7 @@ function stratret = momstrat(tb)
 netRet = unstack(tb(:,{'UnID','Date','Netret'}),'Netret','UnID');
 netRet = sortrows(netRet,'Date');
 dates  = netRet.Date;
-netRet = table2array(netRet(:,2:end))+1;
+netRet = table2array(netRet(:,2:end));
 
 % Unstack tot returns
 totRet = unstack(tb(:,{'UnID','Date','Dayret'}),'Dayret','UnID');
@@ -18,6 +18,7 @@ prebalance = find([false; diff(subs)>0]);
 N        = numel(dates);
 stratret = NaN(N, 2);
 for ii = 1:numel(prebalance)
+    [netIshort, netIlong, totIshort,totIlong] = deal(false(1,size(totRet,2)));
     % Alive in the future
     ifut    = subs == ii+1;
     isalive = any(netRet(ifut,:));
@@ -28,22 +29,26 @@ for ii = 1:numel(prebalance)
     % Net
     pastperf = netRet(ipast,isalive);
     pastperf(isnan(pastperf)) = 0;
-    netPtiles = prctile(prod(1 + pastperf)-1,[10,90]);
-    netIshort(isalive) = netRet(prebalance(ii),isalive) <= netPtiles(1);
-    netIlong (isalive) = netRet(prebalance(ii),isalive) >= netPtiles(2); 
+    pastperf = prod(1 + pastperf)-1;
+    netPtiles = prctile(pastperf,[10,90]);
+    netIshort(isalive) = pastperf <= netPtiles(1);
+    netIlong (isalive) = pastperf >= netPtiles(2); 
         
     % Tot
     pastperf = totRet(ipast,isalive);
     pastperf(isnan(pastperf)) = 0;
-    totPtiles = prctile(prod(1 + pastperf)-1,[10,90]);
-    totIshort(isalive) = totRet(prebalance(ii),isalive) <= totPtiles(1);
-    totIlong (isalive) = totRet(prebalance(ii),isalive) >= totPtiles(2); 
+    pastperf = prod(1 + pastperf)-1;
+    totPtiles = prctile(pastperf,[10,90]);
+    totIshort(isalive) = pastperf <= totPtiles(1);
+    totIlong (isalive) = pastperf >= totPtiles(2); 
     
     % Daily strat
     stratret(ifut,1) = nanmean([totRet(ifut,netIlong), -totRet(ifut,netIshort)],2);
     stratret(ifut,2) = nanmean([totRet(ifut,totIlong), -totRet(ifut,totIshort)],2);
 end
 plotdates = datetime(yyyymmdd2serial(dates),'ConvertFrom','datenum');
-plot(plotdates, cumprod([ones(1,2); stratret(2:end,:)+1]))
+from = find(~all(isnan(stratret),2),1,'first');
+stratlvl  = [NaN(from-2,2); cumprod([ones(1,2); stratret(from:end,:)+1])];
+plot(plotdates, stratlvl)
 legend({'Net','Tot'})
 end
