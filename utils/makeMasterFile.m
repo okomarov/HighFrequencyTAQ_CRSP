@@ -8,10 +8,7 @@ idsname = 'ids';
 % Read .mat filenames
 d = dir(fullfile(path2matfiles,'*.mat'));
 
-% Open matlabpool
-if isempty(gcp('nocreate')) && ~isdebug
-    parpool(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
-end
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',isdebug)
 
 % Preallocate
 nfiles    = numel(d);
@@ -22,7 +19,11 @@ fprintf('Loading .mat files.\n')
 parfor f = 1:nfiles
     disp(f)
     s      = load(fullfile(path2matfiles,d(f).name),mstname, idsname);
-    mst{f} = dataset2table(s.(mstname));
+    if isa(s.(mstname), 'dataset')
+        mst{f} = dataset2table(s.(mstname));
+    else
+        mst{f} = s.(mstname);
+    end
     ids{f} = s.(idsname);
 end
 delete(gcp)

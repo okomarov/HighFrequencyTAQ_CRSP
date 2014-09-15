@@ -59,6 +59,11 @@ try
         % Load data
         s      = load(fullfile(root,dd(f).name));
         cache  = [cached(f), f];
+        % Convert to tables
+        if isa(s.data,'dataset')
+            s.data = dataset2table(s.data); 
+            s.mst = dataset2table(s.mst);
+        end
         % Apply function
         res{f} = fhandle(s, cache);
     end
@@ -111,7 +116,11 @@ nnovernight(idx) = false;
 ret              = ret(nnovernight);
 subs             = subs(nnovernight);
 % Collect results (note, nrets can be negative if it was only one price, which was selected out)
-res = [accumarray(subs, ret,[nmst,1],@min,fill), accumarray(subs, ret,[nmst,1],@max,fill), Med, n(1:end-1)-1];
+res = [s.mst(:,{'Id','Date'}),...
+       table(accumarray(subs, ret,[nmst,1],@min,fill),...
+             accumarray(subs, ret,[nmst,1],@max,fill),...
+             Med,...
+             n(1:end-1)-1,'VariableNames',{'Min','Max','MedPrice','Nrets'})];
 end
 %% Count bad prices
 function res = badprices(s, cached)
@@ -130,7 +139,9 @@ inan = selecttrades(s.data);
 ibadprice     = ibadprice ~= 1;
 
 % STEP 3) Bad days
-res = accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs);
+res = [s.mst(:,{'Id','Date'}),...
+       table(accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs),...
+             'VariableNames',{'Isbadday'})];
 end
 %% Check stats for returns
 function res = avgtimestep(s,cached)
@@ -158,7 +169,8 @@ l         = ones('single');
 n         = accumarray(subs,      l, [nmst,1],   [], l);
 openTime  = accumarray(subs,  times, [nmst,1], @min, l);
 closeTime = accumarray(subs,  times, [nmst,1], @max, l);
-res       = (closeTime - openTime)./(n-1);
+res       = [s.mst(:,{'Id','Date'}),...
+             table((closeTime - openTime)./(n-1), 'VariableNames',{'Timestep'})];
 end
 %% Check how many bad prices
 function res = cleanprices(s,cached)
@@ -352,7 +364,7 @@ offset   = histc(pnan,[s.mst.From, s.mst.To+1]');
 offset   = offset(1:2:end);
 to       = s.mst.To;
 from     = s.mst.From + offset;
-res      = dataset2table(s.mst(:,{'UnID','Date'}));
+res      = s.mst(:,{'UnID','Date'});
 res.Dret = s.data.Price(to)./s.data.Price(from)-1;
 end
 

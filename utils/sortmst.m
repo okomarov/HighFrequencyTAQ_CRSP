@@ -8,9 +8,7 @@ if nargin < 1 || isempty(path2data),  path2data = '.\data\TAQ'; end
 setupemail
 
 % Open matlabpool
-if isempty(gcp('nocreate'))
-    parpool(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
-end
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'})
 
 files = dir(fullfile(path2data,'*.mat'));
 N     = numel(files);
