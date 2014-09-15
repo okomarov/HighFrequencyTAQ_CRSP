@@ -64,6 +64,10 @@ else
     varnames   = unique(['Time' varnames],'stable');
 end
 
+% Type of IDs available
+hasUnID   = any(strcmpi(getVariableNames(master), 'UnID'));
+hasPermno = any(strcmpi(getVariableNames(master), 'permno'));
+
 % Data files to load
 files     = unique(master.File);
 nfiles    = numel(files);
@@ -105,11 +109,14 @@ for ii = 1:nfiles
     mstfile = master(master.File == files(ii),:);
     idata   = mcolon(mstfile.From,mstfile.To);
     blocks  = mstfile.To - mstfile.From + 1;
-    UnID    = RunLength(mstfile.UnID, blocks);
     Id      = RunLength(mstfile.Id, blocks);
-    Permno  = RunLength(mstfile.Permno, blocks);
-    out{ii} = table(Id(:),UnID(:),Permno(:),'VariableNames',{'Id','UnID','Permno'}); 
-    
+    out{ii} = table(Id(:),'VariableNames',{'Id'}); 
+    if hasUnID
+        out{ii}.UnID = reshape(RunLength(mstfile.UnID, blocks),[],1);
+    end
+    if hasPermno
+        out{ii}.Permno = reshape(RunLength(mstfile.Permno, blocks),[],1);
+    end
     % Retrieve data
     if ~any(idatetime)
         out{ii}.Datetime = RunLength(yyyymmdd2serial(mstfile.Date),blocks) + hhmmssmat2serial(s.data.Time(idata,:));
