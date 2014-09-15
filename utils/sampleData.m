@@ -77,4 +77,11 @@ mst.Timestep = ifewtrades | perfew(mst.UnID);
 mst = mst(:, {'File','Id','UnID','MedPrice','Baddays','Timestep'});
 opt = struct('grid',grid, 'writeto', writeto, 'fmtname', fmtname);
 Analyze('sample',[], mst,[],1,opt);
+
+% Sort mst by from
+sortmst(opt.writeto)
+
+% Make master file
+makeMasterFile(opt.writeto)
+
 end
