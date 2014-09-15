@@ -1,4 +1,4 @@
-function res = Analyze(fun, varnames, cached, path2data, debug)
+function res = Analyze(fun, varnames, cached, path2data, debug, varargin)
 
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -65,7 +65,7 @@ try
             s.mst = dataset2table(s.mst);
         end
         % Apply function
-        res{f} = fhandle(s, cache);
+        res{f} = fhandle(s, cache, varargin{:});
     end
     % Collect all results and convert to dataset
     res = cat(1,res{:});
@@ -213,14 +213,14 @@ end
 fprintf('\t\t\t\t\t\t\t %.1f - %.1f\n',selper,badserper)
 end
 %% Sampling
-function res = sample(s,cached)
+function res = sample(s,cached, opt)
 
 % Sampling params
-% -----------------------------------
-grid     = (9.5/24:5/(60*24):16/24)';
-savepath = '.\data\TAQ\sampled';
-fmtname  = 'S5m_%04d.mat';
-% -----------------------------------
+if nargin < 3
+    opt.grid    = (9.5/24:5/(60*24):16/24)';
+    opt.writeto = '.\data\TAQ\sampled\5min';
+    opt.fmtname = 'S5m_%04d.mat';
+end
 
 nfile  = cached{end};
 cached = cached{1};
@@ -253,8 +253,8 @@ if ~all(inan)
     price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
     
     % STEP 7) Sample on fixed grid (easier to match sp500)
-    ngrid          = numel(grid);
-    [price, dates] = fixedsampling(unTimes, price, grid);
+    ngrid          = numel(opt.grid);
+    [price, dates] = fixedsampling(unTimes, price, opt.grid(:));
     idx            = fix(dates);
     dates          = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(dates,1);
     
@@ -267,7 +267,7 @@ if ~all(inan)
     s.mst.To   = (ngrid:ngrid:size(s.data,1))';
     
     % Save
-    fname = fullfile(savepath,sprintf(fmtname,nfile));
+    fname = fullfile(opt.writeto,sprintf(opt.fmtname,nfile));
     save(fname, '-struct','s')
 end
 end
