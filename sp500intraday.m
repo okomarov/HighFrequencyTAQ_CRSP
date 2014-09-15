@@ -1,4 +1,4 @@
-function sp500proxy = sp500intraday
+function sp500proxy = sp500intraday(path2data,freq)
 % ISSUES:
 % - Should use previous day close of the index, and update it as soon as
 % constituents start to trade. However, it requires split/merge/divid
@@ -9,7 +9,7 @@ function sp500proxy = sp500intraday
 loadresults('taq2crsp_sp500','taq2crsp')
 loadresults('spconst')
 loadresults('dseshares')
-path2data = '.\data\TAQ\sampled';
+if nargin < 1 || isempty(path2data), path2data = '.\data\TAQ\sampled\5min'; end
 master = load(fullfile(path2data, 'master'), '-mat');
 
 % Filter out non members 
@@ -92,7 +92,7 @@ delete(gcp)
 sp500proxy = cat(1,sp500proxy{:});
 
 % Save
-matname = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'sp500proxy');
+matname = sprintf('%s_%s%dm.mat',datestr(now,'yyyymmdd_HHMM'),'sp500proxy',freq);
 save(fullfile('.\results',matname), 'sp500proxy')
 
 %% Plot vs spyders
