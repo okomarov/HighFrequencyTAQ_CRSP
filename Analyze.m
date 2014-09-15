@@ -297,7 +297,7 @@ ikeep   = ~isnan(prodret);
 
 % Store results
 res     = s.mst(:,{'Id','UnID','Date'});
-res.Num = accumarray(subsID(ikeep), prodret(ikeep));
+res.Num = accumarray(subsID(ikeep), prodret(ikeep),[],[],NaN);
 res.Den = accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
 end
 

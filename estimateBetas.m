@@ -5,10 +5,10 @@ if nargin < 3 || isempty(useproxy), useproxy = false; end
 
 % Sample if data doesn't exist
 path2data = sprintf('.\\data\\TAQ\\sampled\\%dmin', freq);
-fmtname   = sprintf('S%dm_%%04d.mat',freq);
 if exist(path2data,'dir') ~= 7 || isempty(ls(path2data))
     step    = freq/(60*24);
     grid    = (9.5/24:step:16/24)';
+    fmtname = sprintf('S%dm_%%04d.mat',freq);
     sampleData(grid, path2data, fmtname);
 end 
 
@@ -28,10 +28,10 @@ else
     catch
         master = load(fullfile(path2data,'master'),'-mat');
         sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
-        save(sprintf('.\results\%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name), 'sp500')
+        fname  = sprintf('.\\results\\%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name);
+        save(fname, 'sp500')
     end
 end
-
     % SP500 ret (zeroing overnight)
     spret = [sp500.Datetime(2:end) sp500.Price(2:end)./sp500.Price(1:end-1)-1];
     spret = spret(diff(rem(sp500.Datetime,1)) >= 0,:);
@@ -53,6 +53,23 @@ end
         cached{ii} = {spret(isp) spdays(pos(nnzero))};
     end
     
-    % Calculate betas
-    bcomp = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
+    % Calculate beta components: sum(r*benchr) and sum(benchr^2)
+    fmtname = sprintf('S%dm_*.mat',freq);
+    betas   = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
+    
+    % Sort and create subs
+    betas = sortrows(betas,{'UnID','Date'});
+    [~,~,subs] = unique(betas.UnID);
+    
+    % Beta
+    num        = accumarray(subs, betas.Num, [], @(x) runsum(lookback,x));
+    den        = accumarray(subs, betas.Den, [], @(x) runsum(lookback,x));
+    betas.Beta = cat(1,num{:})./cat(1,den{:});
+end
+
+function rs = runsum(lookback, data)
+    rs        = NaN(size(data));
+    nonan     = ~isnan(data);
+    rs(nonan) = filter(ones(lookback,1), 1, data(nonan), NaN(lookback-1,1));
+    rs        = {rs};
 end
