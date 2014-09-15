@@ -116,11 +116,11 @@ nnovernight(idx) = false;
 ret              = ret(nnovernight);
 subs             = subs(nnovernight);
 % Collect results (note, nrets can be negative if it was only one price, which was selected out)
-res = [s.mst(:,{'Id','Date'}),...
-       table(accumarray(subs, ret,[nmst,1],@min,fill),...
-             accumarray(subs, ret,[nmst,1],@max,fill),...
-             Med,...
-             n(1:end-1)-1,'VariableNames',{'Min','Max','MedPrice','Nrets'})];
+res          = s.mst(:,{'Id','Date'});
+res.Min      = accumarray(subs, ret,[nmst,1],@min,fill);
+res.Max      = accumarray(subs, ret,[nmst,1],@max,fill);
+res.MedPrice = Med;
+res.Nrets    = n(1:end-1)-1;
 end
 %% Count bad prices
 function res = badprices(s, cached)
@@ -139,9 +139,8 @@ inan = selecttrades(s.data);
 ibadprice     = ibadprice ~= 1;
 
 % STEP 3) Bad days
-res = [s.mst(:,{'Id','Date'}),...
-       table(accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs),...
-             'VariableNames',{'Isbadday'})];
+res          = s.mst(:,{'Id','Date'});
+res.Isbadday = accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs);
 end
 %% Check stats for returns
 function res = avgtimestep(s,cached)
@@ -164,13 +163,13 @@ mstrow = mstrow(~inan);
 times  = single(unique(mstrow + hhmmssmat2serial(s.data.Time(~inan,:))));
 
 % Calculate average intraday unique time step after selection, bad prices and consolidation
-subs      = uint32(fix(times));
-l         = ones('single');
-n         = accumarray(subs,      l, [nmst,1],   [], l);
-openTime  = accumarray(subs,  times, [nmst,1], @min, l);
-closeTime = accumarray(subs,  times, [nmst,1], @max, l);
-res       = [s.mst(:,{'Id','Date'}),...
-             table((closeTime - openTime)./(n-1), 'VariableNames',{'Timestep'})];
+subs         = uint32(fix(times));
+l            = ones('single');
+n            = accumarray(subs,      l, [nmst,1],   [], l);
+openTime     = accumarray(subs,  times, [nmst,1], @min, l);
+closeTime    = accumarray(subs,  times, [nmst,1], @max, l);
+res          = s.mst(:,{'Id','Date'});
+res.Timestep = (closeTime - openTime)./(n-1);
 end
 %% Check how many bad prices
 function res = cleanprices(s,cached)
