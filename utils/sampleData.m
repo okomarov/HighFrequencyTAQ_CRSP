@@ -31,7 +31,7 @@ testname = 'dailystats';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,{'Min','Max','MedPrice','Nrets'});
+    res = Analyze(testname,[],mst(:, {'File','Id','Date'}));
 end
 [~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst     = [mst, res(pos,{'MedPrice','Nrets'})];
@@ -41,9 +41,8 @@ testname = 'badprices';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,'Baddays',mst(:, {'File','MedPrice'}));
+    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice'}));
 end
-if isa(res, 'dataset'), res = dataset2table(res); end
 [~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst     = [mst, res(pos,'Baddays')];
 
@@ -60,7 +59,7 @@ testname = 'avgtimestep';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,'Timestep', mst(:, {'File','MedPrice'}));
+    res = Analyze(testname,[], mst(:, {'File','Id','Date','MedPrice'}));
 end
 [~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst     = [mst, res(pos,'Timestep')];

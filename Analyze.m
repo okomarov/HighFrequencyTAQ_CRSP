@@ -23,9 +23,10 @@ function res = Analyze(fun, varnames, cached, path2data, debug, varargin)
 %                       able to step through the code in debug mode.
 
 
-if nargin < 3; cached    = [];                  end
-if nargin < 4 || isempty(path2data ); path2data = '.\data\TAQ\T*.mat'; end
-if nargin < 5; debug     = false;               end
+if nargin < 2,                       varnames  = {};                    end
+if nargin < 3,                       cached    = [];                    end
+if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\T*.mat';   end
+if nargin < 5 || isempty(debug);     debug     = false;                 end
 
 % Simply call the specific subroutine
 addpath(genpath('.\utils'))
