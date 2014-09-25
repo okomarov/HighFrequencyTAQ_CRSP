@@ -9,7 +9,7 @@ if nargin < 3 || isempty(keeplong), keeplong = true;    end
 if nargin < 4 || isempty(matname),  matname  = 'Betas'; end
 
 % Load all betas
-loadresults(matname,'betas')
+betas = loadresults(matname);
 if isa(betas,'dataset'), betas = dataset2table(betas); end
 
 % Filter for sp500 members

@@ -8,13 +8,13 @@ if isa(tb,'dataset')
     tb = dataset2table(tb);
 end
 % Load sp500 membership table
-loadresults('spconst')
+spconst = loadresults('spconst');
 
 try
-    loadresults('taq2crsp_sp500','taq2crsp')
+    taq2crsp = loadresults('taq2crsp_sp500');
 catch
     % Load unid2permno
-    loadresults('taq2crsp')
+    taq2crsp = loadresults('taq2crsp');
    
     % Keep only match score 10
     taq2crsp = taq2crsp(taq2crsp.score == 10,:);

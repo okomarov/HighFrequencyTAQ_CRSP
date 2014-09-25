@@ -19,7 +19,7 @@ load(fullfile(path2data,'master'),'-mat')
 % Map unique ID to mst
 testname = 'uniqueID';
 try
-    loadresults(testname,'res')
+    res = loadresults(testname);
 catch
     res = mapUnid2mst(mst, ids);
 end
@@ -29,18 +29,17 @@ mst     = [mst, res(pos, 'UnID')];
 % Median and other dailystats
 testname = 'dailystats';
 try
-    loadresults(testname,'res')
+    res = loadresults(testname);
 catch
     res = Analyze(testname,{'Min','Max','MedPrice','Nrets'});
 end
-if isa(res, 'dataset'), res = dataset2table(res); end 
 [~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst     = [mst, res(pos,{'MedPrice','Nrets'})];
 
 % Bad prices days
 testname = 'badprices';
 try
-    loadresults(testname,'res')
+    res = loadresults(testname);
 catch
     res = Analyze(testname,'Baddays',mst(:, {'File','MedPrice'}));
 end
@@ -59,11 +58,10 @@ mst.Baddays    = mst.Baddays | badseries(mst.UnID);
 % Average time step
 testname = 'avgtimestep';
 try
-    loadresults(testname,'res')
+    res = loadresults(testname);
 catch
     res = Analyze(testname,'Timestep', mst(:, {'File','MedPrice'}));
 end
-if isa(res, 'dataset'), res = dataset2table(res); end
 [~,pos] = ismember(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst     = [mst, res(pos,'Timestep')];
 

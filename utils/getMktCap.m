@@ -1,7 +1,7 @@
 function mktcap = getMktCap(UnIDs,refdates)
 % Load data
-loadresults('taq2crsp'), if isa(taq2crsp,'dataset'), taq2crsp = dataset2table(taq2crsp); end
-loadresults('dseshares')
+taq2crsp = loadresults('taq2crsp');
+dseshares = loadresults('dseshares');
 dseshares = unique(dseshares(:,{'PERMNO', 'SHRSDT','SHRENDDT','SHROUT'}));
 path2data = '.\data\TAQ\sampled';
 master    = load(fullfile(path2data, 'master'), '-mat');

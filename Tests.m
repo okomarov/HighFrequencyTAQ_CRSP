@@ -2,7 +2,7 @@
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
 try
-    loadresults(testname,'res')
+    res = loadresults(testname);
 catch
     res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'));
 end
@@ -60,7 +60,7 @@ plot(x(i40), sample.Price(i40),'xr', x(igood), sample.Price(igood),'.b',...
      x, sample.Price, '-g')
 %% Counts by type
 try
-    loadresults('TAQmaster')
+    TAQmaster = loadresults('TAQmaster');
 catch
     TAQmaster = importMst('.\data\TAQ\raw');
 end
@@ -139,7 +139,7 @@ axis tight
 % Check for how many symbols in master there is no actual data
 
 % TAQmaster symbol and min date
-loadresults('TAQmaster')
+TAQmaster = loadresults('TAQmaster');
 [unsymb,~,subs] = unique(TAQmaster(:,'SYMBOL'));
 unsymb.Date     = accumarray(subs, TAQmaster.FDATE,[],@min);
 
@@ -159,7 +159,7 @@ unsymb.SYMBOL(nontraded)
 %% CRSP link coverage
 
 % TAQ2CRSP link
-loadresults('taq2crsp')
+taq2crsp = loadresults('taq2crsp');
 taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
 taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
 
@@ -235,7 +235,7 @@ axis tight
 
 % Load msenames
 try
-    loadresults('shrcd','res')
+    res = loadresults('shrcd');
 catch
     res = mapShrcd2mst;
 end
@@ -288,7 +288,7 @@ save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrc
 
 testname = 'countnullrets';
 try
-    loadresults(testname,'counts')
+    counts = loadresults(testname);
 catch
     path2data = '.\data\TAQ\sampled';
     counts    = Analyze(testname,[],[], fullfile(path2data,'S5m_*.mat'),1);
@@ -333,7 +333,7 @@ commononly = true;
 
 testname = 'countnullrets';
 try
-    loadresults(testname,'counts')
+    counts = loadresults(testname);
 catch
     path2data = '.\data\TAQ\sampled';
     counts    = Analyze(testname,[],[], fullfile(path2data,'S5m_*.mat'),1);
@@ -528,7 +528,7 @@ Betasspy = getBetas(sp500only, commononly,'20140704_1722_betas');
 % Load SPY (etf)
 loadname = 'spysampled';
 try
-    loadresults(loadname, 'spy')
+    spy = loadresults(loadname);
 catch
     master    = load(fullfile(path2data,'master'),'-mat');
     spy       = getTaqData(master, 'SPY',[],[],'Price',path2data);
@@ -545,7 +545,7 @@ Betasspy.Sysret = ret(pos+1).*Betasspy.Beta;
 [Betas, unids] = getBetas(sp500only, commononly);
 
 % Load sp500proxy
-loadresults('sp500proxy', 'spproxy')
+spproxy = loadresults('sp500proxy');
 
 % Betas*proxy
 spproxy      = iprice2dret(spproxy);
@@ -555,7 +555,7 @@ Betas.Sysret = ret(pos+1).*Betas.Beta;
 
 % Daily rets
 try
-    loadresults('dailyret','rets')
+    rest = loadresults('dailyret');
 catch
     path2data = '.\data\TAQ\sampled';
     rets = Analyze('dailyret', [], [], fullfile(path2data,'S5m*.mat'));
@@ -583,7 +583,7 @@ symbol = 'AAPL';
 dovernight = false;
 
 % Load SP500
-loadresults('spysampled','SPY')
+SPY = loadresults('spysampled');
 
 % Which files to loop for
 d      = '.\data\TAQ';
@@ -665,8 +665,8 @@ dynamicDateTicks
 hold on
 
 % Compare against saved betas [Different!]
-loadresults('taq2crsp')
-loadresults('betas','betas2')
+taq2crsp = loadresults('taq2crsp');
+betas2 = loadresults('betas');
 ID = taq2crsp.ID(strcmpi(taq2crsp.symbol,symbol),:);
 betas2 = betas2(betas2.UnID == ID,:);
 betas2 = betas2(~isnan(betas2.Beta),:);
@@ -874,7 +874,7 @@ rmpref('Internet','SMTP_Password')
 addpath .\utils\
 
 % Load Betas
-loadresults('betas','Betas')
+Betas = loadresults('betas');
 
 % Sort betas
 Betas = sortrows(Betas,{'UnID','Date'});

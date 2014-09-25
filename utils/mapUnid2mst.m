@@ -4,7 +4,7 @@ function res = mapUnid2mst(mst, symbols)
 if isa(mst,'dataset'), mst = dataset2table(mst); end
 
 % Get taq2crsp ready
-loadresults('taq2crsp')
+taq2crsp = loadresults('taq2crsp');
 taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
 
 % Preallocate

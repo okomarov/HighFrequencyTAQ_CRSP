@@ -4,7 +4,7 @@ function shrcd = mapShrcd2mst
 
 % Load msenames
 try
-    loadresults('msenames')
+    msenames = loadresults('msenames');
 catch
     msenames = importMsenames('.\data\CRSP\');
 end
@@ -15,7 +15,7 @@ idx      = isfeatchange(msenames(:,{'PERMNO','SHRCD','NAMEDT'}));
 msenames = msenames(idx,:);
 
 % Load taq2crsp
-loadresults('taq2crsp')
+taq2crsp = loadresults('taq2crsp');
 if isa(taq2crsp,'dataset'), taq2crsp = dataset2table(taq2crsp); end
 taq2crsp = taq2crsp(~isnan(taq2crsp.permno),{'ID','permno','datef'});
 % Time consolidation
@@ -44,7 +44,7 @@ mask     = sortrows(mask,'datef');
 mask.Properties.VariableNames{1} = 'Date';
 
 % Sample dates
-loadresults('uniqueID')
+uniqueID = loadresults('uniqueID');
 refdates = unique(uniqueID.Date);
 shrcd    = sampledates(shrcd,refdates);
 mask     = sampledates(mask,refdates);

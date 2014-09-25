@@ -6,9 +6,9 @@ function sp500proxy = sp500intraday(path2data,freq)
 % - Filtering out by membership should be complemented with dragging of the
 % last avilable number of shares
 
-loadresults('taq2crsp_sp500','taq2crsp')
-loadresults('spconst')
-loadresults('dseshares')
+taq2crsp  = loadresults('taq2crsp_sp500');
+spconst   = loadresults('spconst');
+dseshares = loadresults('dseshares');
 if nargin < 1 || isempty(path2data), path2data = '.\data\TAQ\sampled\5min'; end
 master = load(fullfile(path2data, 'master'), '-mat');
 
@@ -92,12 +92,12 @@ delete(gcp)
 sp500proxy = cat(1,sp500proxy{:});
 
 % Save
-matname = sprintf('%s_%s%dm.mat',datestr(now,'yyyymmdd_HHMM'),'sp500proxy',freq);
+matname = sprintf('%s_sp500proxy%dm.mat',datestr(now,'yyyymmdd_HHMM'),freq);
 save(fullfile('.\results',matname), 'sp500proxy')
 
 %% Plot vs spyders
 if nargout == 0
-    loadresults('spysampled')
+    spysampled = loadresults('spysampled');
     
     subplot(211)
     plot(datetime(datevec(sp500proxy.Datetime)), sp500proxy.Price)

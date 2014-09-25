@@ -16,7 +16,6 @@ end
 if useproxy
     name = sprintf('sp500proxy%dm',freq);
     try
-        loadresults(name, 'sp500')
     catch
         sp500 = sp500intraday(path2data);
     end
@@ -24,12 +23,13 @@ if useproxy
 else
     name = sprintf('spysampled%dm',freq);
     try
-        loadresults(name, 'sp500')
     catch
         master = load(fullfile(path2data,'master'),'-mat');
         sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
         fname  = sprintf('.\\results\\%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name);
         save(fname, 'sp500')
+    betas = loadresults(name);
+            sp500 = loadresults(name);
     end
 end
     % SP500 ret (zeroing overnight)
