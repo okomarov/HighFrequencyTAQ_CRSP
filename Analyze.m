@@ -60,10 +60,8 @@ try
         s      = load(fullfile(root,dd(f).name));
         cache  = [cached(f), f];
         % Convert to tables
-        if isa(s.data,'dataset')
-            s.data = dataset2table(s.data); 
-            s.mst = dataset2table(s.mst);
-        end
+        if isa(s.data,'dataset'), s.data = dataset2table(s.data); end
+        if isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
         % Apply function
         res{f} = fhandle(s, cache, varargin{:});
     end

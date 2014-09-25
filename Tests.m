@@ -334,7 +334,6 @@ commononly = true;
 testname = 'countnullrets';
 try
     loadresults(testname,'counts')
-    if isa(counts,'dataset'), counts = dataset2table(counts); end
 catch
     path2data = '.\data\TAQ\sampled';
     counts    = Analyze(testname,[],[], fullfile(path2data,'S5m_*.mat'),1);
