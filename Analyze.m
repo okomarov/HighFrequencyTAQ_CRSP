@@ -1,4 +1,4 @@
-function res = Analyze(fun, varnames, cached, path2data, debug, varargin)
+function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
 
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -73,7 +73,8 @@ try
     end
     
     % Export results and notify
-    save(fullfile(writeto,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun)), 'res')
+    filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun);
+    save(fullfile(writeto,filename), 'res')
     message = sprintf('Task ''%s'' terminated in %s',fun,sec2time(toc));
     disp(message)
     if ~debug, sendmail('o.komarov11@imperial.ac.uk', message,''); end
