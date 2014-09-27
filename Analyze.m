@@ -92,7 +92,8 @@ if ~debug
 end
 end
 %% Check stats for returns
-function res = dailystats(s,~)
+function res = dailystats(s,cached)
+cached = cached{1};
 % DAILYSTATS Relevant for median calculation
 
 % STEP 1) Selection
@@ -116,7 +117,7 @@ nnovernight(idx) = false;
 ret              = ret(nnovernight);
 subs             = subs(nnovernight);
 % Collect results (note, nrets can be negative if it was only one price, which was selected out)
-res          = s.mst(:,{'Id','Date'});
+res          = cached(:,{'Id','Date'});
 res.Min      = accumarray(subs, ret,[nmst,1],@min,fill);
 res.Max      = accumarray(subs, ret,[nmst,1],@max,fill);
 res.MedPrice = Med;
@@ -139,7 +140,7 @@ inan = selecttrades(s.data);
 ibadprice     = ibadprice ~= 1;
 
 % STEP 3) Bad days
-res          = s.mst(:,{'Id','Date'});
+res          = cached(:,{'Id','Date'});
 res.Isbadday = accumarray(RunLength((1:size(s.mst,1))',nobs), inan | ibadprice) > ceil(dailycut*nobs);
 end
 %% Check stats for returns
@@ -168,7 +169,7 @@ l            = ones('single');
 n            = accumarray(subs,      l, [nmst,1],   [], l);
 openTime     = accumarray(subs,  times, [nmst,1], @min, l);
 closeTime    = accumarray(subs,  times, [nmst,1], @max, l);
-res          = s.mst(:,{'Id','Date'});
+res          = cached(:,{'Id','Date'});
 res.Timestep = (closeTime - openTime)./(n-1);
 end
 %% Check how many bad prices
