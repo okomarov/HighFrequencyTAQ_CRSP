@@ -22,7 +22,6 @@ function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, vara
 %   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
 
-
 if nargin < 2,                       varnames  = {};                    end
 if nargin < 3,                       cached    = [];                    end
 if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\T*.mat';   end
@@ -88,7 +87,7 @@ catch err
 end
 if ~debug
     matlabpool close
-    rmpref('Internet','SMTP_Password')
+%     rmpref('Internet','SMTP_Password')
 end
 end
 %% Check stats for returns
@@ -237,7 +236,7 @@ iprice     = iprice ~= 1;
 inan       = inan | iprice;
 
 % STEP 3) Bad series/days
-inan = inan | RunLength(cached.Baddays,nobs);
+inan = inan | RunLength(cached.Isbadday,nobs);
 
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
 inan = inan | RunLength(cached.Timestep,nobs);
