@@ -3,35 +3,44 @@ if nargin < 1 || isempty(lookback), lookback = 1;     end
 if nargin < 2 || isempty(freq),     freq     = 5;     end
 if nargin < 3 || isempty(useproxy), useproxy = false; end
 
+writeto = '.\results\';
+
 % Sample if data doesn't exist
 path2data = sprintf('.\\data\\TAQ\\sampled\\%dmin', freq);
-if exist(path2data,'dir') ~= 7 || isempty(ls(path2data))
+if exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2
+    fprintf('%s: sampling data at %d min.\n', mfilename, freq)
     step    = freq/(60*24);
     grid    = (9.5/24:step:16/24)';
     fmtname = sprintf('S%dm_%%04d.mat',freq);
     sampleData(grid, path2data, fmtname);
 end 
 
-% Use self-built sp500 proxy
-if useproxy
-    name = sprintf('sp500proxy%dm',freq);
-    try
-    catch
-        sp500 = sp500intraday(path2data);
-    end
-% Use spyders    
-else
-    name = sprintf('spysampled%dm',freq);
-    try
-    catch
-        master = load(fullfile(path2data,'master'),'-mat');
-        sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
-        fname  = sprintf('.\\results\\%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name);
-        save(fname, 'sp500')
+try
+    name  = sprintf('betacomponents%dm',freq);
     betas = loadresults(name);
+catch
+    % Use self-built sp500 proxy
+    if useproxy
+        name = sprintf('sp500proxy%dm',freq);
+        try
             sp500 = loadresults(name);
+        catch
+            fprintf('Building SP500 proxy at %dm\n',freq)
+            sp500 = sp500intraday(path2data);
+        end
+        % Use spyders
+    else
+        name = sprintf('spysampled%dm',freq);
+        try
+            sp500 = loadresults(name);
+        catch
+            fprintf('Sampling SPY at %dm\n',freq)
+            master = load(fullfile(path2data,'master'),'-mat');
+            sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
+            fname  = fullfile(writeto, sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name));
+            save(fname, 'sp500')
+        end
     end
-end
     % SP500 ret (zeroing overnight)
     spret = [sp500.Datetime(2:end) sp500.Price(2:end)./sp500.Price(1:end-1)-1];
     spret = spret(diff(rem(sp500.Datetime,1)) >= 0,:);
@@ -54,17 +63,22 @@ end
     end
     
     % Calculate beta components: sum(r*benchr) and sum(benchr^2)
-    fmtname = sprintf('S%dm_*.mat',freq);
-    betas   = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
+    fmtname          = sprintf('S%dm_*.mat',freq);
+    [betas,filename] = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
     
-    % Sort and create subs
-    betas = sortrows(betas,{'UnID','Date'});
-    [~,~,subs] = unique(betas.UnID);
-    
-    % Beta
-    num        = accumarray(subs, betas.Num, [], @(x) runsum(lookback,x));
-    den        = accumarray(subs, betas.Den, [], @(x) runsum(lookback,x));
-    betas.Beta = cat(1,num{:})./cat(1,den{:});
+    % Rename to append the sampling frequency
+    newfullname = fullfile(writeto,regexprep(filename,'\.mat',sprintf('%dm$0',freq)));
+    movefile(fullfile(writeto,filename), newfullname);
+end
+
+% Sort and create subs
+betas = sortrows(betas,{'UnID','Date'});
+[~,~,subs] = unique(betas.UnID);
+
+% Beta
+num        = accumarray(subs, betas.Num, [], @(x) runsum(lookback,x));
+den        = accumarray(subs, betas.Den, [], @(x) runsum(lookback,x));
+betas.Beta = cat(1,num{:})./cat(1,den{:});
 end
 
 function rs = runsum(lookback, data)
