@@ -16,6 +16,7 @@ if exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2
 end 
 
 try
+    fprintf('%s: loading betacomponents at %d min.\n', mfilename, freq)
     name  = sprintf('betacomponents%dm',freq);
     betas = loadresults(name);
 catch
@@ -25,7 +26,7 @@ catch
         try
             sp500 = loadresults(name);
         catch
-            fprintf('Building SP500 proxy at %dm\n',freq)
+            fprintf('%s: creating ssp500proxy at %d min.\n', mfilename, freq)
             sp500 = sp500intraday(path2data);
         end
         % Use spyders
@@ -34,7 +35,7 @@ catch
         try
             sp500 = loadresults(name);
         catch
-            fprintf('Sampling SPY at %dm\n',freq)
+            fprintf('%s: extracting spyders at %d min.\n', mfilename, freq)
             master = load(fullfile(path2data,'master'),'-mat');
             sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
             fname  = fullfile(writeto, sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name));
@@ -63,6 +64,7 @@ catch
     end
     
     % Calculate beta components: sum(r*benchr) and sum(benchr^2)
+    fprintf('%s: creating betacomponents at %d min.\n', mfilename, freq)
     fmtname          = sprintf('S%dm_*.mat',freq);
     [betas,filename] = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
     
@@ -72,7 +74,7 @@ catch
 end
 
 % Sort and create subs
-betas = sortrows(betas,{'UnID','Date'});
+betas      = sortrows(betas,{'UnID','Date'});
 [~,~,subs] = unique(betas.UnID);
 
 % Beta

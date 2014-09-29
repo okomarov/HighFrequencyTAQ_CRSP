@@ -3,6 +3,17 @@ function dfequery = importDfequery(path2zip)
 %
 %   IMPORTDFEQUERY (PATH2ZIP) 
 
+%% Subs missing return codes and 'B','C' with NaN but add additional uint8 column to map it
+%{
+-66.0 Valid current price but no valid previous price. Either first price, unknown
+exchange between current and previous price, or more than 10 periods
+between time t and the time of the preceding price t’.
+-77.0 Not trading on the current exchange at time t.
+-88.0 No data available to calculate returns.
+-99.0 Missing return due to missing price at time t; usually due to suspension
+in trading or trading on unknown exchange.
+%}
+
 zipfile = 'CRSPdfequery.csv.zip';
 writeto = '.\results';
 

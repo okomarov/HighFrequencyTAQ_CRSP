@@ -1,9 +1,9 @@
-function importCsv2(path2zip)
-%% IMPORTCSV Imports WRDS .csv with TAQ prices
+function importCsv2(path2zip,opt)
+% IMPORTCSV Imports WRDS .csv with TAQ prices
 %   
 %   IMPORTCSV(PATH2ZIP) Imports zipped .CSVs from the PATH2ZIP directory
 %                       and saves them into .mat files under
-%                       PATH2ZIP\mat\T####.mat. 
+%                       $PATH2ZIP$\mat\T####.mat. 
 %
 %
 % The .CSVs should be downloaded from WRDS with the following columns. The 
@@ -31,39 +31,42 @@ function importCsv2(path2zip)
 %       .From, starting row in data                 uint32
 %       .To,   ending row in data                   uint32
 %
-% For details on the data and its fields see <a
-% href="http://www.nyxdata.com/Data-Products/Monthly-TAQ-DVD">Monthly TAQ
-% DVD</a>.
+% For details on the data and its fields see <a href="http://www.nyxdata.com/Data-Products/Monthly-TAQ-DVD">Monthly TAQ DVD</a>.
 
+if nargin < 2
+    opt.Nrec = 1e5;
+    opt.Nblk = 100;
+    opt.Scan = {'Delimiter',',','HeaderLines',1}; 
+end
+    
 %% Import CSV
-d    = dir(fullfile(path2zip,'*.zip'));
-opt  = {'Delimiter',',','HeaderLines',1};
-nrec = 1e5;
-N    = 100; % approx 200MB in RAM
+d = dir(fullfile(path2zip,'*.zip'));
 
-data = cell(N,11);
-[ids, mst] = deal(cell(N,1));
+% Preallocate
+data = cell(opt.Nblk,11);
+ids  = cell(opt.Nblk,1);
+mst  = cell(opt.Nblk,1);
 ii   = 0;
 c    = 0;
 
 % Loop each csv
 for f = 1:numel(d)
     filename = unzip(fullfile(path2zip,d(f).name),path2zip);
-    %filename = {'E:\data\7083687f89f5d708.csv'};
     fid      = fopen(filename{end});
     status   = true;
     fprintf('%-40s%s\n',d(f).name,datestr(now,'dd HH:MM:SS'))
     
     while status
-        while ii < N && ~feof(fid)
+        while ii < opt.Nblk && ~feof(fid)
             ii = ii + 1;
             
             %    1       2       3-5       6       7        8           9           10          11
             % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
-            data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',nrec,opt{:});
+            data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
+                                  opt.Nrec,opt.Scan{:});
             
             % Make sure to keep whole day on same file
-            if ii == N
+            if ii == opt.Nblk
                 from       = find(diff(data{ii,2}),1,'last')+1;
                 resdata    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
                 data(ii,:) = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
@@ -89,9 +92,9 @@ for f = 1:numel(d)
         fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
         % Reset containers
-        data = [resdata;  cell(N,11)];
-        ids  = [{restck}; cell(N,1)];
-        mst  = [{resmst}; cell(N,1)];
+        data = [resdata;  cell(opt.Nblk,11)];
+        ids  = [{restck}; cell(opt.Nblk,1)];
+        mst  = [{resmst}; cell(opt.Nblk,1)];
         ii   = 1;
     end
 end
@@ -109,7 +112,7 @@ fileattrib(fullfile(path2zip,'mat','*.mat'),'+h -w','','s')
 makeMasterFile(fullfile(path2zip,'mat'))
 
 %% Check if imported correctly
-tic;load('..\master','-mat');toc
+load(fullfile(path2zip,'mat','master'),'-mat');
 for y = 1993:2010
     dd = fullfile(path2zip, '..\datachk\',sprintf('%d',y));
     d  = dir(fullfile(dd,'*.zip'));
@@ -125,17 +128,17 @@ for y = 1993:2010
         fclose(fid);
         delete(filename{1});
         
-        idxM = mst{2}(:,1) == find(strcmpi(regexp(d(f).name,'\w+(?=_)','match'), ids)) & ...
-               fix(mst{2}(:,2)/1e4) == y;
-        tmp  = mst{2}(idxM,:);
+        idxM = mst.Id == find(strcmpi(regexp(d(f).name,'\w+(?=_)','match'), ids)) & ...
+               fix(mst.Date/1e4) == y;
+        tmp  = mst(idxM,:);
         cds  = unique(tmp(:,end));
         nCds = numel(cds);
         dataC = cell(nCds,6);
         for ii = 1:nCds
-            s = load(fullfile('..\',sprintf('T%04d.mat',cds(ii))));
+            s           = load(fullfile(path2zip,'mat',sprintf('T%04d.mat',cds(ii))));
             dataC(ii,:) = s.data;
-            idxTmp = tmp(:,end) == cds(ii);
-            idx    = false(size(dataC{ii,2}));
+            idxTmp      = tmp(:,end) == cds(ii);
+            idx         = false(size(dataC{ii,2}));
             for it = find(idxTmp)'
                 idx(tmp(it,3):tmp(it,4)) = true;
             end
@@ -151,7 +154,7 @@ load(fullfile(path2zip,'mat','master'),'-mat')
 [unSer,~,subs] = unique(mst(:,{'Id','Date'}));
 
 % Check if the split spans more than 2 files [OK - it does not]
-if nnz(accumarray(subs,1) > 2); error('Split spans more than 2 files'); end
+if nnz(accumarray(subs,1) > 1); error('There are splits'); end
 end
 
 % Process parsed blocks from .csv
