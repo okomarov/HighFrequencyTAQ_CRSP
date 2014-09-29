@@ -361,7 +361,7 @@ refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
 counts   = sampledates(counts,refdates,1);
 
 % Get mkt capitalizations
-mktcap = getMktCap(unids, refdates);
+mktcap = estimateMktCap(unids, refdates);
 
 % Intersect/extract data
 [~,icount,icap] = intersect(getVariableNames(counts), getVariableNames(mktcap));
@@ -443,7 +443,7 @@ refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
 Betas    = sampledates(Betas,refdates,1);
 
 % Get mkt capitalizations
-mktcap = getMktCap(unids, refdates);
+mktcap = estimateMktCap(unids, refdates);
 
 % Intersect/extract data
 [~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));
@@ -491,7 +491,7 @@ refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
 Betas    = sampledates(Betas,refdates,1);
 
 % Get mkt capitalizations
-mktcap = getMktCap(unids, refdates);
+mktcap = estimateMktCap(unids, refdates);
 
 % Intersect/extract data
 [~,ibetas,icap] = intersect(getVariableNames(Betas), getVariableNames(mktcap));

@@ -1,4 +1,4 @@
-function mktcap = getMktCap(UnIDs,refdates)
+function mktcap = estimateMktCap(UnIDs,refdates)
 % Load data
 taq2crsp = loadresults('taq2crsp');
 dseshares = loadresults('dseshares');
