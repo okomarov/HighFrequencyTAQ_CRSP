@@ -40,7 +40,9 @@ if nargin < 2
 end
     
 %% Import CSV
-d = dir(fullfile(path2zip,'*.zip'));
+d         = dir(fullfile(path2zip,'*.zip'));
+filenames = regexp(sort({d.name})', '\d{6}_\d{1,2}.zip','match','once');
+filenames = filenames(~cellfun('isempty', filenames));
 
 % Preallocate
 data = cell(opt.Nblk,11);
@@ -50,11 +52,11 @@ ii   = 0;
 c    = 0;
 
 % Loop each csv
-for f = 1:numel(d)
-    filename = unzip(fullfile(path2zip,d(f).name),path2zip);
+for f = 1:numel(filenames)
+    filename = unzip(fullfile(path2zip,filenames{f}),path2zip);
     fid      = fopen(filename{end});
     status   = true;
-    fprintf('%-40s%s\n',d(f).name,datestr(now,'dd HH:MM:SS'))
+    fprintf('%-40s%s\n',filenames{f},datestr(now,'dd HH:MM:SS'))
     
     while status
         while ii < opt.Nblk && ~feof(fid)
@@ -70,7 +72,7 @@ for f = 1:numel(d)
                 from       = find(diff(data{ii,2}),1,'last')+1;
                 resdata    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
                 data(ii,:) = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
-                [restck,resmst,resdata] = processDataset(resdata);
+                [resids,resmst,resdata] = processDataset(resdata);
             end
             [ids{ii},mst{ii},data(ii,:)] = processDataset(data(ii,:));
         end
@@ -88,12 +90,12 @@ for f = 1:numel(d)
         
         % Saving cell data and master as is - tested 1.6GB - 21 sec to save; 4.5 sec to load; -30% space
         c = c+1;
-        save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','tck','-v7.3')
+        save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','ids','-v7.3')
         fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
         % Reset containers
         data = [resdata;  cell(opt.Nblk,11)];
-        ids  = [{restck}; cell(opt.Nblk,1)];
+        ids  = [{resids}; cell(opt.Nblk,1)];
         mst  = [{resmst}; cell(opt.Nblk,1)];
         ii   = 1;
     end
@@ -102,7 +104,7 @@ end
 % LAST iteration exits without processing saving, thus do it here
 [ids,mst,data] = consolidateDataset(ids,mst,data);
 c = c+1;
-save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','tck','-v7.3')
+save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','ids','-v7.3')
 fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
 %% Set data to read only and hidden
