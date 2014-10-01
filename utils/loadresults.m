@@ -5,6 +5,9 @@ function out = loadresults(name)
 
 resdir  = '.\results';
 files   = dir(fullfile(resdir, sprintf('*%s.mat', name)));
+if isempty(files)
+    error('loadresults:nofile','No files matching ''%s'' found.',name)
+end
 [~,idx] = max([files.datenum]); % Most recent
 s       = load(fullfile(resdir,files(idx).name));
 out     = s.(char(fieldnames(s)));

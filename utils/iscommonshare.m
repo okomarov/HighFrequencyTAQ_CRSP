@@ -6,7 +6,7 @@ if isa(tb,'dataset')
     tb = dataset2table(tb);
 end
 
-loadresults('shrcd')
+shrcd = loadresults('shrcd');
 shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'UnID','Date'});
 tf    = ismember(tb(:,{'UnID','Date'}), shrcd);
 end

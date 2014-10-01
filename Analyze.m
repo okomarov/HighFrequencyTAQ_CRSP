@@ -50,7 +50,8 @@ try
     if isempty(cached)
         cached = cell(N,1);
     elseif ~iscell(cached)
-        cached = accumarray(cached.File,(1:size(cached))',[],@(x) {cached(x,2:end)});
+        vnames = setdiff(getVariableNames(cached),'File','stable');
+        cached = accumarray(cached.File,(1:size(cached))',[],@(x) {cached(x,vnames)});
     end
     
     % LOOP in parallel

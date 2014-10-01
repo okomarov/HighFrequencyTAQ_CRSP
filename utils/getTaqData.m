@@ -108,7 +108,7 @@ for ii = 1:nfiles
     % Records within the loaded data file
     mstfile = master(master.File == files(ii),:);
     idata   = mcolon(mstfile.From,mstfile.To);
-    blocks  = mstfile.To - mstfile.From + 1;
+    blocks  = double(mstfile.To - mstfile.From + 1);
     Id      = RunLength(mstfile.Id, blocks);
     out{ii} = table(Id(:),'VariableNames',{'Id'}); 
     if hasUnID
