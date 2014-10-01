@@ -386,15 +386,17 @@ end
 res = {g127, correction, condition, nullprice, nfile};
 end
 
-function res = dailyret(s,cached)
+function res = return_overnight(s,cached)
+cached = cached{1};
 % Calculate daily return with daily initial NaNs offset
-pnan     = find(isnan(s.data.Price));
-offset   = histc(pnan,[s.mst.From, s.mst.To+1]');
-offset   = offset(1:2:end);
-to       = s.mst.To;
-from     = s.mst.From + offset;
-res      = s.mst(:,{'UnID','Date'});
-res.Dret = s.data.Price(to)./s.data.Price(from)-1;
+pnan         = find(isnan(s.data.Price));
+offset       = histc(pnan,[s.mst.From, s.mst.To+1]');
+offset       = offset(1:2:end);
+to           = s.mst.To;
+from         = s.mst.From + uint32(offset);
+cached.Ocret = s.data.Price(to)./s.data.Price(from)-1;
+cached.Onret = (1 + cached.Totret)./(1 + cached.Ocret) - 1; 
+res          = cached;
 end
 
 function res = countnullrets(s,cached)
