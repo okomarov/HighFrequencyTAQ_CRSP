@@ -1,7 +1,8 @@
-function betas = estimateBetas(lookback, freq, useproxy)
+function betas = estimateBetas(lookback, freq, useon, useproxy)
 if nargin < 1 || isempty(lookback), lookback = 1;     end
 if nargin < 2 || isempty(freq),     freq     = 5;     end
-if nargin < 3 || isempty(useproxy), useproxy = false; end
+if nargin < 3 || isempty(useon),    useon    = false; end
+if nargin < 4 || isempty(useproxy), useproxy = false; end
 
 writeto = '.\results\';
 
@@ -42,10 +43,22 @@ catch
             save(fname, 'sp500')
         end
     end
-    % SP500 ret (zeroing overnight)
-    spret = [sp500.Datetime(2:end) sp500.Price(2:end)./sp500.Price(1:end-1)-1];
-    spret = spret(diff(rem(sp500.Datetime,1)) >= 0,:);
     
+    % SP500 ret 
+    spret = [sp500.Datetime(2:end) sp500.Price(2:end)./sp500.Price(1:end-1)-1];
+    ion   = diff(rem(sp500.Datetime,1)) >= 0;
+    
+    % Add overnight return or discard
+    if useon
+        ion               = find(~ion);
+        reton             = loadresults('return_overnight');
+        spreton           = reton(reton.UnID == 29904,:);
+        [idx,pos]         = ismember(serial2yyyymmdd(spret(ion,1)),spreton.Date);
+        spret(ion(idx),2) = spreton.Onret(pos(idx));
+    else
+        spret = spret(ion,:);
+    end
+        
     % Cache SP500 returns by days
     load(fullfile(path2data,'master'),'-mat','mst');
     nfiles = max(mst.File);
@@ -61,6 +74,16 @@ catch
         nnzero     = pos ~= 0;
         isp        = ismembc(spdays, unMstDates{ii});
         cached{ii} = {spret(isp) spdays(pos(nnzero))};
+    end
+    
+    % Cache overnight returns
+    if useon
+        reton.File      = zeros(size(reton,1),1,'uint16');
+        [idx,pos]       = ismemberb(reton(:,{'Date','UnID'}), mst(:,{'Date','UnID'}));
+        reton.File(idx) = mst.File(pos(idx));
+        reton           = reton(reton.File ~= 0,{'UnID','Date','Onret','File'});
+        cached          = [cached,...
+                           accumarray(reton.File,(1:size(reton))',[],@(x) {reton(x,{'UnID','Date','Onret'})})];
     end
     
     % Calculate beta components: sum(r*benchr) and sum(benchr^2)
