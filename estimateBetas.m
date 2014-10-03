@@ -77,9 +77,12 @@ catch
     end
     
     % Cache overnight returns
+    % Note: the match is on Date -Id rather than Date - UnID to avoid the
+    %       duplication of overnight returns that comes from the 
+    %       Date - Permno mapping to Date - UnId/Id
     if useon
         reton.File      = zeros(size(reton,1),1,'uint16');
-        [idx,pos]       = ismemberb(reton(:,{'Date','UnID'}), mst(:,{'Date','UnID'}));
+        [idx,pos]       = ismemberb(reton(:,{'Date','Id'}), mst(:,{'Date','Id'}));
         reton.File(idx) = mst.File(pos(idx));
         reton           = reton(reton.File ~= 0,{'UnID','Date','Onret','File'});
         cached          = [cached,...
