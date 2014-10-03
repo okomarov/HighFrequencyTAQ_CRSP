@@ -553,7 +553,7 @@ spproxy      = iprice2dret(spproxy);
 ret          = [NaN; spproxy.Ret];
 Betas.Sysret = ret(pos+1).*Betas.Beta;
 
-% Daily rets
+% Daily rets [Use the dfequery from crsp]
 try
     rest = loadresults('dailyret');
 catch

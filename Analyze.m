@@ -1,4 +1,4 @@
-function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
+function [res, filename] = Analyze(fun, varnames, cached, path2mat, debug, varargin)
 
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -24,16 +24,16 @@ function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, vara
 
 if nargin < 2,                       varnames  = {};                    end
 if nargin < 3,                       cached    = [];                    end
-if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\T*.mat';   end
+if nargin < 4 || isempty(path2mat);  path2mat = '.\data\TAQ\T*.mat';   end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
 % Simply call the specific subroutine
 addpath(genpath('.\utils'))
 writeto = '.\results\';
-root    = fileparts(path2data);
+root    = fileparts(path2mat);
 
 % Open matlabpool
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
+poolStartup(3, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
 % Get email credentials if not in debug
 if ~debug; setupemail; end
@@ -42,7 +42,7 @@ fhandle = str2func(fun);
 
 try
     tic
-    dd  = dir(path2data);
+    dd  = dir(path2mat);
     N   = numel(dd);
     res = deal(cell(N,1));
     
@@ -87,7 +87,7 @@ catch err
     rethrow(err)
 end
 if ~debug
-    matlabpool close
+    delete(gcp('nocreate'))
 %     rmpref('Internet','SMTP_Password')
 end
 end
