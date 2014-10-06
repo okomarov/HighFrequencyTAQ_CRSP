@@ -396,35 +396,7 @@ else
     saveas(gcf, '.\results\NullRetCounts_All_mktcap.png')
 end
 %% Beta quantiles
-addpath .\utils\
-
-% Filter settings
-sp500only  = true;
-commononly = true;
-
-% Get Betas
-Betas = getBetas(sp500only, commononly);
-
-% Sample/expand
-refdates = serial2yyyymmdd(datenum(1993,2:234,1)-1);
-Betas    = sampledates(Betas,refdates,1);
-
-% All days
-% refdates = Betas.Date;
-% tmp      = table2array(Betas);
-
-% Plot
-plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
-plot(plotdates, prctile(Betas(:,2:end),10:10:90,2))
-legend(arrayfun(@(x) sprintf('%d^{th} ',x),10:10:90,'un',0))
-
-if sp500only
-    title 'Cross-sectional percentiles of SP500 Betas (with proxy)'
-    saveas(gcf, '.\results\BetasSP500_proxy.png')
-else
-    title 'Cross-sectional percentiles of all Betas (with proxy)'
-    saveas(gcf, '.\results\BetasAll_proxy.png')
-end
+betaPercentiles(10:10:90,1,5,true,false,true,true)
 %% Beta quantiles on mkt cap
 addpath .\utils\
 
