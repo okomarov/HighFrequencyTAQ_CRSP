@@ -18,9 +18,10 @@ end
 
 try
     fprintf('%s: loading betacomponents at %d min.\n', mfilename, freq)
-    name  = sprintf('betacomponents%dm',freq);
+    name  = matname('betacomponents',freq, useon, useproxy);
     betas = loadresults(name);
 catch
+    fprintf('%s: betacomponents not found. Estimating\n', mfilename)
     % Use self-built sp500 proxy
     if useproxy
         name = sprintf('sp500proxy%dm',freq);
@@ -45,11 +46,12 @@ catch
     end
     
     % SP500 ret 
-    spret = [sp500.Datetime(2:end) sp500.Price(2:end)./sp500.Price(1:end-1)-1];
-    ion   = diff(rem(sp500.Datetime,1)) >= 0;
+    spret = [sp500.Datetime [NaN; sp500.Price(2:end)./sp500.Price(1:end-1)-1]];
+    ion   = [false; diff(rem(sp500.Datetime,1)) >= 0];
     
     % Add overnight return or discard
     if useon
+        fprintf('%s: adding overnight returns to the index.\n', mfilename)
         ion               = find(~ion);
         reton             = loadresults('return_overnight');
         spreton           = reton(reton.UnID == 29904,:);
@@ -60,9 +62,10 @@ catch
     end
         
     % Cache SP500 returns by days
+    fprintf('%s: caching index returns by days.\n', mfilename)
     load(fullfile(path2data,'master'),'-mat','mst');
     nfiles = max(mst.File);
-    cached = cell(nfiles,1);
+    cached = cell(nfiles,2);
     
     dates           = fix(spret(:,1));
     [spdays,~,subs] = unique(dates,'stable');
@@ -73,7 +76,7 @@ catch
         pos        = ismembc2(unMstDates{ii}, spdays);
         nnzero     = pos ~= 0;
         isp        = ismembc(spdays, unMstDates{ii});
-        cached{ii} = {spret(isp) spdays(pos(nnzero))};
+        cached(ii,:) = {spret(isp) spdays(pos(nnzero))};
     end
     
     % Cache overnight returns
@@ -81,6 +84,7 @@ catch
     %       duplication of overnight returns that comes from the 
     %       Date - Permno mapping to Date - UnId/Id
     if useon
+        fprintf('%s: adding overnight returns to all other series.\n', mfilename)
         reton.File      = zeros(size(reton,1),1,'uint16');
         [idx,pos]       = ismemberb(reton(:,{'Date','Id'}), mst(:,{'Date','Id'}));
         reton.File(idx) = mst.File(pos(idx));
@@ -95,9 +99,11 @@ catch
     [betas,filename] = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
     
     % Rename to append the sampling frequency
-    newfullname = fullfile(writeto,regexprep(filename,'\.mat',sprintf('%dm$0',freq)));
+    name        = regexp(filename,'\w+?(?=\.mat)','match','once');
+    newfullname = fullfile(writeto, matname(name,freq, useon, useproxy));
     movefile(fullfile(writeto,filename), newfullname);
 end
+fprintf('%s: calculating betas with %d day lookback.\n', mfilename, lookback)
 
 % Sort and create subs
 betas      = sortrows(betas,{'UnID','Date'});
@@ -114,4 +120,10 @@ function rs = runsum(lookback, data)
     nonan     = ~isnan(data);
     rs(nonan) = filter(ones(lookback,1), 1, data(nonan), NaN(lookback-1,1));
     rs        = {rs};
+end
+
+function name = matname(name, freq, useon, useproxy)
+if useon,    useon    = 'on'; else useon    = ''; end
+if useproxy, useproxy = 'x';  else useproxy = ''; end
+name = sprintf('%s%dm%s%s', name, freq, useon, useproxy);
 end
