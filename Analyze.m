@@ -59,7 +59,7 @@ try
         disp(f)
         % Load data
         s      = load(fullfile(root,dd(f).name));
-        cache  = [cached(f), f];
+        cache  = [cached(f,:), f];
         % Convert to tables
         if isa(s.data,'dataset'), s.data = dataset2table(s.data); end
         if isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
@@ -273,18 +273,26 @@ end
 end
 
 function res = betacomponents(s,cached)
-spdays = cached{1}{2};
-spyret = cached{1}{1};
+spdays = cached{2};
+spyret = cached{1};
+useon  = numel(cached) == 4;
+if useon
+    onret = cached{3};
+end
+    
 ngrid  = size(spyret{1},1);
 
 % Dates and returns
 dates  = s.data.Datetime;
-ret    = s.data.Price(2:end)./s.data.Price(1:end-1)-1;
-
-% Keep all except overnight
-idx    = diff(rem(dates,1)) >= 0;
-ret    = ret(idx,:);
-
+ret    = [NaN; s.data.Price(2:end)./s.data.Price(1:end-1)-1];
+idx    = [false; diff(rem(dates,1)) >= 0];
+if useon
+    [~,pos]   = ismember(s.mst(:,{'UnID','Date'}), onret(:,{'UnID','Date'}));
+    ret(~idx) = onret.Onret(pos);
+else
+    % Keep all except overnight
+    ret = ret(idx,:);
+end
 % Use a NaN when we don't have SPY returns
 spyret = [NaN(ngrid,1); spyret];
 days   = yyyymmdd2serial(double(s.mst.Date));
