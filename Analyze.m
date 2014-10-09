@@ -91,6 +91,17 @@ if ~debug
 %     rmpref('Internet','SMTP_Password')
 end
 end
+%% 
+function res = maxtradepsec(s,cached)
+% Count per id, date and second
+Id          = cumsum([ones(1,'uint32'); diff(int8(s.data.Time(:,1))) < 0]);
+Dates       = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+[un,~,subs] = unique([Id, Dates, s.data.Time],'rows');
+counts      = [un accumarray(subs,1)];
+% Pick max per date 
+[date,~,subs] = unique(counts(:,2));
+res           = table(date, accumarray(subs,counts(:,end),[],@max),'VariableNames',{'Date','Maxpsec'});
+end
 %% Check stats for returns
 function res = dailystats(s,cached)
 cached = cached{1};

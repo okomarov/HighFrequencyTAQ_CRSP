@@ -1,3 +1,14 @@
+%% Max trades/s
+testname  = 'maxtradepsec';
+try
+    counts = loadresults(testname);
+catch
+    counts = Analyze(testname);
+end
+[Dates, ~, subs] = unique(counts.Date);
+counts = table(yyyymmdd2datetime(Dates), accumarray(subs,counts.Maxpsec,[],@max),'VariableNames',{'Date','Maxpsec'});
+plot(counts.Date, counts.Maxpsec)
+print -depsc -r150 .\results\fig\maxtradepsec
 %% Counts selection rule
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
