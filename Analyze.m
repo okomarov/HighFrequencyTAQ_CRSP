@@ -22,9 +22,9 @@ function [res, filename] = Analyze(fun, varnames, cached, path2mat, debug, varar
 %   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
 
-if nargin < 2,                       varnames  = {};                    end
+if nargin < 2,                       varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
-if nargin < 4 || isempty(path2mat);  path2mat = '.\data\TAQ\T*.mat';   end
+if nargin < 4 || isempty(path2mat);  path2mat = '.\data\TAQ\T*.mat';    end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
 % Simply call the specific subroutine
@@ -33,7 +33,7 @@ writeto = '.\results\';
 root    = fileparts(path2mat);
 
 % Open matlabpool
-poolStartup(3, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
 % Get email credentials if not in debug
 if ~debug; setupemail; end
@@ -58,19 +58,16 @@ try
     parfor f = 1:N
         disp(f)
         % Load data
-        s      = load(fullfile(root,dd(f).name));
+        s      = load(fullfile(root,dd(f).name), varnames{:});
         cache  = [cached(f,:), f];
         % Convert to tables
-        if isa(s.data,'dataset'), s.data = dataset2table(s.data); end
-        if isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
+        if isfield(s,'data') && isa(s.data,'dataset'), s.data = dataset2table(s.data); end
+        if isfield(s,'mst')  && isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
         % Apply function
         res{f} = fhandle(s, cache, varargin{:});
     end
     % Collect all results and convert to dataset
     res = cat(1,res{:});
-    if ~isempty(varnames)
-        res = array2table(res,'VarNames',varnames);
-    end
     
     % Export results and notify
     filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun);
