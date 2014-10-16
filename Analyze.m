@@ -22,9 +22,9 @@ function [res, filename] = Analyze(fun, varnames, cached, path2mat, debug, varar
 %   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
 
-if nargin < 2,                       varnames  = {'data','mst','ids'};  end
+if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
-if nargin < 4 || isempty(path2mat);  path2mat = '.\data\TAQ\T*.mat';    end
+if nargin < 4 || isempty(path2mat);  path2mat  = '.\data\TAQ\T*.mat';    end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
 % Simply call the specific subroutine
