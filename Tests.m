@@ -8,41 +8,48 @@ end
 [Dates, ~, subs] = unique(counts.Date);
 counts = table(yyyymmdd2datetime(Dates), accumarray(subs,counts.Maxpsec,[],@max),'VariableNames',{'Date','Maxpsec'});
 plot(counts.Date, counts.Maxpsec)
-print -depsc -r150 .\results\fig\maxtradepsec
+ylabel 'trades/second'
+print -depsc -r150 .\results\fig\maxtradepsec 
 %% Counts selection rule
+addpath .\utils\magnifyOnFigure\
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'));
+    res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'),1);
 end
+
+
+refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
 
 % Plot 
 for ii = 1:size(res,2)-1
+    data = cat(1,res{:,ii});
+    % Convert literal Cond to numeric
     if ii == 3
-        data          = cat(1,res{:,ii});
         idx           = all(data.Val == ' ' | data.Val == 'E' | data.Val == 'F' | data.Val == '@',2);
         data.Val      = cellstr(data.Val); 
         data.Val(idx) = {'  '};
-        data = unstack(data,'Count','Val');
-    else
-        data = unstack(cat(1,res{:,ii}),'Count','Val');
     end
+    data   = unstack(data,'Count','Val');
+    % Filter out problematic dates
+    data = data(~isprobdate(data.Date),:);
+    
+    % Sample dates
+    data   = sampledates(data,refdates,1);
     vnames = getVariableNames(data);
-    dates  = datenum(double(data.yyyymm/100), double(rem(data.yyyymm,100)+1), 1)-1;
+    dates  = yyyymmdd2serial(data.Date);
     data   = table2array(data(:,2:end));
     data(isnan(data)) = 0;
-    
-    figure
-    subplot(211)
-    title('Montly counts of price observations by type (absolute and %)')
-    area(dates, data)
-    dynamicDateTicks, axis tight
-    
-    subplot(212)
+    clf
     area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
     dynamicDateTicks, axis tight
+%     73.8000   47.2000  434.0000  342.3000
+    magnifyOnFigure(gca,'initialPositionMagnifier',[100,500,50,50],...
+                        'initialPositionSecondaryAxes',[120,100,100,100],...
+                        'secondaryAxesXLim',[99.9,100])
+
     legend(vnames(2:end),'Location','west');
 end
 %% Display Book (G127 - 40) Keep? [YES]

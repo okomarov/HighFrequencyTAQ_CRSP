@@ -350,7 +350,7 @@ end
 
 function res = selrulecounts(s,cached)
 nfile  = uint16(cached{end});
-vnames = {'yyyymm','Val','Count'};
+vnames = {'Date','Val','Count'};
 
 % Sort mst
 if ~issorted(s.mst.From)
