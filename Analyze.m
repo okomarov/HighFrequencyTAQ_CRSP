@@ -356,51 +356,33 @@ vnames = {'yyyymm','Val','Count'};
 if ~issorted(s.mst.From)
     s.mst = sortrows(s.mst,'From');
 end
-s.mst.Date = s.mst.Date/100;
-dates      = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+dates = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+
 
 % G127
-[g127,~,subs] = unique(table(dates,s.data.G127_Correction(:,1)));
-g127.Count    = accumarray(subs,1);
-g127.Properties.VariableNames = vnames;
+[g127,~,subs] = unique([dates,s.data.G127_Correction(:,1)],'rows');
+g127          = table(g127(:,1),g127(:,2),accumarray(subs,1), 'VariableNames', vnames);
 
-% Check if unique date
-onedate = size(g127,1) == 1;
+% Correction
+[correction,~,subs] = unique([dates, s.data.G127_Correction(:,2)],'rows');
+correction          = table(correction(:,1),correction(:,2),accumarray(subs,1), 'VariableNames', vnames);
 
-if onedate
-    yyyymm = g127.yyyymm;
-    
-    % Correction
-    [un,~,subs] = unique(s.data.G127_Correction(:,2));
-    correction  = table(repmat(yyyymm,size(un,1),1), un, accumarray(subs,1),'VariableNames',vnames);
-    
-    % Condition
-    [un,~,subs] = unique(s.data.Condition,'rows');
-    condition   = table(repmat(yyyymm,size(un,1),1),un, accumarray(subs,1),'VariableNames',vnames);
-    
-    % Null price
-    un     = uint8(1:3);
-    counts = histc(s.data.Price, [0,0,inf]);
-    nullprice = table(repmat(yyyymm,nnz(counts),1), un(counts ~= 0), counts(counts ~= 0), 'VariableNames', vnames);
-else
-    % Correction
-    [correction,~,subs] = unique(table(dates, s.data.G127_Correction(:,2)));
-    correction.Count    = accumarray(subs,1);
-    correction.Properties.VariableNames = vnames;
-    
-    % Condition
-    [condition,~,subs] = unique(table(dates, s.data.Condition));
-    condition.Count    = accumarray(subs,1);
-    condition.Properties.VariableNames = vnames;
-    
-    % Null price
-    [~,bins]           = histc(s.data.Price, [0,0,inf]);
-    [nullprice,~,subs] = unique(table(dates, bins));
-    nullprice.Count    = accumarray(subs,1);
-    nullprice.Properties.VariableNames = vnames;
-end
+% Condition
+[condition,~,subs] = unique(table(dates, s.data.Condition));
+condition.Count    = accumarray(subs,1);
+condition.Properties.VariableNames = vnames;
 
-res = {g127, correction, condition, nullprice, nfile};
+% Null price
+bins               = double(s.data.Price ~= 0);
+[nullprice,~,subs] = unique([dates, bins],'rows');
+nullprice          = table(nullprice(:,1), nullprice(:,2), accumarray(subs,1),'VariableNames', vnames);
+
+% Null size
+bins              = double(s.data.Volume ~= 0);
+[nullsize,~,subs] = unique([dates, bins],'rows');
+nullsize          = table(nullsize(:,1), nullsize(:,2), accumarray(subs,1),'VariableNames', vnames);
+
+res = {g127, correction, condition, nullprice, nullsize, nfile};
 end
 
 function res = return_overnight(s,cached)
