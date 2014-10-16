@@ -23,5 +23,6 @@ function idx = selecttrades(data)
 % - corrections, i.e. all but 0
 % - anomalous sale conditions, i.e. all but 'E' (69) Automatic Execution, 'F' (70) Intermarket Sweep Order, ' ' (32) No Sale Condition required or '@' (64) Regular Trade
 % - 0 prices
-idx = (data.G127_Correction(:,1) ~= 0 & data.G127_Correction(:,1) ~= 40) | data.G127_Correction(:,2) ~= 0 | ~all(data.Condition == ' ' | data.Condition == 'E' | data.Condition == 'F' | data.Condition == '@', 2) | data.Price == 0;
+% - size > 0
+idx = (data.G127_Correction(:,1) ~= 0 & data.G127_Correction(:,1) ~= 40) | data.G127_Correction(:,2) ~= 0 | ~all(data.Condition == ' ' | data.Condition == 'E' | data.Condition == 'F' | data.Condition == '@', 2) | data.Price == 0 | data.Size <= 0;
 end
