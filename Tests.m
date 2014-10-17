@@ -12,6 +12,8 @@ ylabel 'trades/second'
 print -depsc -r150 .\results\fig\maxtradepsec 
 %% Counts selection rule
 addpath .\utils\magnifyOnFigure\
+addpath C:\Dropbox\MATLAB\Funzioni\FEX\export_fig
+
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
 try
@@ -24,9 +26,9 @@ end
 refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
 
 % Plot 
-for ii = 1:size(res,2)-1
+for ii = 1:3
     data = cat(1,res{:,ii});
-    % Convert literal Cond to numeric
+    % Bunch conditions
     if ii == 3
         idx           = all(data.Val == ' ' | data.Val == 'E' | data.Val == 'F' | data.Val == '@',2);
         data.Val      = cellstr(data.Val); 
@@ -37,21 +39,56 @@ for ii = 1:size(res,2)-1
     data = data(~isprobdate(data.Date),:);
     
     % Sample dates
-    data   = sampledates(data,refdates,1);
-    vnames = getVariableNames(data);
-    dates  = yyyymmdd2serial(data.Date);
-    data   = table2array(data(:,2:end));
+    data    = sampledates(data,refdates,1);
+    
+    vnames  = getVariableNames(data(:,2:end));
+    dates   = yyyymmdd2serial(data.Date);
+    data    = table2array(data(:,2:end));
     data(isnan(data)) = 0;
-    clf
+    [~,pos] = sort(data(1,:),'descend');
+    data    = data(:,pos);
+    vnames  = vnames(pos);
+    
+    close, figure('Color','white','Renderer', 'opengl'), colormap(lines(size(data,2)))
+    % Main figure
     area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-    dynamicDateTicks, axis tight
-%     73.8000   47.2000  434.0000  342.3000
-    magnifyOnFigure(gca,'initialPositionMagnifier',[100,500,50,50],...
-                        'initialPositionSecondaryAxes',[120,100,100,100],...
-                        'secondaryAxesXLim',[99.9,100])
+    set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
+    dynamicDateTicks, axis tight, ylabel '%'
+    
+    % Legend
+    switch ii
+        case 1, l = {'G127 - rule compliant (0)','G127 - Display Book reported (40)'}; xMagLim = [99.9,100];
+        case 2, l = 'CORR - no corrections (0)';                                       xMagLim = [97,100];
+        case 3, l = {'COND - regular trades (@, ,E,F)','COND - out of sequence (Z)'};  xMagLim = [99.5,100];
+    end
+    legend(l,'Location','southeast');
+    
+    % Magnifier
+    set(gca,'Units','pixels'), pos = get(gca,'Position');
+    magnifyOnFigure(gca,'initialPositionMagnifier',[100,pos(2)+pos(4)-4,50,3],...
+                        'initialPositionSecondaryAxes',[150,40,80,100],...
+                        'secondaryAxesXLim',[728300,729000],'secondaryAxesYLim',xMagLim,...
+                        'edgeWidth',1.5,'EdgeColor','white','mode','manual')
+    set(gca,'XtickLabel','')
 
-    legend(vnames(2:end),'Location','west');
+    export_fig(sprintf('.\\results\\fig\\selrulecount%d.eps',ii), '-r150','-transparent','-opengl','-a1')
 end
+
+% Plot all observations
+close, figure('Color','white','Renderer', 'opengl'), colormap(lines(1))
+
+% Main figure
+data = sum(data,2);
+plot(dates, data)
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
+dynamicDateTicks, axis tight, ylabel 'Number of records'
+ha = gca;
+ha.YRuler.Exponent = 6;
+ha.YRuler.SecondaryLabel.String = 'millions';
+ha.YRuler.SecondaryLabel.FontAngle = 'italic';
+ha.YRuler.SecondaryLabel.Visible = 'on';
+
+export_fig(sprintf('.\\results\\fig\\selrulecount0.eps',ii), '-r150','-transparent','-opengl','-a1')
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
 master    = load(fullfile(path2data, 'master'), '-mat');
