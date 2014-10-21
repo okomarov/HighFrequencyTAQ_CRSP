@@ -161,12 +161,15 @@ inan       = inan | iprice;
 % STEP 3) Bad series/days
 inan = inan | RunLength(cached.Isbadday,nobs);
 
-% STEP 4) Median prices for same timestamps
-mstrow     = uint32(RunLength((1:nmst)',nobs));
-[~,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
-price      = accumarray(subs, 1,[],@fast_median);
-
-
+% STEP 4) Count how many observations we loose from median consolidation
+mstrow     = RunLength((1:nmst)',nobs);
+mstrow     = mstrow(~inan);
+% Count by mst row and timestamp
+[un,~,subs] = unique([mstrow, hhmmssmat2serial(s.data.Time(~inan,:))],'rows');
+counts      =  accumarray(subs, 1)-1;
+% Aggregate by mst row
+res = cached(:,{'Id','Date'});
+res.Nconsolidated = uint32(accumarray(un(:,1),  counts));
 end
 
 % Sampling

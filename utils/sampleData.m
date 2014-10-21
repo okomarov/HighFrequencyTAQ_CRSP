@@ -29,8 +29,8 @@ end
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst.UnID = res.UnID(pos);
 
-% Median and other dailystats
-testname = 'dailystats';
+% Median price
+testname = 'medianprice';
 try
     res = loadresults(testname);
 catch
@@ -38,40 +38,39 @@ catch
 end
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst.MedPrice = res.MedPrice(pos);
-mst.Nrets    = res.Nrets(pos);
 
 % Bad prices days
 testname = 'badprices';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice'}));
+    dailycut = 0.5;
+    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice'}),[],[],dailycut);
 end
-
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst.Isbadday = res.Isbadday(pos);
+mst.Nbad     = res.Nbad(pos);
 
 % Bad series
 totbad         = accumarray(mst.UnID, mst.Isbadday);
 totobs         = accumarray(mst.UnID, mst.To - mst.From +1);
-% hist(totbad./totobs,100)
 badseries      = totbad./totobs > .1;
 badseries(end) = true; % for the unmatched
 mst.Isbadday   = mst.Isbadday | badseries(mst.UnID);
 
-% Average time step
-testname = 'avgtimestep';
+% Count losing obs with timestamp consolidation
+testname = 'consolidationcounts';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,[], mst(:, {'File','Id','Date','MedPrice'}));
+    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}),[],1);
 end
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
-mst.Timestep = res.Timestep(pos);
+mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
-% - Worst case 13 trades with an AVERAGE of 30min timestep
-ifewtrades   = isnan(res.Timestep) | res.Timestep > 1/48 | mst.Nrets < 12;
+ngoodtrades  = mst.To-mst.From+1 - mst.Nbad - mst.Nconsolidated;
+ifewtrades   = ngoodtrades < 13;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Timestep = ifewtrades | perfew(mst.UnID);
 
