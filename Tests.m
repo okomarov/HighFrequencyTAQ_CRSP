@@ -11,8 +11,7 @@ plot(counts.Date, counts.Maxpsec)
 ylabel 'trades/second'
 print -depsc -r150 .\results\fig\maxtradepsec 
 %% Counts selection rule
-addpath .\utils\magnifyOnFigure\
-addpath C:\Dropbox\MATLAB\Funzioni\FEX\export_fig
+addpath .\utils\magnifyOnFigure\ .\utils\export_fig   
 
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
@@ -53,8 +52,8 @@ for ii = 1:3
     % Main figure
     area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
     set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
-    dynamicDateTicks, axis tight, ylabel '%'
-    
+    dynamicDateTicks, axis tight, ylabel '%', set(gca,'Ylim',[50,100])
+      
     % Legend
     switch ii
         case 1, l = {'G127 - rule compliant (0)','G127 - Display Book reported (40)'}; xMagLim = [99.9,100];
@@ -81,7 +80,7 @@ close, figure('Color','white','Renderer', 'opengl'), colormap(lines(1))
 data = sum(data,2);
 plot(dates, data)
 set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
-dynamicDateTicks, axis tight, ylabel 'Number of records'
+dynamicDateTicks, axis tight, ylabel 'Number of trades'
 ha = gca;
 ha.YRuler.Exponent = 6;
 ha.YRuler.SecondaryLabel.String = 'millions';
