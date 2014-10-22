@@ -136,7 +136,7 @@ inan = selecttrades(s.data);
 
 % STEP 3) Bad days
 res          = cached(:,{'Id','Date'});
-subs         = uint32(RunLength((1:size(cached.mst,1))',nobs));
+subs         = uint32(RunLength((1:size(cached,1))',nobs));
 res.Nbadsel  = uint32(accumarray(subs,  inan));
 res.Nbad     = uint32(accumarray(subs,  inan | igoodprice ~= 1));
 res.Isbadday = res.Nbad > ceil(dailycut*nobs);
@@ -163,13 +163,12 @@ inan = inan | RunLength(cached.Isbadday,nobs);
 
 % STEP 4) Count how many observations we loose from median consolidation
 mstrow     = RunLength((1:nmst)',nobs);
-mstrow     = mstrow(~inan);
 % Count by mst row and timestamp
-[un,~,subs] = unique([mstrow, hhmmssmat2serial(s.data.Time(~inan,:))],'rows');
+[un,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
 counts      =  accumarray(subs, 1)-1;
 % Aggregate by mst row
 res = cached(:,{'Id','Date'});
-res.Nconsolidated = uint32(accumarray(un(:,1),  counts));
+res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
 % Sampling

@@ -12,7 +12,7 @@ unID = zeros(size(mst,1),1,'uint16');
 
 % LOOP for each symbol in mst
 for ii = 1:numel(symbols)
-    symbol   = symbol{ii};
+    symbol   = symbols{ii};
     % Extract records from taq2crsp corresponding to TAQ's symbol
     isymbol  = strcmpi(symbol,taq2crsp.symbol);
     tmp      = taq2crsp(isymbol, {'ID','datef'});
