@@ -119,7 +119,8 @@ for ii = 1:nfiles
     end
     % Retrieve data
     if ~any(idatetime)
-        out{ii}.Datetime = RunLength(yyyymmdd2serial(mstfile.Date),blocks) + hhmmssmat2serial(s.data.Time(idata,:));
+        dates            = RunLength(yyyymmdd2serial(mstfile.Date),blocks);
+        out{ii}.Datetime = dates(:) + hhmmssmat2serial(s.data.Time(idata,:));
     end
     for v = 1:numel(varnames)
         fname = varnames{v};
