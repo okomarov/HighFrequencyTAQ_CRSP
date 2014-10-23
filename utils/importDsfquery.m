@@ -1,7 +1,7 @@
-function dfequery = importDfequery(path2zip)
-% IMPORTDFEQUERY Imports the zipped CRSP dfequery dataset into a table
+function dsfquery = importDsfquery(path2zip)
+% IMPORTDSFQUERY Imports the zipped CRSP dsfquery dataset into a table
 %
-%   IMPORTDFEQUERY (PATH2ZIP) 
+%   IMPORTDSFQUERY (PATH2ZIP) 
 %
 % Missing codes:
 %
@@ -15,7 +15,7 @@ function dfequery = importDfequery(path2zip)
 
 % See for details: https://wrds-web.wharton.upenn.edu/wrds//query_forms/variable_descriptions.cfm?legacyPath=/ds/crsp/stock_a&legacyFile=msf.cfm&title=CRSP%20Annual%20Stock&libraryCode=crspa&fileCode=msf&adminEditPath=/wrds/ds/crsp/stock_a/msf_doc.cfm
 
-zipfile = 'CRSPdfequery.csv.zip';
+zipfile = 'CRSPdsfquery.csv.zip';
 writeto = '.\results';
 
 % Unzip and load as row strings
@@ -28,7 +28,7 @@ headers = regexp(headers{1}{1},',','split');
 headers = [upperfirst(headers), 'MissingId'];
 
 % Block process (ret needs additional processing)
-dfequery = [];
+dsfquery = [];
 c        = 0;
 N        = 1e6;
 while ~feof(fid)
@@ -53,21 +53,21 @@ while ~feof(fid)
     
     % Expand pre-allocation
     if mod(c,100) == 1
-        dfequery = [dfequery; cell(100,1)];
+        dsfquery = [dsfquery; cell(100,1)];
     end
     % Convert into table
-    dfequery{c} = table(txt{:}, code, 'VariableNames',headers);
+    dsfquery{c} = table(txt{:}, code, 'VariableNames',headers);
 end
 fclose(fid);
 
 % Concatenate
-dfequery = cat(1,dfequery{:});
+dsfquery = cat(1,dsfquery{:});
 
 % Delete unzipped .csv
 delete(csvfile{:})
 
 % Save
-filename = sprintf('%s_dfequery.mat',datestr(now,'yyyymmdd_HHMM'));
-save(fullfile(writeto, filename), 'dfequery')
+filename = sprintf('%s_dsfquery.mat',datestr(now,'yyyymmdd_HHMM'));
+save(fullfile(writeto, filename), 'dsfquery')
 
 end
