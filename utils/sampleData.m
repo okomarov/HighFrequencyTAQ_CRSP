@@ -63,7 +63,7 @@ testname = 'consolidationcounts';
 try
     res = loadresults(testname);
 catch
-    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}),[],1);
+    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}));
 end
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst.Nconsolidated = res.Nconsolidated(pos);
