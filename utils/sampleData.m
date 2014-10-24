@@ -52,7 +52,8 @@ mst.Isbadday = res.Isbadday(pos);
 mst.Nbad     = res.Nbad(pos);
 
 % Bad series
-totbad         = accumarray(mst.UnID, mst.Isbadday);
+nobs           = mst.To - mst.From +1;
+totbad         = accumarray(mst.UnID(mst.Isbadday), nobs(mst.Isbadday),[max(mst.UnID),1]);
 totobs         = accumarray(mst.UnID, mst.To - mst.From +1);
 badseries      = totbad./totobs > .1;
 badseries(end) = true; % for the unmatched
