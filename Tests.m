@@ -88,6 +88,67 @@ ha.YRuler.SecondaryLabel.FontAngle = 'italic';
 ha.YRuler.SecondaryLabel.Visible = 'on';
 
 export_fig(sprintf('.\\results\\fig\\selrulecount0.eps',ii), '-r150','-transparent','-opengl','-a1')
+%% Overall cleaning counts
+path2data = '.\data\TAQ';
+load(fullfile(path2data,'master'),'-mat')
+
+% Map unique ID to mst
+res      = loadresults('uniqueID');
+[~,pos]  = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+mst.UnID = res.UnID(pos);
+
+% Bad prices days
+res          = loadresults('badprices');
+[~,pos]      = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+mst.Nbadsel  = res.Nbadsel(pos);
+mst.Nbadtot  = res.Nbadtot(pos);
+mst.Isbadday = res.Isbadday(pos);
+
+% Bad series
+nobs            = mst.To - mst.From +1;
+totbad          = accumarray(mst.UnID(mst.Isbadday), nobs(mst.Isbadday),[max(mst.UnID),1]);
+totobs          = accumarray(mst.UnID, nobs);
+badseries       = totbad./totobs > .1;
+badseries(end)  = true; % for the unmatched
+mst.Isbadseries = badseries(mst.UnID);
+
+% Count losing obs with timestamp consolidation
+res               = loadresults('consolidationcounts');
+[~,pos]           = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+mst.Nconsolidated = res.Nconsolidated(pos);
+
+% Select on basis of minimum number of observations
+ngoodtrades    = mst.To-mst.From+1 - mst.Nbad - mst.Nconsolidated;
+mst.Ifewtrades = ngoodtrades < 13;
+perfew         = accumarray(mst.UnID, mst.Ifewtrades)./accumarray(mst.UnID, 1) > .5;
+mst.Ifewseries = perfew(mst.UnID);
+
+% Accumulate monthly
+[undates,~,subs] = unique(mst.Date/100);
+sz               = [numel(undates),1];
+Nbadsel          = accumarray(subs, mst.Nbadsel);
+Nbad             = accumarray(subs, mst.Nbadtot) - Nbadsel;
+idx              = mst.Isbadday;
+Nbadday          = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx),sz);
+idx              = mst.Isbadseries & ~mst.Isbadday;
+Nbadseries       = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx),sz);
+Nconsolidated    = accumarray(subs, mst.Nconsolidated);
+idx              = mst.Ifewtrades & ~(mst.Isbadday | mst.Isbadseries);
+Nfewobs          = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx)-mst.Nconsolidated(idx),sz);
+idx              = mst.Ifewseries & ~ (mst.Ifewtrades  | mst.Isbadday | mst.Isbadseries);
+Nfewdays         = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx)-mst.Nconsolidated(idx),sz);
+Ntot             = accumarray(subs,nobs);
+
+% Plot
+if undates(1) < 19921231
+    undates = double(undates);
+    plotdates = datenum(fix(undates/100), mod(undates,100)+1, 1)-1;
+else
+    plotdates = yyyymmdd2serial(undates);
+end
+relval = bsxfun(@rdivide,[Nbadsel, Nbad, Nbadday,Nbadseries, Nconsolidated, Nfewobs, Nfewdays],Ntot);
+area(plotdates, relval,'LineStyle','none')
+dynamicDateTicks
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
 master    = load(fullfile(path2data, 'master'), '-mat');
