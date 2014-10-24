@@ -138,8 +138,8 @@ inan = selecttrades(s.data);
 res          = cached(:,{'Id','Date'});
 subs         = uint32(RunLength((1:size(cached,1))',nobs));
 res.Nbadsel  = uint32(accumarray(subs,  inan));
-res.Nbad     = uint32(accumarray(subs,  inan | igoodprice ~= 1));
-res.Isbadday = res.Nbad > ceil(dailycut*nobs);
+res.Nbadtot  = uint32(accumarray(subs,  inan | igoodprice ~= 1));
+res.Isbadday = res.Nbadtot > ceil(dailycut*nobs);
 end
 
 % Count how many observations we loose in consolidation step

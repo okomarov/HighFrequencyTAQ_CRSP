@@ -49,7 +49,7 @@ catch
 end
 [~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
 mst.Isbadday = res.Isbadday(pos);
-mst.Nbad     = res.Nbad(pos);
+mst.Nbadtot  = res.Nbadtot(pos);
 
 % Bad series
 nobs           = mst.To - mst.From +1;
@@ -70,7 +70,7 @@ end
 mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
-ngoodtrades  = mst.To-mst.From+1 - mst.Nbad - mst.Nconsolidated;
+ngoodtrades  = nobs - mst.Nbadtot - mst.Nconsolidated;
 ifewtrades   = ngoodtrades < 13;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Timestep = ifewtrades | perfew(mst.UnID);
