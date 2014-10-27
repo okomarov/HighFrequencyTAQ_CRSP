@@ -159,7 +159,8 @@ dynamicDateTicks
 axis tight, set(gca,'Layer','top','Ylim',[0,1]),ylabel '%'
 legend({'Bad observations','Bad days','Bad series'},'Location','northwest')
 
-print .\results\fig\cleaningcounts.eps -depsc -r300 -opengl
+matlab2tikz .\results\fig\cleaningcounts
+legend boxoff
 
 % Plot cleaning
 figure
@@ -168,13 +169,16 @@ set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5],'PaperPositionMode','auto')
 relval = bsxfun(@rdivide,[Nbadsel, Nbad+Nbadday+Nbadseries, Nconsolidated, Nfewobs, Nfewdays],Ntot)*100;
 colormap(lines(size(relval,2)))
 area(plotdates, relval,'LineStyle','none')
-% mean(relval)
+% iperiod = plotdates<=datenum(1998, 12, 31);
+mean(relval(iperiod,:))
+mean(relval(~iperiod,:))
 
 dynamicDateTicks
 axis tight, set(gca,'Layer','top','Ylim',[0,100]),ylabel '%'
 legend({'Selection','Cleaning','Consolidation','Minimum obs.','Min days'},'Location','northwest')
+legend boxoff
 
-print .\results\fig\allrulescounts.eps -depsc -r300 -opengl
+matlab2tikz .\results\fig\allrulescounts
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
 master    = load(fullfile(path2data, 'master'), '-mat');
