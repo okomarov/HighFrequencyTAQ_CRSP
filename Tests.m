@@ -79,7 +79,7 @@ close, figure('Color','white','Renderer', 'opengl'), colormap(lines(1))
 % Main figure
 data = sum(data,2);
 plot(dates, data)
-set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
 dynamicDateTicks, axis tight, ylabel 'Number of trades'
 ha = gca;
 ha.YRuler.Exponent = 6;
@@ -118,7 +118,7 @@ res               = loadresults('consolidationcounts');
 mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
-ngoodtrades    = mst.To-mst.From+1 - mst.Nbad - mst.Nconsolidated;
+ngoodtrades    = mst.To-mst.From+1 - mst.Nbadtot - mst.Nconsolidated;
 mst.Ifewtrades = ngoodtrades < 13;
 perfew         = accumarray(mst.UnID, mst.Ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Ifewseries = perfew(mst.UnID);
@@ -139,16 +139,42 @@ idx              = mst.Ifewseries & ~ (mst.Ifewtrades  | mst.Isbadday | mst.Isba
 Nfewdays         = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx)-mst.Nconsolidated(idx),sz);
 Ntot             = accumarray(subs,nobs);
 
-% Plot
+% plot dates
 if undates(1) < 19921231
     undates = double(undates);
     plotdates = datenum(fix(undates/100), mod(undates,100)+1, 1)-1;
 else
     plotdates = yyyymmdd2serial(undates);
 end
-relval = bsxfun(@rdivide,[Nbadsel, Nbad, Nbadday,Nbadseries, Nconsolidated, Nfewobs, Nfewdays],Ntot);
+
+% Plot cleaning
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5],'PaperPositionMode','auto')
+
+relval = bsxfun(@rdivide,[Nbad, Nbadday, Nbadseries],Ntot)*100;
+colormap(lines(size(relval,2)))
 area(plotdates, relval,'LineStyle','none')
+
 dynamicDateTicks
+axis tight, set(gca,'Layer','top','Ylim',[0,1]),ylabel '%'
+legend({'Bad observations','Bad days','Bad series'},'Location','northwest')
+
+print .\results\fig\cleaningcounts.eps -depsc -r300 -opengl
+
+% Plot cleaning
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5],'PaperPositionMode','auto')
+
+relval = bsxfun(@rdivide,[Nbadsel, Nbad+Nbadday+Nbadseries, Nconsolidated, Nfewobs, Nfewdays],Ntot)*100;
+colormap(lines(size(relval,2)))
+area(plotdates, relval,'LineStyle','none')
+% mean(relval)
+
+dynamicDateTicks
+axis tight, set(gca,'Layer','top','Ylim',[0,100]),ylabel '%'
+legend({'Selection','Cleaning','Consolidation','Minimum obs.','Min days'},'Location','northwest')
+
+print .\results\fig\allrulescounts.eps -depsc -r300 -opengl
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
 master    = load(fullfile(path2data, 'master'), '-mat');
