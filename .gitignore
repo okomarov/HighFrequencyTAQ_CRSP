@@ -1,4 +1,9 @@
 *.mat
+
+*.aux
+*.log
+*.synctex.gz
+
 /data/TAQ/
 /data/SP500/
 /data/CCM/
