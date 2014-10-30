@@ -180,203 +180,226 @@ legend({'Selection','Cleaning','Consolidation','Minimum obs.','Min days'},'Locat
 legend boxoff
 
 matlab2tikz .\results\fig\countallrules
-%% Display Book (G127 - 40) Keep? [YES]
+%% Mismatch Master vs Trades
+
+% Data meta records
+% -----------------
 path2data = '.\data\TAQ';
-master    = load(fullfile(path2data, 'master'), '-mat');
-s         = load(fullfile(path2data, 'T0300.mat'));
+load(fullfile(path2data,'master'),'-mat','mst','ids');
+% Replace some symbols
+ids = regexprep(ids,'p','PR');
+ids = regexprep(ids,'\.','');
+% Unique symb with min date
+[tmp,~,subs] = unique(mst(:,'Id'));
+tmp.Datedata = accumarray(subs,mst.Date,[],@min);
+tmp.Id       = ids(tmp.Id);
+% Consolidate repetitions due to ids replacements
+[dataSymb,~,subs] = unique(tmp(:,'Id'));
+dataSymb.Datedata = accumarray(subs,tmp.Datedata,[],@min);
 
-% Count DB trades by Id
-[~,pmst]    = histc(find(s.data.G127_Correction(:,1) == 40), [s.mst.From; s.mst.To(end)]);
-mst         = s.mst(unique(pmst),:);
-[un,~,subs] = unique(s.mst.Id(pmst));
-dbtrades    = table(un, accumarray(subs,1),'VariableNames', {'Id','Count'});
-[~,imax]    = max(dbtrades.Count);
-% imax      = 100;
-disp(dbtrades(imax,:))
-id          = dbtrades.Id(imax);
-symbol      = s.ids{id}
-date        = mst.Date(find(mst.Id == id,1,'first'));
-
-% Plot
-sample = getTaqData(master, symbol, date,date);
-i40    = sample.G127_Correction(:,1) == 40;
-igood  = sample.G127_Correction(:,1) == 0;
-x      = hhmmssmat2serial(sample.Time);
-plot(x(i40), sample.Price(i40),'xr', x(igood), sample.Price(igood),'.b',...
-     x, sample.Price, '-g')
-%% Counts by type
+% Master records
+% --------------
 try
     TAQmaster = loadresults('TAQmaster');
 catch
     TAQmaster = importMst('.\data\TAQ\raw');
 end
+TAQmaster             = TAQmaster(:,{'SYMBOL','FDATE'});
+[masterSymb,~,subs]   = unique(TAQmaster(:,'SYMBOL'));
+masterSymb.Datemaster = accumarray(subs,TAQmaster.FDATE,[],@min);
 
-TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
+% Test data before master records
+[idata,pmaster] = ismember(dataSymb.Id, masterSymb.SYMBOL);
+pmaster   = pmaster(idata);
+pdata     = find(idata);
+iearly    = dataSymb.Datedata(pdata) < masterSymb.Datemaster(pmaster);
+earlySymb = [dataSymb(pdata(iearly),:) masterSymb(pmaster(iearly),:)];
 
-% Time consolidation
-idx       = isfeatchange(TAQmaster(:,[1,3,2]),2:3);
-TAQmaster = TAQmaster(idx,:);
-
-% Link to number of records
-master = load(fullfile(path2data, 'master'), '-mat');
-
-% Subscripts by date
-[unDates, ~, subs] = unique(master.mst.Date/100);
-master.mst.Subs    = uint8(subs);
-
-% Preallocation
-master.mst.Val     = zeros(numel(subs),1,'uint8');
-master.ids = regexprep(master.ids,'p','PR');
-
-% LOOP by symbol
-for ii = 1:numel(master.ids)
-    symbol   = master.ids{ii};
-    iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
-    if ~any(iTAQ)
-        fprintf('No match: %s - iter %d\n', symbol,ii), continue
+% In data not in master
+dataSymb(~idata,:);
+% Viceversa
+masterSymb(~ismember(masterSymb.SYMBOL,dataSymb.Id),:);
+%% Counts by type
+try
+    typecounts = loadresults('typecounts');
+catch
+    TAQmaster = loadresults('TAQmaster');
+    TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
+    
+    % Time consolidation
+    idx       = isfeatchange(TAQmaster(:,[1,3,2]),2:3);
+    TAQmaster = TAQmaster(idx,:);
+    
+    % Link to number of records
+    path2data = '.\data\TAQ';
+    master = load(fullfile(path2data, 'master'), '-mat');
+    
+    % Preallocation
+    master.mst.Val  = zeros(numel(subs),1,'uint8');
+    master.ids      = regexprep(master.ids,'p','PR');
+    master.ids      = regexprep(master.ids,'\.','');
+    
+    % LOOP by symbol
+    for ii = 1:numel(master.ids)
+        symbol   = master.ids{ii};
+        iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
+        if ~any(iTAQ)
+            fprintf('No match: %s - iter %d\n', symbol,ii), continue
+        end
+        types = TAQmaster.TYPE(iTAQ);
+        if types == 0, continue, end
+        % Map mst records to date bins from TAQmaster
+        imst     = master.mst.Id == ii;
+        if numel(types) == 1
+            master.mst.Val(imst) = types;
+            continue
+        end
+        dates    = master.mst.Date(imst,:);
+        datebins = [TAQmaster.FDATE(iTAQ); inf];
+        [~,dmap] = histc(dates, datebins);
+        if dmap(1) == 0
+            fprintf('Data before type: %s - iter %d\n', symbol,ii)
+            dmap(dmap == 0) = ones(1,'uint8');
+        end
+        % Count by month
+        master.mst.Val(imst) = types(dmap);
     end
-    types = TAQmaster.TYPE(iTAQ);
-    if types == 0, continue, end
-    % Map mst records to date bins from TAQmaster
-    imst     = master.mst.Id == ii;
-    if numel(types) == 1
-        master.mst.Val(imst) = types;
-        continue
-    end
-    dates    = master.mst.Date(imst,:);
-    datebins = [TAQmaster.FDATE(iTAQ); inf];
-    [~,dmap] = histc(dates, datebins);
-    if dmap(1) == 0
-        fprintf('Data before type: %s - iter %d\n', symbol,ii)
-        dmap(dmap == 0) = ones(1,'uint8');
-    end
-    % Count by month
-    master.mst.Val(imst) = types(dmap);
+    
+    % Group by day
+    [unDates, ~, subs] = unique(master.mst.Date);
+    master.mst.Subs    = uint16(subs);
+    
+    % Group by month and type and count
+    [typecounts, ~, subs] = unique(master.mst(:,{'Subs','Val'}));
+    typecounts.Subs       = unDates(typecounts.Subs);
+    typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+    
+    % Unstack
+    typecounts = unstack(typecounts,'Counts','Val');
+    vnames     = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
+    typecounts = varfun(@nan2zero,typecounts);
+    typecounts = setVariableNames(typecounts, ['Dates' vnames]);
+    
+    % Save
+    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
 end
-% Group by month and type and count
-[typecounts, ~, subs] = unique(master.mst(:,{'Subs','Val'}));
-typecounts.Subs       = unDates(typecounts.Subs);
-typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
 
-% Unstack
-typecounts = dataset2table(unstack(typecounts,'Counts','Val'));
-vnames     = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
-typecounts = setVariableNames(typecounts, ['Dates' vnames]);
-
-% Save
-save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
+% Group by month
+[dates, ~, subs] = unique(typecounts.Dates/100);
+subs = uint16(subs);
+% Dates
+dates = double(dates);
+dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+% Data
+data  = table2array(typecounts(:,2:end) );
+nvar  = size(data,2);
+[subsr,subsc] = ndgrid(subs,1:nvar);
+data = accumarray([subsr(:),subsc(:)], data(:));
 
 % Plot
-dates = datenum(double(typecounts.Dates/100), double(rem(typecounts.Dates,100)+1), 1)-1;
-data  = table2array(typecounts(:,2:end));
-data(isnan(data)) = 0;
-subplot(211)
-area(dates, data)
-dynamicDateTicks
-axis tight
-title('Montly counts of price observations by type (absolute and %)')
+figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100,'LineStyle','none')
+dynamicDateTicks, axis tight, set(gca, 'Ylim',[80,100],'Layer','top')
+
 l = legend({'common', 'preferred', 'warrant', 'right', 'other', 'derivative'});
-set(l,'Location','NorthWest')
-subplot(212)
-area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-dynamicDateTicks
-axis tight
-%% TAQ master vs data
-% Check for how many symbols in master there is no actual data
+set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
-% TAQmaster symbol and min date
-TAQmaster = loadresults('TAQmaster');
-[unsymb,~,subs] = unique(TAQmaster(:,'SYMBOL'));
-unsymb.Date     = accumarray(subs, TAQmaster.FDATE,[],@min);
+ylabel '%'
 
-% Master
-path2data  = '.\data\TAQ';
-master     = load(fullfile(path2data, 'master'), '-mat');
-
-[~,ia,ib] = intersect(unsymb.SYMBOL, master.ids);
-
-% Traded but not in master records
-anomalous = setdiff(1:numel(master.ids),ib); 
-master.ids(anomalous)
-
-% Did not trade but in master records
-nontraded = setdiff(1:size(unsymb,1),ia); 
-unsymb.SYMBOL(nontraded)
+matlab2tikz .\results\fig\counttype.tex
 %% CRSP link coverage
 
-% TAQ2CRSP link
+% Master file
+% -----------
+path2data = '.\data\TAQ';
+master    = load(fullfile(path2data, 'master'), '-mat');
+% Handle symbols
+symbtaq   = master.ids;
+symbtaq   = regexprep(symbtaq,'p','PR');
+symbtaq   = regexprep(symbtaq,'\.','');
+nsymb     = numel(symbtaq);
+% Cache mst by symbol 
+mst       = sortrows(master.mst,{'Id','Date'}); clear master
+mst.Nobs  = mst.To-mst.From+1;
+mst       = accumarray(mst.Id, 1:size(mst,1),[],@(ii) {mst(ii,{'Date','Nobs'})});
+
+% Taq2crsp
+% --------
 taq2crsp = loadresults('taq2crsp');
 taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-taq2crsp = sortrows(taq2crsp,{'symbol','datef'});
-
-% Master file
-path2data  = '.\data\TAQ';
-master     = load(fullfile(path2data, 'master'), '-mat');
-
-% Subscripts by date
-[unDates, ~, subs] = unique(master.mst.Date/100);
-master.mst.Subs    = uint8(subs);
+keepvars = {'symbol','datef','score'};
+taq2crsp = sortrows(taq2crsp(:,keepvars),{'symbol','datef'});
+taq2crsp.score = uint8(taq2crsp.score);
+% Reduce variation in score 
+idx      = isfeatchange(taq2crsp(:,{'symbol','score','datef'}),[false,true true]);
+taq2crsp = taq2crsp(idx,:);
+% Cache according to symbtaq
+[idx,subs] = ismember(taq2crsp.symbol, symbtaq);
+f          = @(ii) {sortrows(taq2crsp(ii,{'datef','score'}),'datef')};
+taq2crsp   = accumarray(subs(idx),find(idx),size(mst),f);
 
 % Preallocation
-master.ids       = regexprep(master.ids,'p','PR');
-master.ids       = regexprep(master.ids,'\.','');
-master.mst.Score = zeros(numel(subs),1,'uint8');
-
-% 
-[unsymbols,~,subsymbols] = unique(taq2crsp.symbol);
-for ii = 1:numel(unsymbols)
-    % taq2crsp info
-    symbol = unsymbols{ii};
-    itaq   = subsymbols == ii;
-    dates  = [taq2crsp.datef(itaq);inf];
-    permnos = uint8([0; taq2crsp.score(itaq)]);
-    
-    % master info
-    id = find(strcmpi(master.ids,symbol));
-    if isempty(id)
-        fprintf('No match: %s - iter %d\n', symbol,ii), continue
+mstscore = cell(nsymb,1);
+poolStartup(8, 'AttachedFiles',{'.\utils\poolStartup.m'})
+parfor ii = 1:nsymb
+    % No data
+    if isempty(taq2crsp{ii})
+        fprintf('No match: %s - iter %d\n', symbtaq{ii},ii)
+        mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
+        continue
     end
-    if numel(id) == 1
-        imst = master.mst.Id == id;
+    % If one date range, i.e. single score
+    if size(taq2crsp{ii},1) == 1
+        mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
+        idx = mst{ii}.Date >= taq2crsp{ii}.datef;
+        mstscore{ii}(idx) = taq2crsp{ii}.score;
     else
-        imst = ismember(master.mst.Id,id);
+        dates        = [taq2crsp{ii}.datef; inf];
+        scores       = [0; taq2crsp{ii}.score];
+        [~, datebin] = histc(mst{ii}.Date, dates);
+        mstscore{ii} = scores(datebin+1);
     end
-    tmp  = master.mst.Date(imst);
-    [~, datebin] = histc(tmp, dates);
-    master.mst.Score(imst) = permnos(datebin+1);
 end
+delete(gcp)
+mst = cat(1,mst{:});
+mst.Score = cat(1,mstscore{:});
 
-% Group by month and score and count
-[counts, ~, subs] = unique(master.mst(:,{'Subs','Score'}));
-counts.Subs       = unDates(counts.Subs);
-counts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+% Group by month and score
+mst.Date        = mst.Date/100;
+[counts,~,subs] = unique(mst(:,{'Date','Score'}));
+subs            = uint16(subs);
+counts.Counts   = accumarray(subs, mst.Nobs);
 
 % Unstack
-counts   = dataset2table(unstack(counts,'Counts','Score'));
-vnames = {'0. Unmatched', '1. CUSIP', '2. 1 + expand exact name',...
-          '3. 2 + expand through new cusip', '4. SYMBOL + DATE',...
-          '5. SYMBOL + lev(NAME)','6. 5 + expand through new cusip',...
-          '7. lev(NAME)', '8. 7 + expand through new cusip'};
-counts.Properties.VariableNames{1} = 'Dates';
+counts = unstack(counts,'Counts','Score');
 
 % Save
 save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'matchcounts')), 'counts')
 
-% Plot
-dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
+% Dates
+dates = double(counts.Date);
+dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+% Data
 data  = table2array(counts(:,2:end));
 data(isnan(data)) = 0;
-subplot(211)
-area(dates, data)
-dynamicDateTicks
-axis tight
-title('Montly counts of price observations by taq2crsp match (absolute and %)')
-l = legend(vnames);
-set(l,'Location','NorthWest')
-subplot(212)
-area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-dynamicDateTicks
-axis tight
+nvar  = size(data,2);
+
+% Plot
+figure, colormap(parula(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+order = [2,1,5,3:4, 6:8];
+area(dates, bsxfun(@rdivide, data(:,order), sum(data,2))*100,'LineStyle','none')
+dynamicDateTicks, axis tight, set(gca, 'Ylim',[80,100],'Layer','top')
+
+vnames = {'0. Unmatched', '1. CUSIP', '2. 1 + expand exact name',...
+          '3. 2 + expand through new cusip', '4. SYMBOL + DATE',...
+          '5. SYMBOL + lev(NAME)','6. 5 + expand through new cusip',...
+          '7. lev(NAME)', '8. 7 + expand through new cusip'};
+l = legend(vnames(order));
+set(l,'Location','SouthWest', 'EdgeCOlor','none')
+
+ylabel '%'
+
+matlab2tikz .\results\fig\countmatch.tex
 %% SHRCD selection/counts
 
 % Load msenames
@@ -1032,3 +1055,27 @@ Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 
 clearvars -except Betas Betasd Betasw ikeep resdir
 % save debugstate
+%% Display Book (G127 - 40) Keep? [YES]
+path2data = '.\data\TAQ';
+master    = load(fullfile(path2data, 'master'), '-mat');
+s         = load(fullfile(path2data, 'T0300.mat'));
+
+% Count DB trades by Id
+[~,pmst]    = histc(find(s.data.G127_Correction(:,1) == 40), [s.mst.From; s.mst.To(end)]);
+mst         = s.mst(unique(pmst),:);
+[un,~,subs] = unique(s.mst.Id(pmst));
+dbtrades    = table(un, accumarray(subs,1),'VariableNames', {'Id','Count'});
+[~,imax]    = max(dbtrades.Count);
+% imax      = 100;
+disp(dbtrades(imax,:))
+id          = dbtrades.Id(imax);
+symbol      = s.ids{id}
+date        = mst.Date(find(mst.Id == id,1,'first'));
+
+% Plot
+sample = getTaqData(master, symbol, date,date);
+i40    = sample.G127_Correction(:,1) == 40;
+igood  = sample.G127_Correction(:,1) == 0;
+x      = hhmmssmat2serial(sample.Time);
+plot(x(i40), sample.Price(i40),'xr', x(igood), sample.Price(igood),'.b',...
+     x, sample.Price, '-g')
