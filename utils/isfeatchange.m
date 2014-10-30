@@ -2,10 +2,9 @@ function idx = isfeatchange(tb, inum)
 
 % ISFEATCHANGE Progressively detects changes across features/ids
 %
-%   ... = ISFEATCHANGE(TB) TB should be a table with:
-%           - 1st   col  --> Id
-%           - end   col  --> Vector of dates
-%           - other cols --> Features 
+%   ... = ISFEATCHANGE(TB) TB should be a table with: 
+% 
+%               ID | feature cols | DATES
 %          
 %         ISFEATCHANGE(..., INUM) INUM is a logical vector telling
 %                                 which columns are numeric. By default
