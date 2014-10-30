@@ -8,10 +8,13 @@ end
 [Dates, ~, subs] = unique(counts.Date);
 counts = table(yyyymmdd2datetime(Dates), accumarray(subs,counts.Maxpsec,[],@max),'VariableNames',{'Date','Maxpsec'});
 plot(counts.Date, counts.Maxpsec)
-ylabel 'trades/second'
-print -depsc -r150 .\results\fig\maxtradepsec 
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+set(gca,'Layer','top')
+ylabel 'max trades/second'
+set(gca,'XtickLabelMode','manual')
+matlab2tikz .\results\fig\maxtradepsec.tex
 %% Counts selection rule
-addpath .\utils\magnifyOnFigure\ .\utils\export_fig   
+addpath .\utils\magnifyOnFigure\ .\utils\export_fig
 
 path2data = '.\data\TAQ';
 testname  = 'selrulecounts';
@@ -21,9 +24,7 @@ catch
     res = Analyze(testname,[],[],fullfile(path2data,'T*.mat'),1);
 end
 
-
 refdates = serial2yyyymmdd(datenum(1993,2:209,1)-1);
-
 % Plot 
 for ii = 1:3
     data = cat(1,res{:,ii});
@@ -50,8 +51,8 @@ for ii = 1:3
     
     close, figure('Color','white','Renderer', 'opengl'), colormap(lines(size(data,2)))
     % Main figure
-    area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-    set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.4])
+    area(dates, bsxfun(@rdivide, data, sum(data,2))*100, 'LineStyle','none')
+    set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
     dynamicDateTicks, axis tight, ylabel '%', set(gca,'Ylim',[50,100])
       
     % Legend
@@ -157,9 +158,9 @@ area(plotdates, relval,'LineStyle','none')
 
 dynamicDateTicks
 axis tight, set(gca,'Layer','top','Ylim',[0,1]),ylabel '%'
-legend({'Bad observations','Bad days','Bad series'},'Location','northwest')
+legend({'Bad observations','Bad days','Bad series'},'Location','northwest','EdgeColor','none')
 
-matlab2tikz .\results\fig\cleaningcounts
+matlab2tikz .\results\fig\countcleaning
 legend boxoff
 
 % Plot cleaning
@@ -178,7 +179,7 @@ axis tight, set(gca,'Layer','top','Ylim',[0,100]),ylabel '%'
 legend({'Selection','Cleaning','Consolidation','Minimum obs.','Min days'},'Location','northwest')
 legend boxoff
 
-matlab2tikz .\results\fig\allrulescounts
+matlab2tikz .\results\fig\countallrules
 %% Display Book (G127 - 40) Keep? [YES]
 path2data = '.\data\TAQ';
 master    = load(fullfile(path2data, 'master'), '-mat');
