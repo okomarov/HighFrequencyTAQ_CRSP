@@ -400,6 +400,71 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 ylabel '%'
 
 matlab2tikz .\results\fig\countmatch.tex
+%% Null cusips
+TAQmaster = loadresults('TAQmaster');
+inull     = strncmp(TAQmaster.CUSIP,'00000000',8);
+unique(TAQmaster.SYMBOL(inull));
+%% Type of unmatched
+
+% Taq2crsp
+% --------
+taq2crsp  = loadresults('taq2crsp');
+inonmatch = taq2crsp.score ~= 10;
+symbols   = unique(taq2crsp.symbol(inonmatch));
+
+% Type
+% ----
+TAQmaster = loadresults('TAQmaster');
+keepvars  = {'SYMBOL','TYPE','FDATE'};
+TAQmaster = TAQmaster(:,keepvars);
+TAQmaster.TYPE = double(TAQmaster.TYPE); 
+ikeep     = isfeatchange(sortrows(TAQmaster,{'SYMBOL','FDATE'}),[false,true,true]);
+TAQmaster = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
+
+% Intersect symbols
+path2data = '.\data\TAQ';
+load(fullfile(path2data, 'master'), '-mat');
+symbols  = intersect(symbols, ids);
+symbols  = intersect(symbols, TAQmaster.Properties.VariableNames);
+
+% TAQmaster
+[~,ia]    = intersect(TAQmaster.Properties.VariableNames,symbols);
+TAQmaster = TAQmaster(:,[1; ia]);
+% Mst
+[~,idx] = intersect(ids,symbols);
+mst     = mst(ismember(mst.Id,idx),{'Id','Date'});
+mst.Val = ones(size(mst,1),1);
+mst.Id  = ids(mst.Id);
+mst     = sortrows(unstack(mst,'Val','Id'),'Date');
+
+% Sample dates
+dates     = mst.Date;
+TAQmaster.Properties.VariableNames{1} = 'Date';
+TAQmaster = sampledates(TAQmaster,dates);
+mst       = sampledates(mst ,dates, true);
+
+
+
+% Dates
+dates = yyyymmdd2serial(dates);
+% Data
+mask      = nan2zero(table2array(mst(:,2:end)));
+type      = nan2zero(table2array(TAQmaster(:,2:end)));
+counts    = histc((type.*mask)',[0,1, 2, 3, 4, 5])';
+counts(:,1) = sum(mask,2) - sum(counts(:,2:end),2);
+nvar        = size(counts,2);
+
+% Plot
+figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+area(dates, bsxfun(@rdivide, counts, sum(counts,2))*100,'LineStyle','none')
+dynamicDateTicks, axis tight, set(gca, 'Layer','top')
+
+l = legend({'common', 'preferred', 'warrant', 'right', 'other', 'derivative'});
+set(l,'Location','SouthWest', 'EdgeCOlor','none')
+
+ylabel '%'
+
+matlab2tikz .\results\fig\typeunmatch.tex
 %% SHRCD selection/counts
 
 % Load msenames
