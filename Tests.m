@@ -429,7 +429,8 @@ TAQmaster = loadresults('TAQmaster');
 keepvars  = {'SYMBOL','TYPE','FDATE'};
 TAQmaster = TAQmaster(:,keepvars);
 TAQmaster.TYPE = double(TAQmaster.TYPE); 
-ikeep     = isfeatchange(sortrows(TAQmaster,{'SYMBOL','FDATE'}),[false,true,true]);
+TAQmaster = sortrows(TAQmaster,{'SYMBOL','FDATE'});
+ikeep     = isfeatchange(TAQmaster,[false,true,true]);
 TAQmaster = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
 
 % Intersect symbols
@@ -454,7 +455,7 @@ TAQmaster.Properties.VariableNames{1} = 'Date';
 TAQmaster = sampledates(TAQmaster,dates);
 mst       = sampledates(mst ,dates, true);
 
-
+% To monthly
 
 % Dates
 dates = yyyymmdd2serial(dates);
@@ -475,7 +476,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-matlab2tikz .\results\fig\typeunmatch.tex
+matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g', 'externalData', true)
 %% SHRCD selection/counts
 
 % Load msenames
