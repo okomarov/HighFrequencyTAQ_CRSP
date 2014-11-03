@@ -309,80 +309,91 @@ ylabel '%'
 matlab2tikz .\results\fig\counttype.tex
 %% CRSP link coverage
 
-% Master file
-% -----------
-path2data = '.\data\TAQ';
-master    = load(fullfile(path2data, 'master'), '-mat');
-% Handle symbols
-symbtaq   = master.ids;
-symbtaq   = regexprep(symbtaq,'p','PR');
-symbtaq   = regexprep(symbtaq,'\.','');
-nsymb     = numel(symbtaq);
-% Cache mst by symbol 
-mst       = sortrows(master.mst,{'Id','Date'}); clear master
-mst.Nobs  = mst.To-mst.From+1;
-mst       = accumarray(mst.Id, 1:size(mst,1),[],@(ii) {mst(ii,{'Date','Nobs'})});
-
-% Taq2crsp
-% --------
-taq2crsp = loadresults('taq2crsp');
-taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-keepvars = {'symbol','datef','score'};
-taq2crsp = sortrows(taq2crsp(:,keepvars),{'symbol','datef'});
-taq2crsp.score = uint8(taq2crsp.score);
-% Reduce variation in score 
-idx      = isfeatchange(taq2crsp(:,{'symbol','score','datef'}),[false,true true]);
-taq2crsp = taq2crsp(idx,:);
-% Cache according to symbtaq
-[idx,subs] = ismember(taq2crsp.symbol, symbtaq);
-f          = @(ii) {sortrows(taq2crsp(ii,{'datef','score'}),'datef')};
-taq2crsp   = accumarray(subs(idx),find(idx),size(mst),f);
-
-% Preallocation
-mstscore = cell(nsymb,1);
-poolStartup(8, 'AttachedFiles',{'.\utils\poolStartup.m'})
-parfor ii = 1:nsymb
-    % No data
-    if isempty(taq2crsp{ii})
-        fprintf('No match: %s - iter %d\n', symbtaq{ii},ii)
-        mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
-        continue
+try
+    counts = loadresults('matchcounts');
+catch
+    % Master file
+    % -----------
+    path2data = '.\data\TAQ';
+    master    = load(fullfile(path2data, 'master'), '-mat');
+    % Handle symbols
+    symbtaq   = master.ids;
+    symbtaq   = regexprep(symbtaq,'p','PR');
+    symbtaq   = regexprep(symbtaq,'\.','');
+    nsymb     = numel(symbtaq);
+    % Cache mst by symbol
+    mst       = sortrows(master.mst,{'Id','Date'}); clear master
+    mst.Nobs  = mst.To-mst.From+1;
+    mst       = accumarray(mst.Id, 1:size(mst,1),[],@(ii) {mst(ii,{'Date','Nobs'})});
+    
+    % Taq2crsp
+    % --------
+    taq2crsp = loadresults('taq2crsp');
+    taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
+    keepvars = {'symbol','datef','score'};
+    taq2crsp = sortrows(taq2crsp(:,keepvars),{'symbol','datef'});
+    taq2crsp.score = uint8(taq2crsp.score);
+    % Reduce variation in score
+    idx      = isfeatchange(taq2crsp(:,{'symbol','score','datef'}),[false,true true]);
+    taq2crsp = taq2crsp(idx,:);
+    % Cache according to symbtaq
+    [idx,subs] = ismember(taq2crsp.symbol, symbtaq);
+    f          = @(ii) {sortrows(taq2crsp(ii,{'datef','score'}),'datef')};
+    taq2crsp   = accumarray(subs(idx),find(idx),size(mst),f);
+    
+    % Preallocation
+    mstscore = cell(nsymb,1);
+    poolStartup(8, 'AttachedFiles',{'.\utils\poolStartup.m'})
+    parfor ii = 1:nsymb
+        % No data
+        if isempty(taq2crsp{ii})
+            fprintf('No match: %s - iter %d\n', symbtaq{ii},ii)
+            mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
+            continue
+        end
+        % If one date range, i.e. single score
+        if size(taq2crsp{ii},1) == 1
+            mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
+            idx = mst{ii}.Date >= taq2crsp{ii}.datef;
+            mstscore{ii}(idx) = taq2crsp{ii}.score;
+        else
+            dates        = [taq2crsp{ii}.datef; inf];
+            scores       = [0; taq2crsp{ii}.score];
+            [~, datebin] = histc(mst{ii}.Date, dates);
+            mstscore{ii} = scores(datebin+1);
+        end
     end
-    % If one date range, i.e. single score
-    if size(taq2crsp{ii},1) == 1
-        mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
-        idx = mst{ii}.Date >= taq2crsp{ii}.datef;
-        mstscore{ii}(idx) = taq2crsp{ii}.score;
-    else
-        dates        = [taq2crsp{ii}.datef; inf];
-        scores       = [0; taq2crsp{ii}.score];
-        [~, datebin] = histc(mst{ii}.Date, dates);
-        mstscore{ii} = scores(datebin+1);
-    end
+    delete(gcp)
+    mst = cat(1,mst{:});
+    mst.Score = cat(1,mstscore{:});
+    
+    % Group by day and score
+    [counts,~,subs] = unique(mst(:,{'Date','Score'}));
+    subs            = uint16(subs);
+    counts.Counts   = accumarray(subs, mst.Nobs);
+    
+    % Unstack
+    counts = unstack(counts,'Counts','Score');
+    vnames = {'Unmatched', 'CUSIP', 'C_expandname', 'C_expname_expnewcuip',...
+              'SymbolDate', 'SD_levname','SD_levname_expnewcusip','Levname','Levname_exp'};
+    counts = varfun(@nan2zero,counts);
+    counts = setVariableNames(counts, ['Dates' vnames]);
+    
+    % Save
+    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'matchcounts')), 'counts')
 end
-delete(gcp)
-mst = cat(1,mst{:});
-mst.Score = cat(1,mstscore{:});
 
-% Group by month and score
-mst.Date        = mst.Date/100;
-[counts,~,subs] = unique(mst(:,{'Date','Score'}));
-subs            = uint16(subs);
-counts.Counts   = accumarray(subs, mst.Nobs);
-
-% Unstack
-counts = unstack(counts,'Counts','Score');
-
-% Save
-save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'matchcounts')), 'counts')
-
+% Group by month
+[dates, ~, subs] = unique(counts.Dates/100);
+subs = uint16(subs);
 % Dates
-dates = double(counts.Date);
+dates = double(dates);
 dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
 % Data
-data  = table2array(counts(:,2:end));
-data(isnan(data)) = 0;
+data  = table2array(counts(:,2:end) );
 nvar  = size(data,2);
+[subsr,subsc] = ndgrid(subs,1:nvar);
+data = accumarray([subsr(:),subsc(:)], data(:));
 
 % Plot
 figure, colormap(parula(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
@@ -399,7 +410,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-matlab2tikz .\results\fig\countmatch.tex
+matlab2tikz .\results\fig\countmatch.tex floatFormat '%.7g'
 %% Null cusips
 TAQmaster = loadresults('TAQmaster');
 inull     = strncmp(TAQmaster.CUSIP,'00000000',8);
