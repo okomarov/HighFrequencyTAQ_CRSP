@@ -12,7 +12,7 @@ set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
 set(gca,'Layer','top')
 ylabel 'max trades/second'
 set(gca,'XtickLabelMode','manual')
-matlab2tikz .\results\fig\maxtradepsec.tex
+matlab2tikz('.\results\fig\maxtradepsec.tex', 'floatFormat','%.7g', 'externalData',true)
 %% Counts selection rule
 addpath .\utils\magnifyOnFigure\ .\utils\export_fig
 
@@ -160,7 +160,7 @@ dynamicDateTicks
 axis tight, set(gca,'Layer','top','Ylim',[0,1]),ylabel '%'
 legend({'Bad observations','Bad days','Bad series'},'Location','northwest','EdgeColor','none')
 
-matlab2tikz .\results\fig\countcleaning
+matlab2tikz('.\results\fig\countcleaning.tex', 'floatFormat','%.7g', 'externalData',true)
 legend boxoff
 
 % Plot cleaning
@@ -179,7 +179,7 @@ axis tight, set(gca,'Layer','top','Ylim',[0,100]),ylabel '%'
 legend({'Selection','Cleaning','Consolidation','Minimum obs.','Min days'},'Location','northwest')
 legend boxoff
 
-matlab2tikz .\results\fig\countallrules
+matlab2tikz('.\results\fig\countallrules.tex', 'floatFormat','%.7g', 'externalData',true)
 %% Mismatch Master vs Trades
 
 % Data meta records
@@ -306,7 +306,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-matlab2tikz .\results\fig\counttype.tex
+matlab2tikz('.\results\fig\counttype.tex', 'floatFormat','%.7g', 'externalData',true)
 %% CRSP link coverage
 
 try
@@ -410,7 +410,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-matlab2tikz .\results\fig\countmatch.tex floatFormat '%.7g'
+matlab2tikz('.\results\fig\countmatch.tex', 'floatFormat','%.7g', 'externalData',true)
 %% Null cusips
 TAQmaster = loadresults('TAQmaster');
 inull     = strncmp(TAQmaster.CUSIP,'00000000',8);
@@ -490,7 +490,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-% matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g')
+matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g', 'externalData',true)
 %% SHRCD selection/counts
 
 % Load msenames
