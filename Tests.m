@@ -416,55 +416,69 @@ TAQmaster = loadresults('TAQmaster');
 inull     = strncmp(TAQmaster.CUSIP,'00000000',8);
 unique(TAQmaster.SYMBOL(inull));
 %% Type of unmatched
+try
+    counts = loadresults('typeunmatch');
+catch
+    % Taq2crsp
+    % --------
+    taq2crsp  = loadresults('taq2crsp');
+    inonmatch = taq2crsp.score ~= 10;
+    symbols   = unique(taq2crsp.symbol(inonmatch));
+    
+    % Type
+    % ----
+    TAQmaster = loadresults('TAQmaster');
+    keepvars  = {'SYMBOL','TYPE','FDATE'};
+    TAQmaster = TAQmaster(:,keepvars);
+    TAQmaster.TYPE = double(TAQmaster.TYPE);
+    TAQmaster = sortrows(TAQmaster,{'SYMBOL','FDATE'});
+    ikeep     = isfeatchange(TAQmaster,[false,true,true]);
+    TAQmaster = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
+    
+    % Intersect symbols
+    path2data = '.\data\TAQ';
+    load(fullfile(path2data, 'master'), '-mat');
+    symbols  = intersect(symbols, ids);
+    symbols  = intersect(symbols, TAQmaster.Properties.VariableNames);
+    
+    % TAQmaster
+    [~,ia]    = intersect(TAQmaster.Properties.VariableNames,symbols);
+    TAQmaster = TAQmaster(:,[1; ia]);
+    % Mst
+    [~,idx] = intersect(ids,symbols);
+    mst     = mst(ismember(mst.Id,idx),{'Id','Date'});
+    mst.Val = ones(size(mst,1),1);
+    mst.Id  = ids(mst.Id);
+    mst     = sortrows(unstack(mst,'Val','Id'),'Date');
+    
+    % Sample dates
+    dates     = mst.Date;
+    TAQmaster.Properties.VariableNames{1} = 'Date';
+    TAQmaster = sampledates(TAQmaster,dates);
+    mst       = sampledates(mst ,dates, true);
+    
+    % Data
+    mask      = nan2zero(table2array(mst(:,2:end)));                % Which symbols exist at any time 
+    type      = nan2zero(table2array(TAQmaster(:,2:end)));          % Their type
+    counts    = histc((type.*mask)',[0,1, 2, 3, 4, 5])';            % Count type (0 not only common but also if does not exist)
+    counts(:,1) = sum(mask,2) - sum(counts(:,2:end),2);             % Common as total - other types 
+    counts    = [mst.Date, counts];
+    
+    % Save
+    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typeunmatch')), 'counts')
+end
 
-% Taq2crsp
-% --------
-taq2crsp  = loadresults('taq2crsp');
-inonmatch = taq2crsp.score ~= 10;
-symbols   = unique(taq2crsp.symbol(inonmatch));
-
-% Type
-% ----
-TAQmaster = loadresults('TAQmaster');
-keepvars  = {'SYMBOL','TYPE','FDATE'};
-TAQmaster = TAQmaster(:,keepvars);
-TAQmaster.TYPE = double(TAQmaster.TYPE); 
-TAQmaster = sortrows(TAQmaster,{'SYMBOL','FDATE'});
-ikeep     = isfeatchange(TAQmaster,[false,true,true]);
-TAQmaster = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
-
-% Intersect symbols
-path2data = '.\data\TAQ';
-load(fullfile(path2data, 'master'), '-mat');
-symbols  = intersect(symbols, ids);
-symbols  = intersect(symbols, TAQmaster.Properties.VariableNames);
-
-% TAQmaster
-[~,ia]    = intersect(TAQmaster.Properties.VariableNames,symbols);
-TAQmaster = TAQmaster(:,[1; ia]);
-% Mst
-[~,idx] = intersect(ids,symbols);
-mst     = mst(ismember(mst.Id,idx),{'Id','Date'});
-mst.Val = ones(size(mst,1),1);
-mst.Id  = ids(mst.Id);
-mst     = sortrows(unstack(mst,'Val','Id'),'Date');
-
-% Sample dates
-dates     = mst.Date;
-TAQmaster.Properties.VariableNames{1} = 'Date';
-TAQmaster = sampledates(TAQmaster,dates);
-mst       = sampledates(mst ,dates, true);
-
-% To monthly
+% Group by month
+[dates, ~, subs] = unique(counts(:,1)/100);
+subs             = uint16(subs);
+counts           = counts(:,2:end);
+nvar             = size(counts,2);
+[subsr,subsc]    = ndgrid(subs,1:nvar);
+counts           = accumarray([subsr(:),subsc(:)], counts(:));
 
 % Dates
-dates = yyyymmdd2serial(dates);
-% Data
-mask      = nan2zero(table2array(mst(:,2:end)));
-type      = nan2zero(table2array(TAQmaster(:,2:end)));
-counts    = histc((type.*mask)',[0,1, 2, 3, 4, 5])';
-counts(:,1) = sum(mask,2) - sum(counts(:,2:end),2);
-nvar        = size(counts,2);
+dates = double(dates);
+dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
 
 % Plot
 figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
@@ -476,7 +490,7 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
 
-matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g', 'externalData', true)
+% matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g')
 %% SHRCD selection/counts
 
 % Load msenames
