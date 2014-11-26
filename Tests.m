@@ -491,6 +491,24 @@ set(l,'Location','SouthWest', 'EdgeCOlor','none')
 ylabel '%'
 
 matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g')
+%% Justify unid
+taq2crsp    = loadresults('taq2crsp');
+taq2crsp    = taq2crsp(~isnan(taq2crsp.permno),:);
+
+% Same symbol different companies (permno)
+[unsymb,~,symbid] = unique(taq2crsp.symbol);
+pos               = find(accumarray(symbid, taq2crsp.permno,[],@(x) numel(unique(x))> 1));
+taq2crsp(ismember(taq2crsp.symbol,unsymb{randsample(pos,1)}),:)
+
+% Same company different issues
+[unperm,~,subs] = unique(taq2crsp.permno);
+pos             = find(accumarray(subs, symbid,[],@(x) numel(unique(x))> 1));
+taq2crsp(ismember(taq2crsp.permno,unperm(randsample(pos,1))),:)
+
+% Same company/cusip, changing symbol
+[unperm,~,subs] = unique(taq2crsp(:,{'permno','cusip'}));
+pos             = find(accumarray(subs, symbid,[],@(x) numel(unique(x))> 1));
+taq2crsp(ismember(taq2crsp(:,{'permno','cusip'}),unperm(randsample(pos,1),:)),:)
 %% SHRCD selection/counts
 
 % Load msenames
