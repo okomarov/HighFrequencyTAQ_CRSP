@@ -219,94 +219,6 @@ earlySymb = [dataSymb(pdata(iearly),:) masterSymb(pmaster(iearly),:)];
 dataSymb(~idata,:);
 % Viceversa
 masterSymb(~ismember(masterSymb.SYMBOL,dataSymb.Id),:);
-%% Counts by type
-try
-    typecounts = loadresults('typecounts');
-catch
-    TAQmaster = loadresults('TAQmaster');
-    TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
-    
-    % Time consolidation
-    idx       = isfeatchange(TAQmaster(:,[1,3,2]),2:3);
-    TAQmaster = TAQmaster(idx,:);
-    
-    % Link to number of records
-    path2data = '.\data\TAQ';
-    master = load(fullfile(path2data, 'master'), '-mat');
-    
-    % Preallocation
-    master.mst.Val  = zeros(numel(subs),1,'uint8');
-    master.ids      = regexprep(master.ids,'p','PR');
-    master.ids      = regexprep(master.ids,'\.','');
-    
-    % LOOP by symbol
-    for ii = 1:numel(master.ids)
-        symbol   = master.ids{ii};
-        iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
-        if ~any(iTAQ)
-            fprintf('No match: %s - iter %d\n', symbol,ii), continue
-        end
-        types = TAQmaster.TYPE(iTAQ);
-        if types == 0, continue, end
-        % Map mst records to date bins from TAQmaster
-        imst     = master.mst.Id == ii;
-        if numel(types) == 1
-            master.mst.Val(imst) = types;
-            continue
-        end
-        dates    = master.mst.Date(imst,:);
-        datebins = [TAQmaster.FDATE(iTAQ); inf];
-        [~,dmap] = histc(dates, datebins);
-        if dmap(1) == 0
-            fprintf('Data before type: %s - iter %d\n', symbol,ii)
-            dmap(dmap == 0) = ones(1,'uint8');
-        end
-        % Count by month
-        master.mst.Val(imst) = types(dmap);
-    end
-    
-    % Group by day
-    [unDates, ~, subs] = unique(master.mst.Date);
-    master.mst.Subs    = uint16(subs);
-    
-    % Group by month and type and count
-    [typecounts, ~, subs] = unique(master.mst(:,{'Subs','Val'}));
-    typecounts.Subs       = unDates(typecounts.Subs);
-    typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
-    
-    % Unstack
-    typecounts = unstack(typecounts,'Counts','Val');
-    vnames     = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
-    typecounts = varfun(@nan2zero,typecounts);
-    typecounts = setVariableNames(typecounts, ['Dates' vnames]);
-    
-    % Save
-    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
-end
-
-% Group by month
-[dates, ~, subs] = unique(typecounts.Dates/100);
-subs = uint16(subs);
-% Dates
-dates = double(dates);
-dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
-% Data
-data  = table2array(typecounts(:,2:end) );
-nvar  = size(data,2);
-[subsr,subsc] = ndgrid(subs,1:nvar);
-data = accumarray([subsr(:),subsc(:)], data(:));
-
-% Plot
-figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
-area(dates, bsxfun(@rdivide, data, sum(data,2))*100,'LineStyle','none')
-dynamicDateTicks, axis tight, set(gca, 'Ylim',[80,100],'Layer','top')
-
-l = legend({'common', 'preferred', 'warrant', 'right', 'other', 'derivative'});
-set(l,'Location','SouthWest', 'EdgeCOlor','none')
-
-ylabel '%'
-
-matlab2tikz('.\results\fig\counttype.tex', 'floatFormat','%.7g')
 %% CRSP link coverage
 
 try
@@ -509,59 +421,158 @@ taq2crsp(ismember(taq2crsp.permno,unperm(randsample(pos,1))),:)
 [unperm,~,subs] = unique(taq2crsp(:,{'permno','cusip'}));
 pos             = find(accumarray(subs, symbid,[],@(x) numel(unique(x))> 1));
 taq2crsp(ismember(taq2crsp(:,{'permno','cusip'}),unperm(randsample(pos,1),:)),:)
-%% SHRCD selection/counts
-
-% Load msenames
+%% Counts by type
 try
-    res = loadresults('shrcd');
+    typecounts = loadresults('typecounts');
 catch
-    res = mapShrcd2mst;
+    TAQmaster = loadresults('TAQmaster');
+    TAQmaster = unique(TAQmaster(:, {'SYMBOL','FDATE','TYPE'}));
+    
+    % Time consolidation
+    idx       = isfeatchange(TAQmaster(:,[1,3,2]),2:3);
+    TAQmaster = TAQmaster(idx,:);
+    
+    % Link to number of records
+    path2data = '.\data\TAQ';
+    master = load(fullfile(path2data, 'master'), '-mat');
+    
+    % Preallocation
+    master.mst.Val  = zeros(numel(subs),1,'uint8');
+    master.ids      = regexprep(master.ids,'p','PR');
+    master.ids      = regexprep(master.ids,'\.','');
+    
+    % LOOP by symbol
+    for ii = 1:numel(master.ids)
+        symbol   = master.ids{ii};
+        iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
+        if ~any(iTAQ)
+            fprintf('No match: %s - iter %d\n', symbol,ii), continue
+        end
+        types = TAQmaster.TYPE(iTAQ);
+        if types == 0, continue, end
+        % Map mst records to date bins from TAQmaster
+        imst     = master.mst.Id == ii;
+        if numel(types) == 1
+            master.mst.Val(imst) = types;
+            continue
+        end
+        dates    = master.mst.Date(imst,:);
+        datebins = [TAQmaster.FDATE(iTAQ); inf];
+        [~,dmap] = histc(dates, datebins);
+        if dmap(1) == 0
+            fprintf('Data before type: %s - iter %d\n', symbol,ii)
+            dmap(dmap == 0) = ones(1,'uint8');
+        end
+        % Count by month
+        master.mst.Val(imst) = types(dmap);
+    end
+    
+    % Group by day
+    [unDates, ~, subs] = unique(master.mst.Date);
+    master.mst.Subs    = uint16(subs);
+    
+    % Group type and count
+    [typecounts, ~, subs] = unique(master.mst(:,{'Subs','Val'}));
+    typecounts.Subs       = unDates(typecounts.Subs);
+    typecounts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+    
+    % Unstack
+    typecounts = unstack(typecounts,'Counts','Val');
+    vnames     = {'Common', 'Preferred', 'Warrant', 'Right', 'Other', 'Derivative'};
+    typecounts = varfun(@nan2zero,typecounts);
+    typecounts = setVariableNames(typecounts, ['Dates' vnames]);
+    
+    % Save
+    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typecounts')), 'typecounts')
 end
-% Master file
-path2data  = '.\data\TAQ';
-load(fullfile(path2data, 'master'), '-mat');
 
-% Counts 
-% -------------------------------------------------------------------------
-% Subscripts by date
-[unDates, ~, Subs] = unique(mst.Date/100);
-res.Subs = uint8(Subs);
-
-% Group by month and score and count
-
-[counts, ~, subs] = unique(res(:,{'Subs','Shrcd'}));
-counts.Subs       = unDates(counts.Subs);
-counts.Counts     = accumarray(subs, mst.To-mst.From+1);
-
-% Unstack
-counts   = unstack(counts,'Counts','Shrcd');
-counts.Properties.VariableNames{1} = 'Dates';
-vnames = getVariableNames(counts);
-
-% Select a few
-map = table({'not matched';'common-undefined';'common';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x0','x10','x11','x12','x31','x73'});
-idx = ismember(vnames(2:end),  map.Properties.RowNames);
+% Group by month
+[dates, ~, subs] = unique(typecounts.Dates/100);
+subs = uint16(subs);
+% Dates
+dates = double(dates);
+dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+% Data
+data  = table2array(typecounts(:,2:end) );
+nvar  = size(data,2);
+[subsr,subsc] = ndgrid(subs,1:nvar);
+data = accumarray([subsr(:),subsc(:)], data(:));
 
 % Plot
-dates = datenum(double(counts.Dates/100), double(rem(counts.Dates,100)+1), 1)-1;
-data  = table2array(counts(:,2:end));
-data  = [data(:,idx), nansum(data(:,~idx),2)];
-data(isnan(data)) = 0;
-subplot(211)
-area(dates, data)
-dynamicDateTicks
-axis tight
-title('Montly counts of price observations by Share Type Code (absolute and %)')
+figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100,'LineStyle','none')
+dynamicDateTicks, axis tight, set(gca, 'Ylim',[80,100],'Layer','top')
+
+l = legend({'common', 'preferred', 'warrant', 'right', 'other', 'derivative'});
+set(l,'Location','SouthWest', 'EdgeCOlor','none')
+
+ylabel '%'
+
+matlab2tikz('.\results\fig\counttype.tex', 'floatFormat','%.7g')
+%% Counts by SHRCD
+try
+    counts = loadresults('shrcdcounts');
+catch
+    % Load msenames
+    try
+        res = loadresults('shrcd');
+    catch
+        res = mapShrcd2mst;
+    end
+    % Master file
+    path2data  = '.\data\TAQ';
+    master = load(fullfile(path2data, 'master'), '-mat');
+    
+    % Group by day
+    [unDates, ~, subs] = unique(res.Date);
+    res.Subs           = uint16(subs);
+    
+    % Group type and count
+    [counts, ~, subs] = unique(res(:,{'Subs','Shrcd'}));
+    counts.Subs       = unDates(counts.Subs);
+    counts.Counts     = accumarray(subs, master.mst.To-master.mst.From+1);
+    
+    % Unstack
+    counts = unstack(counts,'Counts','Shrcd');
+    vnames = counts.Properties.VariableNames(2:end);
+    counts = varfun(@nan2zero,counts);
+    counts = setVariableNames(counts, ['Dates' vnames]);
+    
+    % Save
+    save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
+end
+
+% Group by month
+[dates, ~, subs] = unique(counts.Dates/100);
+subs = uint16(subs);
+% Dates
+dates = double(dates);
+dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+% Data
+data  = table2array(counts(:,2:end) );
+nvar  = size(data,2);
+[subsr,subsc] = ndgrid(subs,1:nvar);
+data = accumarray([subsr(:),subsc(:)], data(:));
+
+% Select a few
+map       = table({'common';'common-undefined';'not matched';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x11','x10','x0','x12','x31','x73'});
+[idx,pos] = ismember(counts.Properties.VariableNames(2:end),  map.Properties.RowNames);
+pos       = [pos(idx), 7]; 
+data      = [data(:,idx), nansum(data(:,~idx),2)];
+data      = data(:,pos);
+nvar      = size(data,2);
+
+% Plot
+figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
+area(dates, bsxfun(@rdivide, data, sum(data,2))*100,'LineStyle','none')
+dynamicDateTicks, axis tight, set(gca, 'Ylim',[60,100],'Layer','top')
+
 l = legend([map.Var1; 'other']);
-set(l,'Location','NorthWest')
-subplot(212)
-area(dates, bsxfun(@rdivide, data, sum(data,2))*100)
-dynamicDateTicks
-axis tight
+set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
-% Save
-save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'shrcdcounts')), 'counts')
+ylabel '%'
 
+matlab2tikz('.\results\fig\countshrcd.tex', 'floatFormat','%.7g')
 %% Count 0 returns
 
 testname = 'countnullrets';
