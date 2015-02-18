@@ -31,9 +31,9 @@ error(nargchk(1,1,nargin,'struct'));
 % Create a Java file of the ZIP filename.
 zipJavaFile  = java.io.File(zipFilename);
 % Create a Java ZipFile and validate it.
-zipFile = org.apache.tools.zip.ZipFile(zipJavaFile);
+zipFile = java.util.zip.ZipFile(zipJavaFile);
 % Extract the entries from the ZipFile.
-entries = zipFile.getEntries;
+entries = zipFile.entries;
 
 % Initialize the file list.
 filelist={};
