@@ -88,7 +88,7 @@ ha.YRuler.SecondaryLabel.String = 'millions';
 ha.YRuler.SecondaryLabel.FontAngle = 'italic';
 ha.YRuler.SecondaryLabel.Visible = 'on';
 
-export_fig(sprintf('.\\results\\fig\\selrulecount0.eps',ii), '-r150','-transparent','-opengl','-a1')
+export_fig('.\results\fig\selrulecount0.eps', '-r150','-transparent','-opengl','-a1')
 %% Overall cleaning counts
 path2data = '.\data\TAQ';
 load(fullfile(path2data,'master'),'-mat')

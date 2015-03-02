@@ -1,4 +1,5 @@
 function [stratret, tbstats, tbarets] = momstrat(tb)
+%  [stratret, tbstats, tbarets] = momstrat(tb)
 
 % Unstack net returns
 netRet = unstack(tb(:,{'UnID','Date','Netret'}),'Netret','UnID');
@@ -57,7 +58,6 @@ if nargout == 0
 end
 
 [tbstats, tbarets] = stratstats(stratlvl(from-1:end,:),plotdates(from-1:end));
-
 end
 
 function [tbstats, tbarets] = stratstats(lvl,dates)

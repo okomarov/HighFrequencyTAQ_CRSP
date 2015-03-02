@@ -1,7 +1,7 @@
 function [betas, unids] = getBetas(lookback, freq, useon, useproxy, issp, iscs, keeplong)
 % GETBETAS Loads betas, applies sp500 and/or common shares filers, unstacks
 %
-%   getBetas(issp, iscs, keeplong, matname)   
+%   getBetas(lookback, freq, useon, useproxy, issp, iscs, keeplong)
 %
 %   NOTE: Does NOT fill in between NaNs
 
