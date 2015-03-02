@@ -100,6 +100,7 @@ catch
     
     % Rename to append the sampling frequency
     name        = regexp(filename,'\w+?(?=\.mat)','match','once');
+    name        = sprintf(matname(name,freq, useon, useproxy),'.mat');
     newfullname = fullfile(writeto, matname(name,freq, useon, useproxy));
     movefile(fullfile(writeto,filename), newfullname);
 end
@@ -123,7 +124,7 @@ function rs = runsum(lookback, data)
 end
 
 function name = matname(name, freq, useon, useproxy)
-if useon,    useon    = 'on'; else useon    = ''; end
-if useproxy, useproxy = 'x';  else useproxy = ''; end
+if useon,    useon    = 'on';   else useon    = ''; end
+if useproxy, useproxy = 'prx';  else useproxy = ''; end
 name = sprintf('%s%dm%s%s', name, freq, useon, useproxy);
 end
