@@ -776,63 +776,9 @@ else
     saveas(gcf, '.\results\BetaCapWeightAll_proxy.png')
 end
 %% Cond alphas
-% From y_it = alpha_it + beta_it * f_t + e_it, estimate:
-% 1) ^beta_it with time-series regression
-% 2) ^f_t with cross-section regression
-% 3) ^alpha_it = y_it - ^beta_it*^f_t
+Betasetf = estimateCondAlpha(lookback, freq, useovern, ~useproxy, sp500only, commononly);
 
-addpath .\utils\
-spdir  = '.\data\CRSP';
-
-% POINT 1)
-% Beta settings
-sp500only  = true;
-commononly = true;
-lookback   = 1;
-freq       = 5;
-useovern   = true;
-useproxy   = true;
-% Estimation
-Betasetf = getBetas(lookback, freq, useovern, ~useproxy, sp500only, commononly, true);
-Betasprx = getBetas(lookback, freq, useovern,  useproxy, sp500only, commononly, true);
-% Sort both according to date
-Betasetf = sortrows(Betasetf,{'Date','UnID'});
-Betasprx = sortrows(Betasprx,{'Date','UnID'});
-
-% POINT 2)
-% Accumarray covariance and variance by date between daily returns of asset and betas
-% Daily rets [Use the dsfquery from crsp]
-try
-    rets = loadresults('dailyret');
-catch
-    path2data = '.\data\TAQ\sampled';
-    rets      = Analyze('dailyret', [], [], fullfile(path2data,'S5m*.mat'));
-end
-
-% Intersect sets, order guaranteed
-[~,ia,ib] = intersect(rets(:,{'Date','UnID'}), Betasetf(:,{'Date','UnID'}));
-rets      = rets(ia,:);
-Betasetf  = Betasetf(ib,:); 
-Betasprx  = Betasprx(ib,:);
-
-% Subs by day
-[unDates,~,subs] = unique(rets.Date);
-
-% Numerator
-Exy2 = accumarray(subs, (Betasetf.Beta .* rets.Dret).^2,[],@nansum);
-Ex   = accumarray(subs, Betasetf.Beta ,[],@nanmean);
-Ey   = accumarray(subs, rets.Dret     ,[],@nanmean);
-Cov  = Exy2 - Ex.*Ey;
-% Denominator
-Ex2  = accumarray(subs, Betasetf.Beta.*2 ,[],@nansum);
-% Fhat 
-Fhat = Cov./Ex2;
-
-% POINT 3)
-alpha = rets.Dret - Fhat(subs).*Betasetf.Beta;
-
-
-% Net retunrs - [Deprecated]
+% Net returns - [Deprecated]
 % Load SPY (etf)
 loadname = 'spysampled5m';
 try
