@@ -788,8 +788,6 @@ bench = rets(rets.UnID == 29904,:);
 % HF conditional alphas
           %getBetas(lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong)
 Betasetf = getBetas(lookback,    5,     true,     false,      true,       true, true);
-
-% CHECK what is going on with the Den!
 [Betasetf,rets] = estimateCondAlpha(Betasetf, rets);
 
 % Low frequency conditional alphas
@@ -797,13 +795,14 @@ Betasetf = getBetas(lookback,    5,     true,     false,      true,       true, 
 brets = bench.Totret(subs);
 
 % Running measures for lookback period
+
 Exy2 = accumarray(subs, (brets .* rets.Totret).^2,[],@nansum);
 Ex   = accumarray(subs, brets  ,[],@nanmean);
 Ey   = accumarray(subs, rets.Totret,[],@nanmean);
 Cov  = Exy2 - Ex.*Ey;
 
 % Denominator
-Var  = accumarray(subs, brets.*2 ,[],@var);
+Var  = accumarray(subs, brets.*2 ,[],@nanvar);
 
 % Running beta!
 

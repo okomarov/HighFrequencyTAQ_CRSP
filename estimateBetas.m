@@ -6,22 +6,23 @@ if nargin < 4 || isempty(useproxy), useproxy = false; end
 
 writeto = '.\results\';
 
-% Sample if data doesn't exist
-path2data = sprintf('.\\data\\TAQ\\sampled\\%dmin', freq);
-if exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2
-    fprintf('%s: sampling data at %d min.\n', mfilename, freq)
-    step    = freq/(60*24);
-    grid    = (9.5/24:step:16/24)';
-    fmtname = sprintf('S%dm_%%04d.mat',freq);
-    sampleData(grid, path2data, fmtname);
-end 
-
 try
     fprintf('%s: loading betacomponents at %d min.\n', mfilename, freq)
     name  = matname('betacomponents',freq, useon, useproxy);
     betas = loadresults(name);
 catch
     fprintf('%s: betacomponents not found. Estimating\n', mfilename)
+    
+    % Sample if data doesn't exist
+    path2data = sprintf('.\\data\\TAQ\\sampled\\%dmin', freq);
+    if exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2
+        fprintf('%s: sampling data at %d min.\n', mfilename, freq)
+        step    = freq/(60*24);
+        grid    = (9.5/24:step:16/24)';
+        fmtname = sprintf('S%dm_%%04d.mat',freq);
+        sampleData(grid, path2data, fmtname);
+    end 
+        
     % Use self-built sp500 proxy
     if useproxy
         name = sprintf('sp500proxy%dm',freq);

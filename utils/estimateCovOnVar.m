@@ -2,6 +2,9 @@ function beta = estimateCovOnVar(y, x, subs, isLowFreq)
 % In a linear regression y = a + b*x + e
 % beta = cov(x,y)/var(x)
 
+% Implement lookback so that with high freq is simpoly a running sum of num
+% and denom while for low frequency is lisghtly more complex
+
 if nargin < 3, subs      = ones(size(x)); end
 if nargin < 4, isLowFreq = false;         end
 
