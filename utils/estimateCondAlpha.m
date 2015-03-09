@@ -24,16 +24,7 @@ beta      = beta(ib,:);
 
 % Subs by day
 [~,~,subs] = unique(rets.Date);
-
-% Numerator
-Exy2 = accumarray(subs, (beta.Beta .* rets.Dret).^2,[],@nansum);
-Ex   = accumarray(subs, beta.Beta ,[],@nanmean);
-Ey   = accumarray(subs, rets.Dret    ,[],@nanmean);
-Cov  = Exy2 - Ex.*Ey;
-% Denominator
-Ex2  = accumarray(subs, beta.Beta.*2 ,[],@nansum);
-% Fhat 
-Fhat = Cov./Ex2;
+Fhat       = estimateCovOnVar(betas.Beta, rets.Totret, subs);
 
 % POINT 3)
 beta.Alpha = rets.Dret - Fhat(subs).*beta.Beta;
