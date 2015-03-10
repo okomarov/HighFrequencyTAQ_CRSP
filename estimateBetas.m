@@ -117,13 +117,6 @@ den        = accumarray(subs, betas.Den, [], @(x) runsum(lookback,x));
 betas.Beta = cat(1,num{:})./cat(1,den{:});
 end
 
-function rs = runsum(lookback, data)
-    rs        = NaN(size(data));
-    nonan     = ~isnan(data);
-    rs(nonan) = filter(ones(lookback,1), 1, data(nonan), NaN(lookback-1,1));
-    rs        = {rs};
-end
-
 function name = matname(name, freq, useon, useproxy)
 if useon,    useon    = 'on';   else useon    = ''; end
 if useproxy, useproxy = 'prx';  else useproxy = ''; end
