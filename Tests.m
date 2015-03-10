@@ -783,30 +783,60 @@ rets = loadresults('return_overnight');
 rets = rets(rets.Date > 19930201,:); % No spy before
 
 % SPY is UnID 29904 in HF data or Permno 84398 in CRSP
-bench = rets(rets.UnID == 29904,:);
+spy = rets(rets.UnID == 29904,:);
 
 % HF conditional alphas
           %getBetas(lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong)
 Betasetf = getBetas(lookback,    5,     true,     false,      true,       true, true);
+betaPercentiles([], lookback, 5, true, false, true, true)
 [Betasetf,rets] = estimateCondAlpha(Betasetf, rets);
 
 % Low frequency conditional alphas
-[~,subs] = ismember(rets.Date, bench.Date);
-brets = bench.Totret(subs);
+[~,pos]    = ismember(rets.Date, spy.Date);
+rets.Brets = spy.Totret(pos);
+
+rets       = sortrows(rets, {'UnID','Date'});
+[~,~,subs] = unique(rets.UnID);
 
 % Running measures for lookback period
+f   = @(x) runsum(lookback, x);
 
-Exy2 = accumarray(subs, (brets .* rets.Totret).^2,[],@nansum);
-Ex   = accumarray(subs, brets  ,[],@nanmean);
-Ey   = accumarray(subs, rets.Totret,[],@nanmean);
-Cov  = Exy2 - Ex.*Ey;
+Exy = accumarray(subs, rets.Brets.*rets.Totret, [],f);
+Ex  = accumarray(subs, rets.Brets             , [],f);
+Ey  = accumarray(subs, rets.Totret            , [],f);
+Cov = cat(1,Exy{:})/lookback - cat(1,Ex{:}).*cat(1,Ey{:})/lookback^2;
 
-% Denominator
-Var  = accumarray(subs, brets.*2 ,[],@nanvar);
+Ex2 = accumarray(subs,  rets.Brets.^2         , [],f);
+Var = cat(1,Ex2{:})/lookback - (cat(1,Ex{:})/lookback).^2;
 
-% Running beta!
+% Running betas
+BetasLF = rets(:,{'UnID','Date'});
+BetasLF.Beta = Cov./Var;
 
-% Then Fhat for low frequency
+% Plot percentile betas
+betas = unstack(BetasLF(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+betas = sortrows(betas,'Date');
+betas = betas(~isprobdate(betas.Date),:);
+refdates = serial2yyyymmdd(datenum(1993,3:234,1)-1);
+betas    = sampledates(betas,refdates,1);
+
+% All days
+% refdates = Betas.Date;
+% tmp      = table2array(Betas);
+
+% Plot
+ptiles   = 10:10:90;
+plotdates   = yyyymmdd2datetime(refdates);
+percentiles = prctile(table2array(betas(:,2:end)),ptiles,2);
+plot(plotdates, percentiles)
+legend(arrayfun(@(x) sprintf('%d^{th} ',x),ptiles,'un',0))
+title BetaPercentiles_3600m63d_withON_spy_sp500_commonshares interpreter none
+saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
+
+
+% Cond alpha
+[BetasLF,rets] = estimateCondAlpha(BetasLF, rets);
+
 
 % Then start with the momentum
 
