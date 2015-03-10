@@ -1,5 +1,6 @@
-function [alpha, rets] = estimateCondAlpha(betas, rets)
+function [betas, rets] = estimateCondAlpha(betas, rets)
 % estimateCondAlpha(betas, rets)
+% Sorts betas by Date and UnID
 
 % Cond alphas
 % From y_it = alpha_it + beta_it * f_t + e_it, estimate:
@@ -19,11 +20,22 @@ betas = sortrows(betas,{'Date','UnID'});
 rets      = rets(ia,:);
 betas     = betas(ib,:); 
 
-% Subs by day
+% Subs by day 
 [~,~,subs] = unique(rets.Date);
-Fhat       = estimateCovOnVar(betas.Beta, rets.Totret, subs);
+
+% Fhat
+Fhat = CovOnVar(betas.Beta, rets.Totret, subs);
 
 % POINT 3)
 betas.Alpha = rets.Totret - Fhat(subs).*betas.Beta;
-alpha = betas;
+end
+
+function beta = CovOnVar(x,y,subs)
+% Low frequency
+Exy  = accumarray(subs, x.*y, [],@nanmean);
+Ex   = accumarray(subs,    x, [],@nanmean);
+Ey   = accumarray(subs,    y, [],@nanmean);
+Cov  = Exy - Ex.*Ey;
+Var  = accumarray(subs,  x,[], @nanvar);
+beta = Cov./Var;
 end
