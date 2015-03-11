@@ -40,6 +40,8 @@ if ~isempty(tickers)
     
     % Filter based on IDs
     master = master.mst(ismember(master.mst.Id,ids),:);
+else
+    master = master.mst;
 end
 
 % Filter based on dates
