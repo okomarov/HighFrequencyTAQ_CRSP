@@ -1,8 +1,12 @@
 function [stratret, tbstats, tbarets] = zeroptf(tb)
-% [stratret, tbstats, tbarets] = zeroptf(tb, lookback)
+% [stratret, tbstats, tbarets] = zeroptf(tb)
+% 
+%   TB should have 'UnID', 'Date', 'Score' and 'Ret' variables
 
 % Remove rows with no score
 tb = tb(~isnan(tb.Score),:);
+
+warning off MATLAB:table:ModifiedVarnames
 
 % Unstack scores
 score = unstack(tb(:,{'UnID','Date','Score'}),'Score','UnID');
@@ -15,6 +19,8 @@ ret = unstack(tb(:,{'UnID','Date','Ret'}),'Ret','UnID');
 ret = sortrows(ret,'Date');
 ret = table2array(ret(:,2:end));
 
+warning on MATLAB:table:ModifiedVarnames
+
 % Beginning of month rebalancing scheme
 [~, ~, subs] = unique(dates./100);
 rebdate      = find([false; diff(subs)>0]);
@@ -23,13 +29,13 @@ N        = numel(dates);
 stratret = NaN(N, 1);
 for ii = 1:numel(rebdate)
     [iShort, iLong] = deal(false(1,size(ret,2)));
-    % Alive in the future
+    % Alive on rebalancing date
     ifut    = subs == ii+1;
-    isalive = any(score(ifut,:));
+    isalive = ~isnan(score(rebdate(ii),:));
     
     % Score ranking
-    scores          = score(rebdate(ii)-1,isalive);
-    ptiles          = prctile(scores,[10,90]);
+    scores          = score(rebdate(ii),isalive);
+    ptiles          = prctile(scores,[5,95]);
     iShort(isalive) = scores <= ptiles(1);
     iLong (isalive) = scores >= ptiles(2);
        
