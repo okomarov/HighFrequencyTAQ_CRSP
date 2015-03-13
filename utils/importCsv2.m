@@ -50,38 +50,56 @@ ids  = cell(opt.Nblk,1);
 mst  = cell(opt.Nblk,1);
 ii   = 0;
 c    = 0;
+tt   = 0;
+
 
 % Loop each csv
 for f = 1:numel(filenames)
     filename = unzip(fullfile(path2zip,filenames{f}),path2zip);
     fid      = fopen(filename{end});
+    t        = 0;
+    cleanup  = onCleanup(@() fclose(fid)); 
     status   = true;
     fprintf('%-40s%s\n',filenames{f},datestr(now,'dd HH:MM:SS'))
     
     while status
         while ii < opt.Nblk && ~feof(fid)
-            ii = ii + 1;
-            
+            ii         = ii + 1;
+            offset     = ftell(fid);
             %    1       2       3-5       6       7        8           9           10          11
             % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
             data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
                                   opt.Nrec,opt.Scan{:});
+            tt         = tt+1;
+            t          = t+1;
             
-            % Make sure to keep whole day on same file
+            % Fault tolerance, rewind
+            if isempty(data{ii,1}) && ~feof(fid)
+                fseek(fid, offset,'bof'); 
+                continue
+            end
+                              
+            % Make sure to keep whole day on same mat file
             if ii == opt.Nblk
                 from       = find(diff(data{ii,2}),1,'last')+1;
                 resdata    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
                 data(ii,:) = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
-                [resids,resmst,resdata] = processDataset(resdata);
+                if isempty(resdata{1})
+                    resids = cell(0,1);
+                    resmst = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
+                else
+                    [resids,resmst,resdata] = processDataset(resdata);
+                end
             end
             [ids{ii},mst{ii},data(ii,:)] = processDataset(data(ii,:));
         end
         
         % Close .csv and clean if finished parsing it
         if feof(fid)
-            status = fclose(fid);
+            delete(cleanup)
             pause(0.5)
             delete(filename{:})
+            status = false;
             continue
         end
         
@@ -103,7 +121,7 @@ end
 
 % LAST iteration exits without processing saving, thus do it here
 [ids,mst,data] = consolidateDataset(ids,mst,data);
-c = c+1;
+c              = c+1;
 save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','ids','-v7.3')
 fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
@@ -130,11 +148,11 @@ for y = 1993:2010
         fclose(fid);
         delete(filename{1});
         
-        idxM = mst.Id == find(strcmpi(regexp(d(f).name,'\w+(?=_)','match'), ids)) & ...
+        idxM  = mst.Id == find(strcmpi(regexp(d(f).name,'\w+(?=_)','match'), ids)) & ...
                fix(mst.Date/1e4) == y;
-        tmp  = mst(idxM,:);
-        cds  = unique(tmp(:,end));
-        nCds = numel(cds);
+        tmp   = mst(idxM,:);
+        cds   = unique(tmp(:,end));
+        nCds  = numel(cds);
         dataC = cell(nCds,6);
         for ii = 1:nCds
             s           = load(fullfile(path2zip,'mat',sprintf('T%04d.mat',cds(ii))));
@@ -185,17 +203,17 @@ end
 % Consolidate blocks from .csv
 function [tck,mst,data] = consolidateDataset(tck,mst,data)
 % Count number of records per block
-blkcountMst   = cellfun(@(x) size(x,1),mst);
-blkcountData  = cellfun(@(x) size(x,1),data(:,3));
+blkcountMst  = cellfun(@(x) size(x,1),mst);
+blkcountData = cellfun(@(x) size(x,1),data(:,3));
 % Concatenate blocks
-data          = arrayfun(@(x) cat(1,data{:,x}),3:11,'un',0);
-tck           = cat(1,tck{:});
-mst           = cat(1,mst{:});
+data         = arrayfun(@(x) cat(1,data{:,x}),3:11,'un',0);
+tck          = cat(1,tck{:});
+mst          = cat(1,mst{:});
 % Some data manipulations
-data{1}       = cat(2,data{1:3});
-data{6}       = cat(2,data{6:7});
+data{1}      = cat(2,data{1:3});
+data{6}      = cat(2,data{6:7});
 % Store as table
-data          = table(data{[1,4:6,8:9]},...
+data         = table(data{[1,4:6,8:9]},...
     'VariableNames',{'Time','Price','Volume','G127_Correction','Condition','Exchange'});
 
 % Translate block indexing of From/To to whole file indexing
