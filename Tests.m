@@ -786,15 +786,19 @@ rets = rets(rets.Date > 19930201,:); % No spy before
 spy = rets(rets.UnID == 29904,:);
 
 % HF conditional alphas
-          %getBetas(lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong)
+                   %lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong
 Betasetf = getBetas(lookback,    5,     true,     false,      true,       true, true);
-betaPercentiles([], lookback, 5, true, false, true, true)
+% betaPercentiles([], lookback, 5, true, false, true, true)
 [Betasetf,rets] = estimateCondAlpha(Betasetf, rets);
+Betasetf.Ret = rets.Totret;
 
-% Low frequency conditional alphas
+zeroptf(renameVarNames(Betasetf,'Score','Alpha'),lookback);
+
+% LF conditional alphas
 [~,pos]    = ismember(rets.Date, spy.Date);
 rets.Brets = spy.Totret(pos);
 
+% Subs ID
 rets       = sortrows(rets, {'UnID','Date'});
 [~,~,subs] = unique(rets.UnID);
 
@@ -813,30 +817,30 @@ Var = cat(1,Ex2{:})/lookback - (cat(1,Ex{:})/lookback).^2;
 BetasLF = rets(:,{'UnID','Date'});
 BetasLF.Beta = Cov./Var;
 
-% Plot percentile betas
-betas = unstack(BetasLF(:,{'Date','UnID','Beta'}), 'Beta','UnID');
-betas = sortrows(betas,'Date');
-betas = betas(~isprobdate(betas.Date),:);
-refdates = serial2yyyymmdd(datenum(1993,3:234,1)-1);
-betas    = sampledates(betas,refdates,1);
+Betasetf.Ret = rets.Totret;
 
-% All days
-% refdates = Betas.Date;
-% tmp      = table2array(Betas);
-
-% Plot
-ptiles   = 10:10:90;
-plotdates   = yyyymmdd2datetime(refdates);
-percentiles = prctile(table2array(betas(:,2:end)),ptiles,2);
-plot(plotdates, percentiles)
-legend(arrayfun(@(x) sprintf('%d^{th} ',x),ptiles,'un',0))
-title BetaPercentiles_3600m63d_withON_spy_sp500_commonshares interpreter none
-saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
-
+% % Plot percentile betas
+% betas = unstack(BetasLF(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+% betas = sortrows(betas,'Date');
+% betas = betas(~isprobdate(betas.Date),:);
+% refdates = serial2yyyymmdd(datenum(1993,3:234,1)-1);
+% betas    = sampledates(betas,refdates,1);
+% % All days
+% % refdates = Betas.Date;
+% % tmp      = table2array(Betas);
+% ptiles   = 10:10:90;
+% plotdates   = yyyymmdd2datetime(refdates);
+% percentiles = prctile(table2array(betas(:,2:end)),ptiles,2);
+% plot(plotdates, percentiles)
+% legend(arrayfun(@(x) sprintf('%d^{th} ',x),ptiles,'un',0))
+% title BetaPercentiles_3600m63d_withON_spy_sp500_commonshares interpreter none
+% saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
 
 % Cond alpha
 [BetasLF,rets] = estimateCondAlpha(BetasLF, rets);
 
+
+momstrat(setVariableNames(rets(~isnan(rets.Netprx),1:4),{'UnID','Date','Dayret','Netret'}))
 
 % Then start with the momentum
 
@@ -881,6 +885,28 @@ rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
 [~,pos]          = ismember(Betasetf(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
 rets.Netspy(pos) = rets.Dret(pos) - Betasetf.Sysret;
 %% SP500 momentum
+lookback = 21*12;
+
+% Daily rets
+rets = loadresults('return_overnight');
+rets = rets(issp500member(rets),:);
+rets = rets(iscommonshare(rets),:);
+
+% Sortrows
+rets = sortrows(rets,{'UnID','Date'});
+[~,~,subs] = unique(rets.UnID);
+
+% Check zeroptf on momentum
+f    = @(x) cumprod(1+x);
+Ones = @(x) ones(min(lookback, numel(x)),1); 
+g    = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
+score = accumarray(subs, rets.Totret, [], g);
+rets.Score = cat(1,score{:})-1;
+
+zeroptf(renameVarNames(rets,'Ret','Totret'));
+
+
+
 momstrat(setVariableNames(rets(~isnan(rets.Netprx),1:4),{'UnID','Date','Dayret','Netret'}))
 [strat,stats,arets] = momstrat(setVariableNames(rets(~isnan(rets.Netspy),[1:3, 5]),...
                                {'UnID','Date','Dayret','Netret'}));
