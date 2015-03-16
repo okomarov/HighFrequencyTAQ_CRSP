@@ -15,19 +15,15 @@ addpath .\utils\mcolon
 
 % Checks and defaults
 narginchk(1,6)
-if nargin < 2, tickers = []; end
-if isstring(tickers), tickers = {tickers}; end
-if nargin < 3 || isempty(from), from = 0; end
-if nargin < 4 || isempty(to),   to = inf; end
-if nargin < 5 || isempty(varnames)
-    varnames = '';
-elseif isstring(varnames)
-    varnames = {varnames};
-end
-if nargin < 6 || isempty(path2data),  path2data  = '.\data\TAQ'; end
-% if nargin < 7 || isempty(debug), debug = false; end   
+if nargin < 2,                          tickers   = [];           end
+if nargin < 3 || isempty(from),         from      = 0;            end
+if nargin < 4 || isempty(to),           to        = inf;          end
+if nargin < 5,                          varnames  = [];           end
+if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ'; end
+ 
+if isstring(tickers),  tickers  = {tickekrs}; end
+if isstring(varnames), varnames = {varnames}; end
 
-    
 % Find tickers in the master file
 if ~isempty(tickers)
     [ifound,ids] = ismember(upper(tickers),upper(master.ids));
@@ -40,7 +36,7 @@ if ~isempty(tickers)
     
     % Filter based on IDs
     master = master.mst(ismember(master.mst.Id,ids),:);
-else
+elseif isstruct(master)
     master = master.mst;
 end
 
@@ -61,9 +57,9 @@ end
 % Check if Datetime already available
 idatetime = any(strcmpi(availablenames, 'Datetime'));
 if idatetime
-    varnames   = unique(['Datetime' varnames],'stable');
+    varnames = unique(['Datetime' varnames],'stable');
 else
-    varnames   = unique(['Time' varnames],'stable');
+    varnames = unique(['Time' varnames],'stable');
 end
 
 % Type of IDs available
