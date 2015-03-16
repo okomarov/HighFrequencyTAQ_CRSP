@@ -839,51 +839,6 @@ Betasetf.Ret = rets.Totret;
 % Cond alpha
 [BetasLF,rets] = estimateCondAlpha(BetasLF, rets);
 
-
-momstrat(setVariableNames(rets(~isnan(rets.Netprx),1:4),{'UnID','Date','Dayret','Netret'}))
-
-% Then start with the momentum
-
-% Net returns - [Deprecated]
-% Load SPY (etf)
-loadname = 'spysampled5m';
-try
-    spy = loadresults(loadname);
-catch
-    path2data = '.\data\TAQ\sampled';
-    master    = load(fullfile(path2data,'master'),'-mat');
-    spy       = getTaqData(master, 'SPY',[],[],'Price',path2data);
-    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
-end
-
-% Betasspy*spy
-spy             = iprice2dret(spy);
-[~,pos]         = ismember(Betasetf.Date,spy.Date);
-ret             = [NaN; spy.Ret];
-Betasetf.Sysret = ret(pos+1).*Betasetf.Beta;
-
-% Get Betas
-[Betas, unids] = getBetas(sp500only, commononly);
-
-% Load sp500proxy
-spproxy = loadresults('sp500proxy');
-
-% Betas*proxy
-spproxy      = iprice2dret(spproxy);
-[~,pos]      = ismember(Betas.Date,spproxy.Date);
-ret          = [NaN; spproxy.Ret];
-Betas.Sysret = ret(pos+1).*Betas.Beta;
-
-% Daily rets [Use the dsfquery from crsp]
-[rets.Netprx,rets.Netspy] = deal(NaN(size(rets,1),1));
-
-% Net rets proxy
-[~,pos]          = ismember(Betas(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
-rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
-
-% Net rets spy
-[~,pos]          = ismember(Betasetf(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
-rets.Netspy(pos) = rets.Dret(pos) - Betasetf.Sysret;
 %% SP500 momentum
 lookback = 21*12;
 
@@ -905,30 +860,75 @@ rets.Score = cat(1,score{:})-1;
 
 zeroptf(renameVarNames(rets,'Ret','Totret'));
 
+% Then start with the momentum
+Betasetf = getBetas(1,5,true,false,true,true,true);
+
+% Net returns - [Deprecated]
+% Load SPY (etf)
+loadname = 'spysampled5m';
+try
+    spy = loadresults(loadname);
+catch
+    path2data = '.\data\TAQ\sampled';
+    master    = load(fullfile(path2data,'master'),'-mat');
+    spy       = getTaqData(master, 'SPY',[],[],'Price',path2data);
+    save(fullfile(resdir,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),loadname)), 'spy')
+end
+
+% Betasspy*spy
+spy             = iprice2dret(spy);
+[~,pos]         = ismember(Betasetf.Date,spy.Date);
+ret             = [NaN; spy.Ret];
+Betasetf.Sysret = ret(pos+1).*Betasetf.Beta;
+
+% % Get Betas
+% [Betas, unids] = getBetas(sp500only, commononly);
+% 
+% % Load sp500proxy
+% spproxy = loadresults('sp500proxy');
+% 
+% % Betas*proxy
+% spproxy      = iprice2dret(spproxy);
+% [~,pos]      = ismember(Betas.Date,spproxy.Date);
+% ret          = [NaN; spproxy.Ret];
+% Betas.Sysret = ret(pos+1).*Betas.Beta;
+
+% Daily rets [Use the dsfquery from crsp]
+[rets.Netprx,rets.Netspy] = deal(NaN(size(rets,1),1));
+
+% Net rets proxy
+% [~,pos]          = ismember(Betas(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+% rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
+
+% Net rets spy
+[~,ia,ib] = intersect(Betasetf(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+Betasetf  = Betasetf(ia,:);
+rets      = rets(ib,:);
+rets.Netspy = rets.Totret - Betasetf.Sysret;
+
+momstrat(setVariableNames(rets(~isnan(rets.Netspy),{'UnID','Date','Totret','Netspy'}),{'UnID','Date','Dayret','Netret'}))
 
 
-momstrat(setVariableNames(rets(~isnan(rets.Netprx),1:4),{'UnID','Date','Dayret','Netret'}))
-[strat,stats,arets] = momstrat(setVariableNames(rets(~isnan(rets.Netspy),[1:3, 5]),...
-                               {'UnID','Date','Dayret','Netret'}));
+% Check daily ret
+% Daily rets
+ret = loadresults('dailyret');
+ret = ret(issp500member(ret),:);
+ret = ret(iscommonshare(ret),:);
 
-plotdates = yyyymmdd2serial(unique(rets.Date));
-from      = find(~all(isnan(strat),2),1,'first');
-stratlvl  = [NaN(from-2,2); cumprod([ones(1,2); strat(from:end,:)+1])];
+% Sortrows
+ret = sortrows(ret,{'UnID','Date'});
+[~,~,subs] = unique(ret.UnID);
 
-figure
-set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5],'PaperPositionMode','auto')
-colormap(lines(size(strat,2)))% ,'Ylim',[0,100]
+% Check zeroptf on momentum
+lookback = 21;
+f    = @(x) cumprod(1+x);
+Ones = @(x) ones(min(lookback, numel(x)),1); 
+g    = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
+score = accumarray(subs, ret.Dret, [], g);
+ret.Score = cat(1,score{:})-1;
 
-plot(plotdates, stratlvl)
-dynamicDateTicks
+zeroptf(renameVarNames(ret, 'Ret','Dret'));
 
-axis tight, set(gca,'Layer','top')
-
-legend('R - beta*mkt','Whole returns','Location','northwest')
-legend boxoff
-
-matlab2tikz('.\results\fig\momsp500_etf.tex', 'floatFormat','%.7g')
-title('Long/short 90th/10th percentile based on previous month performance')
 
 %% Check Betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
