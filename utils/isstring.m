@@ -1,7 +1,7 @@
-function tf = isstring(A)
+function bool = isstring(A)
 % ISSTRING Determine whether input is a string (1 by N char)
 % 
-%   TF = ISSTRING(A) Where A is any input and TF is logical.
+%   BOOL = ISSTRING(A) Where A is any input and BOOL is logical.
 %
 % Example:
 %
@@ -13,5 +13,5 @@ function tf = isstring(A)
 % Tested on R2014a Win7 64bit
 % 26 Jun 2014 - Created
 
-tf = ischar(A) && isrow(A);
+bool = ischar(A) && isrow(A);
 end
