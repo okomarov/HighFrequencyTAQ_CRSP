@@ -34,8 +34,8 @@ for ii = 1:numel(rebdate)
     isalive = ~isnan(score(rebdate(ii),:));
     
     % Score ranking
-    scores          = score(rebdate(ii),isalive);
-    ptiles          = prctile(scores,[5,95]);
+    scores          = score(rebdate(ii)-1,isalive);
+    ptiles          = prctile(scores,[10,90]);
     iShort(isalive) = scores <= ptiles(1);
     iLong (isalive) = scores >= ptiles(2);
        
