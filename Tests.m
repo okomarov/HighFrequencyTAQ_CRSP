@@ -840,7 +840,7 @@ Betasetf.Ret = rets.Totret;
 [BetasLF,rets] = estimateCondAlpha(BetasLF, rets);
 
 %% SP500 momentum
-lookback = 21*12;
+lookback = 21;
 
 % Daily rets
 rets = loadresults('return_overnight');
@@ -855,10 +855,18 @@ rets = sortrows(rets,{'UnID','Date'});
 f    = @(x) cumprod(1+x);
 Ones = @(x) ones(min(lookback, numel(x)),1); 
 g    = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
-score = accumarray(subs, rets.Totret, [], g);
-rets.Score = cat(1,score{:})-1;
 
-zeroptf(renameVarNames(rets,'Ret','Totret'));
+[~,stats,annret] = deal(struct());
+for s = {'Totret','Onret','Ocret'}
+    field = s{1};
+    
+    score = accumarray(subs, rets.(field), [], g);
+    rets.Score = cat(1,score{:})-1;
+    [~,stats.(field),annret.(field)] = zeroptf(renameVarNames(rets,'Ret','Totret'),true);
+    hold on
+end
+title '1m momentum (no skip)'
+legend('Close-to-Close','Close-to-Open','Open-to-Close')
 
 % Then start with the momentum
 Betasetf = getBetas(1,5,true,false,true,true,true);
