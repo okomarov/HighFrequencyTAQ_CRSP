@@ -57,7 +57,7 @@ end
 function [tbstats, tbarets] = stratstats(lvl,dates)
 monthrets          = level2mrets(lvl,dates);
 n                  = numel(monthrets);
-[~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false);
+[~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false,'display','off');
 tbstats.Monret     = coeff;
 tbstats.Pval       = tcdf(coeff/se,n-1)*2; 
 tbstats.Annret     = lvl(end,:)'.^(1/years(dates(end)-dates(1)))-1;
