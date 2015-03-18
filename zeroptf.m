@@ -55,7 +55,11 @@ end
 end
 
 function [tbstats, tbarets] = stratstats(lvl,dates)
-monthrets     = level2mrets(lvl,dates);
+monthrets          = level2mrets(lvl,dates);
+n                  = numel(monthrets);
+[~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false);
+tbstats.Monret     = coeff;
+tbstats.Pval       = tcdf(coeff/se,n-1)*2; 
 tbstats.Annret     = lvl(end,:)'.^(1/years(dates(end)-dates(1)))-1;
 tbstats.Annstd     = std(monthrets)'*sqrt(12);
 tbstats.Downstd    = std(monthrets > 0 .* monthrets)' * sqrt(12);
@@ -70,7 +74,6 @@ tbstats.Sortino    = tbstats.Annret./tbstats.Downstd;
 tbstats = struct2table(tbstats);
 tbarets = table(unique(year(dates)), level2arets(lvl,dates),'VariableNames',{'Year','Ret'});
 end
-
 
 function mrets = level2mrets(lvl,dates)
 sz    = size(lvl);
