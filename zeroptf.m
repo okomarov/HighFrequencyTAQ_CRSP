@@ -1,7 +1,9 @@
-function [stratret, tbstats, tbarets] = zeroptf(tb)
+function [stratret, tbstats, tbarets] = zeroptf(tb, forceplot)
 % [stratret, tbstats, tbarets] = zeroptf(tb)
 % 
 %   TB should have 'UnID', 'Date', 'Score' and 'Ret' variables
+
+if nargin < 2 || isempty(forceplot), forceplot = false; end
 
 % Remove rows with no score
 tb = tb(~isnan(tb.Score),:);
@@ -47,7 +49,7 @@ plotdates = yyyymmdd2datetime(dates);
 from      = find(~isnan(stratret),1,'first');
 stratlvl  = [NaN(from-2,1); cumprod([1; stratret(from:end)+1])];
 
-if nargout == 0
+if nargout == 0 || forceplot
     plot(plotdates, stratlvl)
 end
 
@@ -59,7 +61,7 @@ monthrets          = level2mrets(lvl,dates);
 n                  = numel(monthrets);
 [~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false,'display','off');
 tbstats.Monret     = coeff;
-tbstats.Pval       = tcdf(coeff/se,n-1)*2; 
+tbstats.Pval       = tcdf(-abs(coeff/se),n-1)*2; 
 tbstats.Annret     = lvl(end,:)'.^(1/years(dates(end)-dates(1)))-1;
 tbstats.Annstd     = std(monthrets)'*sqrt(12);
 tbstats.Downstd    = std(monthrets > 0 .* monthrets)' * sqrt(12);
