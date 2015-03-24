@@ -4,12 +4,7 @@
 *.log
 *.synctex.gz
 
-/data/TAQ/
-/data/SP500/
-/data/CCM/
-/data/sas2csv/
-/data/Tickwrite/
-/data/CRSP/
+/data
 /results/*.mat
 /results/*.zip
 /utils/*.mexw64
