@@ -1,0 +1,3 @@
+[submodule "utils/tableutils"]
+	path = utils/tableutils
+	url = git://github.com/okomarov/tableutils
