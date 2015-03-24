@@ -1,6 +1,3 @@
 [submodule "utils/RunLength/+tableutils"]
 	path = utils/RunLength/+tableutils
 	url = C:\\Users\\ok1011\\Documents\\github\\+tableutils
-[submodule "utils/+tableutils"]
-	path = utils/+tableutils
-	url = C:\\Users\\ok1011\\Documents\\github\\+tableutils
