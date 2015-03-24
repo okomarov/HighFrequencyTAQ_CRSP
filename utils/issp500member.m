@@ -59,7 +59,10 @@ tbsmall.Permno = taq2crsp.permno(pos(idx));
 % Remove overlapping
 [un,~,subs] = unique(tbsmall);
 overlap     = un(accumarray(subs,1) > 1,:);
-ioverlap    = ismember(tbsmall, overlap);
+% Speed up with composite key
+keyA        = uint64(tbsmall.Permno) * 1e8 + uint64(tbsmall.Date);
+keyB        = uint64(overlap.Permno) * 1e8 + uint64(overlap.Date);
+ioverlap    = ismember(keyA, keyB);
 tbsmall     = tbsmall(~ioverlap,:);
 idx(idx)    = idx(idx) & ~ioverlap;
 
@@ -96,7 +99,11 @@ tbpanel = stack(tbpanel,tbnames(2:end),'NewDataVariableName','Val','IndexVariabl
 tbpanel = tbpanel(tbpanel.Val == 1,1:2);
 [~,pos] = ismember(tbpanel.Permno,tbnames(2:end));
 tbpanel.Permno = permnos(pos);
-ismall = ismember(tbsmall(:,{'Date','Permno'}), tbpanel);
+
+% Speed up with composite key
+keyA   = uint64(tbsmall.Permno) * 1e8 + uint64(tbsmall.Date);
+keyB   = uint64(tbpanel.Permno) * 1e8 + uint64(tbpanel.Date);
+ismall = ismember(keyA, keyB);
 
 tf      = false(size(tb,1),1);
 tf(idx) = ismall;

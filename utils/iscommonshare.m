@@ -8,5 +8,9 @@ end
 
 shrcd = loadresults('shrcd');
 shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'UnID','Date'});
-tf    = ismember(tb(:,{'UnID','Date'}), shrcd);
+
+% Speed up ismember by creating combined keys
+keyA = uint64(   tb.UnID) * 1e8 + uint64(   tb.Date);
+keyB = uint64(shrcd.UnID) * 1e8 + uint64(shrcd.Date);
+tf   = ismember(keyA, keyB);
 end

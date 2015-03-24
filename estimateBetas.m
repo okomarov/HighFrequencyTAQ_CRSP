@@ -107,8 +107,10 @@ catch
 end
 fprintf('%s: calculating betas with %d day lookback.\n', mfilename, lookback)
 
-% Sort and create subs
-betas      = sortrows(betas,{'UnID','Date'});
+% Sort (composite key for speed) and create subs
+key        = uint64(betas.UnID) * 1e8 + uint64(betas.Date);
+[~,isrt]   = sort(key);
+betas      = betas(isrt,:);
 [~,~,subs] = unique(betas.UnID);
 
 % Beta
