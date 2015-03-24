@@ -48,6 +48,7 @@ end
 plotdates = yyyymmdd2datetime(dates);
 from      = find(~isnan(stratret),1,'first');
 stratlvl  = [NaN(from-2,1); cumprod([1; stratret(from:end)+1])];
+stratret  = table(dates, stratret, 'VariableNames',{'Date','Ret'});
 
 if nargout == 0 || forceplot
     plot(plotdates, stratlvl)
