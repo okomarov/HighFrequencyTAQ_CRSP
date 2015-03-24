@@ -48,17 +48,18 @@ end
 plotdates = yyyymmdd2datetime(dates);
 from      = find(~isnan(stratret),1,'first');
 stratlvl  = [NaN(from-2,1); cumprod([1; stratret(from:end)+1])];
-stratret  = table(dates, stratret, 'VariableNames',{'Date','Ret'});
 
 if nargout == 0 || forceplot
     plot(plotdates, stratlvl)
 end
 
-[tbstats, tbarets] = stratstats(stratlvl(from-1:end,:),plotdates(from-1:end));
+[tbstats, tbarets] = stratstats(plotdates(from-1:end), stratret(from:end,:),stratlvl(from-1:end));
+
+stratret  = table(dates, stratret, 'VariableNames',{'Date','Ret'});
 end
 
-function [tbstats, tbarets] = stratstats(lvl,dates)
-monthrets          = level2mrets(lvl,dates);
+function [tbstats, tbarets] = stratstats(dates, ret, lvl)
+monthrets          = dret2mrets(dates(2:end),ret);
 n                  = numel(monthrets);
 [~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false,'display','off');
 tbstats.Monret     = coeff;
@@ -78,11 +79,11 @@ tbstats = struct2table(tbstats);
 tbarets = table(unique(year(dates)), level2arets(lvl,dates),'VariableNames',{'Year','Ret'});
 end
 
-function mrets = level2mrets(lvl,dates)
-sz    = size(lvl);
+function mrets = dret2mrets(dates,ret)
+sz    = size(ret);
 rsub  = repmat(cumsum([1; logical(diff(month(dates)))]), 1, sz(2));
 csub  = repmat(1:sz(2),sz(1),1);
-mrets = accumarray([rsub(:),csub(:)],lvl(:), [],@(x) x(end)./x(1)-1); 
+mrets = accumarray([rsub(:),csub(:)], ret(:), [], @(r) prod((1+r))-1);
 end
 
 function arets = level2arets(lvl,dates)
