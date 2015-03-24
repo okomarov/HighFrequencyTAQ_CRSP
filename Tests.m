@@ -780,44 +780,49 @@ lookback = 63;
 
 % Daily rets
 rets = loadresults('return_overnight');
-rets = rets(rets.Date > 19930201,:); % No spy before
 
 % SPY is UnID 29904 in HF data or Permno 84398 in CRSP
-spy = rets(rets.UnID == 29904,:);
+rets = rets(rets.Date > 19930201,:); % No spy before
+spy  = rets(rets.UnID == 29904,:);
 
-% HF conditional alphas
+% High frequency
+% -------------------------------------------------------------------------
+
+% Point 1) Estimate betas
+BetasHF = getBetas(lookback,    5,     true,     false,      true,       true, true);
                    %lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong
-Betasetf = getBetas(lookback,    5,     true,     false,      true,       true, true);
 % betaPercentiles([], lookback, 5, true, false, true, true)
-[Betasetf,rets] = estimateCondAlpha(Betasetf, rets);
-Betasetf.Ret = rets.Totret;
 
-zeroptf(renameVarNames(Betasetf,'Score','Alpha'),lookback);
+% Point 2) Estimate cond alphas
+[BetasHF,rets] = estimateCondAlpha(BetasHF, rets);
 
-% LF conditional alphas
+% Point 3) Zero invst ptf
+BetasHF.Ret   = rets.Totret;
+[retHF,stats] = zeroptf(renameVarNames(BetasHF,'Score','Alpha'),true);
+hold on
+
+% Low frequency
+% -------------------------------------------------------------------------
+% Point 1) Estimate betas
+
+% Add benchmark returns
 [~,pos]    = ismember(rets.Date, spy.Date);
 rets.Brets = spy.Totret(pos);
-
-% Subs ID
+% Subs by ID
 rets       = sortrows(rets, {'UnID','Date'});
 [~,~,subs] = unique(rets.UnID);
-
-% Running measures for lookback period
+% Running covariance 
 f   = @(x) runsum(lookback, x);
-
 Exy = accumarray(subs, rets.Brets.*rets.Totret, [],f);
 Ex  = accumarray(subs, rets.Brets             , [],f);
 Ey  = accumarray(subs, rets.Totret            , [],f);
 Cov = cat(1,Exy{:})/lookback - cat(1,Ex{:}).*cat(1,Ey{:})/lookback^2;
-
+% Running variance
 Ex2 = accumarray(subs,  rets.Brets.^2         , [],f);
 Var = cat(1,Ex2{:})/lookback - (cat(1,Ex{:})/lookback).^2;
-
 % Running betas
-BetasLF = rets(:,{'UnID','Date'});
+BetasLF = rets(:,{'UnID','Date','Totret'});
 BetasLF.Beta = Cov./Var;
-
-Betasetf.Ret = rets.Totret;
 
 % % Plot percentile betas
 % betas = unstack(BetasLF(:,{'Date','UnID','Beta'}), 'Beta','UnID');
@@ -836,9 +841,31 @@ Betasetf.Ret = rets.Totret;
 % title BetaPercentiles_3600m63d_withON_spy_sp500_commonshares interpreter none
 % saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
 
-% Cond alpha
-[BetasLF,rets] = estimateCondAlpha(BetasLF, rets);
+% Point 2) Estimate cond alpha
+BetasLF = estimateCondAlpha(BetasLF, rets);
 
+% Point 3) Zero invest ptf
+[retLF,stats(2,:)] = zeroptf(renameVarNames(BetasLF,{'Score','Ret'},{'Alpha','Totret'}),true);
+legend({'High freq','Low freq'})
+
+% Adjust for FF factors
+% -------------------------------------------------------------------------
+FF       = loadresults('FFfactors');
+refdates = intersect(intersect(retLF.Date(~isnan(retLF.Ret)), retHF.Date), FF.Date);
+
+tb       = table(refdates,'VariableNames',{'Date'});
+tb.RetLF = retLF.Ret(ismember(retLF.Date, refdates));
+tb.RetHF = retHF.Ret(ismember(retHF.Date, refdates));
+tb       = [tb FF(ismember(FF.Date   , refdates), 2:end)];
+
+% Convert to monthly
+[mdates,~,subs] = unique(tb.Date/100);
+% Calculate returns
+f = @(x) accumarray(subs, x,[],@(r) prod((1+r))-1);
+tbl = tbextend.varfun(f, tb(:,2:end),'VariableNames',tb.Properties.VariableNames(2:end));
+
+mdl = fitlm(tbl,'RetHF ~ 1');
+addTerms
 %% SP500 momentum
 lookback = 21;
 
@@ -869,7 +896,7 @@ title '1m momentum (no skip)'
 legend('Close-to-Close','Close-to-Open','Open-to-Close')
 
 % Then start with the momentum
-Betasetf = getBetas(1,5,true,false,true,true,true);
+BetasHF = getBetas(1,5,true,false,true,true,true);
 
 % Net returns - [Deprecated]
 % Load SPY (etf)
@@ -885,9 +912,9 @@ end
 
 % Betasspy*spy
 spy             = iprice2dret(spy);
-[~,pos]         = ismember(Betasetf.Date,spy.Date);
+[~,pos]         = ismember(BetasHF.Date,spy.Date);
 ret             = [NaN; spy.Ret];
-Betasetf.Sysret = ret(pos+1).*Betasetf.Beta;
+BetasHF.Sysret = ret(pos+1).*BetasHF.Beta;
 
 % % Get Betas
 % [Betas, unids] = getBetas(sp500only, commononly);
@@ -909,10 +936,10 @@ Betasetf.Sysret = ret(pos+1).*Betasetf.Beta;
 % rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
 
 % Net rets spy
-[~,ia,ib] = intersect(Betasetf(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
-Betasetf  = Betasetf(ia,:);
+[~,ia,ib] = intersect(BetasHF(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+BetasHF  = BetasHF(ia,:);
 rets      = rets(ib,:);
-rets.Netspy = rets.Totret - Betasetf.Sysret;
+rets.Netspy = rets.Totret - BetasHF.Sysret;
 
 momstrat(setVariableNames(rets(~isnan(rets.Netspy),{'UnID','Date','Totret','Netspy'}),{'UnID','Date','Dayret','Netret'}))
 
