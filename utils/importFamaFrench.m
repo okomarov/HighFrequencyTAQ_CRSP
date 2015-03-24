@@ -12,8 +12,11 @@ writeto = '.\results';
 txtfile = unzip(fullfile(path2zip, zipfile),path2zip);
 fid     = fopen(char(txtfile));
 vnames  = textscan(fid, '%s%s%s%s',1,'MultipleDelimsAsOne',true,'HeaderLines',4);
-txt     = textscan(fid, '%d%f%f%f%f','MultipleDelimsAsOne',true);
+txt     = textscan(fid, '%u%f%f%f%f','MultipleDelimsAsOne',true);
 fclose(fid);
+
+% Convert percentage returns to decimal
+txt(2:end) = cellfun(@(x) x/100, txt(2:end),'un',0);
 
 % Convert into table
 FFfactors = table(txt{:},'VariableNames',['Date', 'MktMinusRF', vnames{2:end}]);
