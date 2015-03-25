@@ -858,14 +858,37 @@ tb.RetLF = retLF.Ret(ismember(retLF.Date, refdates));
 tb.RetHF = retHF.Ret(ismember(retHF.Date, refdates));
 tb       = [tb FF(ismember(FF.Date   , refdates), 2:end)];
 
-% Convert to monthly
+% Convert to monthly % returns
 [mdates,~,subs] = unique(tb.Date/100);
-% Calculate returns
-f = @(x) accumarray(subs, x,[],@(r) prod((1+r))-1);
-tbl = tbextend.varfun(f, tb(:,2:end),'VariableNames',tb.Properties.VariableNames(2:end));
+f               = @(x) accumarray(subs, x,[],@(r) (prod((1+r))-1)*100);
+tbl             = tbextend.varfun(f, tb(:,2:end),'RenameVariables',false);
 
-mdl = fitlm(tbl,'RetHF ~ 1');
-addTerms
+% Excess returns
+tbl.RetHF   = tbl.RetHF - tbl.RF;
+tbl.RetLF   = tbl.RetLF - tbl.RF;
+tbl.RetDiff = tbl.RetHF - tbl.RetLF;
+
+% Regressions
+[coeff,se] = deal(NaN(5,9));
+
+n = size(tbl,1);
+l = ones(n,1);
+
+% Excess
+[~,se(1,1),coeff(1,1)] = hac(l, tbl.RetLF, 'intercept',false,'display','off');
+[~,se(1,4),coeff(1,4)] = hac(l, tbl.RetHF, 'intercept',false,'display','off');
+[~,se(1,7),coeff(1,7)] = hac(l, tbl.RetDiff, 'intercept',false,'display','off');
+
+X = tbl.MktMinusRF;
+[~,se(2:3,2),coeff(2:3,2)] = hac(X, tbl.RetLF,'display','off');
+[~,se(2:3,5),coeff(2:3,5)] = hac(X, tbl.RetHF,'display','off');
+[~,se(2:3,8),coeff(2:3,8)] = hac(X, tbl.RetDiff,'display','off');
+
+X = [tbl.MktMinusRF tbl.SMB tbl.HML];
+[~,se(2:5,3),coeff(2:5,3)] = hac(X, tbl.RetLF,'display','off');
+[~,se(2:5,6),coeff(2:5,6)] = hac(X, tbl.RetHF,'display','off');
+[~,se(2:5,9),coeff(2:5,9)] = hac(X, tbl.RetDiff,'display','off');
+pvals = tcdf(-abs(coeff./se), dfe)*2;
 %% SP500 momentum
 lookback = 21;
 
