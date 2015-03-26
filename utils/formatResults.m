@@ -1,59 +1,83 @@
-function out = formatResults(coeff, se, pval)
+function out = formatResults(coeff, se, pval,colheaders,rowheaders)
 
 % Get optional arguments
-fmtCoeff = '%.2f';
-fmtSe    = '\\tiny(%.3f)';
+coeffFmt = '%.2f';
+seFmt    = '{(%.3f)}';
+seFontSize = '\footnotesize';
 
-% Pre-allocate
-sz  = size(coeff);
-out = cell(sz(1)*2, sz(2));
+% Pre-allocate body
+sz   = size(coeff);
+body = cell(sz(1)*2, sz(2));
 
 % Format coefficients and se
-cellcoeff = arrayfun(@(x)sprintf(fmtCoeff,x), coeff, 'un', 0);
-out(2:2:end,:) = arrayfun(@(x)sprintf(fmtSe,x), se, 'un', 0);
+cellcoeff       = arrayfun(@(x)sprintf(coeffFmt,x), coeff, 'un', 0);
+body(2:2:end,:) = arrayfun(@(x)sprintf(seFmt,x), se, 'un', 0);
 
 % Add *, **, *** for significance at 10, 5 and 1%
-a = [-inf, 0.01, 0.05, 0.1];
-for ii = 1:3
-    idx = a(ii) < pval & pval <= a(ii+1);
-    repstr = sprintf('$0\\\\textsuperscript{%s}',repmat('\*',1,4-ii));
-    cellcoeff(idx) =  regexprep(cellcoeff(idx), '.*',repstr); 
-end
-out(1:2:end,:) = cellcoeff;
+body(1:2:end,:) = addStars(cellcoeff, pval);
 
 % Clean out NaNs
-inan = logical(kron(isnan(coeff),ones(2,1)));
-out(inan) = {[]};
+inan       = logical(kron(isnan(coeff),ones(2,1)));
+body(inan) = {[]};
 
-% Add fixed width separation
-len    = cellfun(@length, out);
-maxlen = max(len(:));
-N      = numel(out);
-for ii = 1:N-sz(1)*2
-    out{ii} = sprintf('%s%s &',repmat(' ',1, maxlen-len(ii)), out{ii});
-end
+% improve readability
+body = fixedWidthColSpacing(body);
 
-% Add endline
-for ii = N:-1:N-sz(1)*2+1
-    out{ii} = sprintf('%s%s \\\\',repmat(' ',1, maxlen-len(ii)), out{ii});
+% Column headers and midrule
+nchead          = numel(colheaders);
+[chead,midrule] = deal(cell(1,sz(2)));
+colperhead      = sz(2)/nchead;
+for ii = 1:nchead
+    chead{ii}   = sprintf('\\multicolumn{%d}{c}{%s}',colperhead, colheaders{ii});
+    midrule{ii} = sprintf('\\cmidrule(lr){%d-%d}',(ii-1)*colperhead+2, ii*colperhead+1);
 end
-
-% Add column headers
-cHeaders = {'HF','LF','HF-LF'};
-ncols = sz(2)/numel(cHeaders);
-for ii = 1:numel(cHeaders)
-    cHeaders{ii} = sprintf('\\multicolumn{%d}{c}{%s} &',ncols,cHeaders{ii});
-end
-cHeaders{end} = [cHeaders{end}(1:end-1) '\\'];
-cHeaders = [cHeaders; cell(ncols-1,ncols)];
-cHeaders = cHeaders(:)';
+chead{nchead} = strrep(chead{nchead},'&','\\');
 
 % Add row headers
-rHeaders = {'Excess','\alpha','MKT','SMB','HML'};
-rHeaders = [rHeaders; cell(size(rHeaders))];
-rHeaders = [{[]}; rHeaders(:)];
-rHeaders = strcat(rHeaders, ' &');
+rhead = [rowheaders; repmat({sprintf('\\rowfont{%s}',seFontSize)},1,sz(1))];
+rhead = [cell(2,1); rhead(:)];
+% Improve readability
+rhead([1,3:end]) = fixedWidthColSpacing(rhead([1,3:end]));
 
-out = [rHeaders [cHeaders; out]];
+% Add endlines
+body([1:2:end,end],end) = padEntry(body([1:2:end,end],end), ' \\');
+body(2:2:end-1,end) = padEntry(body(2:2:end-1,end), ' \\[3pt]');
+chead(end)  = padEntry(chead(end), ' \\');
 
+% Combine all together
+out = [rhead [chead; midrule; body]];
+
+% Add column separators
+out(1,1:nchead)    = padEntry(out(1,1:nchead), ' &');
+out(3:end,1:end-1) = padEntry(out(3:end,1:end-1), ' &' );
+
+% Concatenate into one string
+out(:,end) = padEntry(out(:,end), char(10));
+out = num2cell(out,1);
+out = strcat(out{:});
+out = [out{:}];
+end
+
+function c = addStars(c, pval)
+a      = [-inf, 0.01, 0.05, 0.1];
+starts = {'$^{***}$','$^{**}$','$^*$'};
+for ii = 1:3
+    idx    = a(ii) < pval & pval <= a(ii+1);
+    c(idx) = strcat(c(idx), starts(ii));
+end
+end
+
+function c = padEntry(c, padval)
+for ii = 1:numel(c)
+    c{ii} = [c{ii}, padval];
+end
+end
+
+function c = fixedWidthColSpacing(c)
+% Add fixed width separation
+len    = cellfun(@length, c);
+maxlen = max(len(:));
+for ii = 1:numel(c)
+    c{ii} = sprintf('%s%s',repmat(' ',1, maxlen-len(ii)), c{ii});
+end
 end

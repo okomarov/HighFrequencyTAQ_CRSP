@@ -888,7 +888,10 @@ X = [tbl.MktMinusRF tbl.SMB tbl.HML];
 [~,se(2:5,3),coeff(2:5,3)] = hac(X, tbl.RetLF,'display','off');
 [~,se(2:5,6),coeff(2:5,6)] = hac(X, tbl.RetHF,'display','off');
 [~,se(2:5,9),coeff(2:5,9)] = hac(X, tbl.RetDiff,'display','off');
-pvals = tcdf(-abs(coeff./se), dfe)*2;
+pval       = tcdf(-abs(coeff./se), dfe)*2;
+colheaders = {'Low Frequency','High Frequency','HF-LF'};
+rowheaders = {'Excess','$\alpha$','MKT','SMB','HML'};
+formatResults(coeff, se, pval, colheaders,rowheaders)
 %% SP500 momentum
 lookback = 21;
 
