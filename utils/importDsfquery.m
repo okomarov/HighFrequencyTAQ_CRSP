@@ -1,7 +1,7 @@
 function [dsfquery, missingcodes] = importDsfquery(path2zip)
 % IMPORTDSFQUERY Imports the zipped CRSP dsfquery dataset into a table
 %
-%   IMPORTDSFQUERY (PATH2ZIP) 
+%   IMPORTDSFQUERY (PATH2ZIP)
 %
 % Missing codes (Ret):
 %
@@ -41,18 +41,18 @@ while ~feof(fid)
     % Note that Returns might have char missing code
     txt = textscan(fid, '%u32%u32%u8%s%f32%f32%f32%s',N,'Delimiter',',');
     
-%     % Keep share type code 10 and 11 only
-%     ishrcd = txt{3} == 10 | txt{3} == 11;
-%     txt    = cellfun(@(x) x(ishrcd),txt,'un',0);
+    %     % Keep share type code 10 and 11 only
+    %     ishrcd = txt{3} == 10 | txt{3} == 11;
+    %     txt    = cellfun(@(x) x(ishrcd),txt,'un',0);
     
     % Import delisting returns and returns
     [txt{4}, missing{1}] = dealWithMissingCodes(txt{4});
     [txt{8}, missing{2}] = dealWithMissingCodes(txt{8});
     imissing             = missing{1}~=0 | missing{2}~=0;
     
-    % Sub delisting into returns
+    % Adjust for delisting returns as in Beaver, McNichols, Price 2007
     idx         = ~isnan(txt{4});
-    txt{8}(idx) = txt{4}(idx);
+    txt{8}(idx) = (1 + txt{4}(idx)) * (1 + txt{8}(idx)) - 1;
     
     % Expand pre-allocation
     if mod(c,100) == 1
@@ -78,20 +78,20 @@ delete(cleanup)
 end
 
 function [out, codes] = dealWithMissingCodes(c)
-    % Find empty returns
-    iempty = cellfun('isempty',c);
-        
-    % Find missing codes in returns and map them out
-    imisscode            = false(size(iempty));
-    imisscode(~iempty)   = ~cellfun('isempty',regexp(c(~iempty), '[ABCDEPST]','once'));
-    codes                = uint8(imisscode);
-    [~,codes(imisscode)] = ismember(c(imisscode), {'A';'B';'C';'D';'E';'P';'S';'T'});
-    
-    % Convert into numbers
-    out      = NaN(size(c));
-    idx      = ~(iempty | imisscode);
-    tmp      = textscan(char(c(idx))', '%9f64');
-    out(idx) = tmp{1};
+% Find empty returns
+iempty = cellfun('isempty',c);
+
+% Find missing codes in returns and map them out
+imisscode            = false(size(iempty));
+imisscode(~iempty)   = ~cellfun('isempty',regexp(c(~iempty), '[ABCDEPST]','once'));
+codes                = uint8(imisscode);
+[~,codes(imisscode)] = ismember(c(imisscode), {'A';'B';'C';'D';'E';'P';'S';'T'});
+
+% Convert into numbers
+out      = NaN(size(c));
+idx      = ~(iempty | imisscode);
+tmp      = textscan(char(c(idx))', '%9f64');
+out(idx) = tmp{1};
 end
 
 function cleanupFile(fid)
