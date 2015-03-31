@@ -1,4 +1,4 @@
-function [res, filename] = Analyze(fun, varnames, cached, path2mat, debug, varargin)
+function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
 
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -24,13 +24,12 @@ function [res, filename] = Analyze(fun, varnames, cached, path2mat, debug, varar
 
 if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
-if nargin < 4 || isempty(path2mat);  path2mat  = '.\data\TAQ\T*.mat';    end
+if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
 % Simply call the specific subroutine
 addpath(genpath('.\utils'))
 writeto = '.\results\';
-root    = fileparts(path2mat);
 
 % Open matlabpool
 poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
@@ -42,7 +41,7 @@ fhandle = str2func(fun);
 
 try
     tic
-    dd  = dir(path2mat);
+    dd  = dir(fullfile(path2data,'*.mat'));
     N   = numel(dd);
     res = deal(cell(N,1));
     
@@ -58,7 +57,7 @@ try
     parfor f = 1:N
         disp(f)
         % Load data
-        s      = load(fullfile(root,dd(f).name), varnames{:});
+        s      = load(fullfile(path2data,dd(f).name), varnames{:});
         cache  = [cached(f,:), f];
         % Convert to tables
         if isfield(s,'data') && isa(s.data,'dataset'), s.data = dataset2table(s.data); end
@@ -305,17 +304,28 @@ nullsize          = table(nullsize(:,1), nullsize(:,2), accumarray(subs,1),'Vari
 res = {g127, correction, condition, nullprice, nullsize, nfile};
 end
 
-function res = return_overnight(s,cached)
+function res = return_overnight_intraday(s,cached)
 cached = cached{1};
-% Calculate daily return with daily initial NaNs offset
+
+% Calculate Open-to-Close return with daily initial NaNs offset
 pnan         = find(isnan(s.data.Price));
-offset       = histc(pnan,[s.mst.From, s.mst.To+1]');
-offset       = offset(1:2:end);
+edges        = [1; double(s.mst.To) + 0.1];
+offset       = histc(pnan, edges);
+offset       = offset(1:end-1);
 to           = s.mst.To;
-from         = s.mst.From + uint32(offset);
-cached.Ocret = s.data.Price(to)./s.data.Price(from)-1;
-cached.Onret = log((1 + cached.Totret)./(1 + cached.Ocret)); 
-res          = cached;
+from         = s.mst.From + offset;
+s.mst.RetOC  = s.data.Price(to)./s.data.Price(from)-1;
+
+% Add OC ret to res
+keyA         = uint64(cached.UnID) * 1e8 + uint64(cached.Date);
+keyB         = uint64(s.mst.UnID)  * 1e8 + uint64(s.mst.Date);
+[~,pos]      = ismember(keyA,keyB);
+cached.RetOC = s.mst.RetOC(pos);
+
+% Overnight return
+cached.RetCO = log((1 + cached.RetCC)./(1 + cached.RetOC )); 
+
+res = cached;
 end
 
 function res = countnullrets(s,cached)
