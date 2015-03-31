@@ -893,32 +893,46 @@ colheaders = {'Low Frequency','High Frequency','HF-LF'};
 rowheaders = {'Excess','$\alpha$','MKT','SMB','HML'};
 formatResults(coeff, se, pval, colheaders,rowheaders)
 %% SP500 momentum
-lookback = 21;
+lookback = 21*11;
+skip = 21;
 
 % Daily rets
 rets = loadresults('return_overnight');
+rets = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
 rets = rets(issp500member(rets),:);
 rets = rets(iscommonshare(rets),:);
 
 % Sortrows
 rets = sortrows(rets,{'UnID','Date'});
-[~,~,subs] = unique(rets.UnID);
+[un,~,subs] = unique(rets.UnID);
 
 % Check zeroptf on momentum
-f    = @(x) cumprod(1+x);
-Ones = @(x) ones(min(lookback, numel(x)),1); 
-g    = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
+f  = @(x) cumprod(1+x);
+nn = @(x) NaN(min(skip, numel(x)),1);
+l  = @(x) [nn(x); ones(min(lookback, numel(x)-skip),1)]; 
+g  = @(x) [nn(x); f(x(1:end-skip))]./[l(x); f(x(1:end-lookback-skip))];
+
+score = cell(numel(un),1);
 
 [~,stats,annret] = deal(struct());
 for s = {'Totret','Onret','Ocret'}
     field = s{1};
     
-    score = accumarray(subs, rets.(field), [], g);
+%     score = accumarray(subs, rets.(field), [], g);
+    for ii = 1:numel(un)
+        x = rets.(field)(subs==ii);
+        if numel(x) < skip+lookback
+            score{ii} = NaN(numel(x),1);
+        else
+            score{ii} = g(rets.(field)(subs==ii));
+        end
+    end
     rets.Score = cat(1,score{:})-1;
-    [~,stats.(field),annret.(field)] = zeroptf(renameVarNames(rets,'Ret','Totret'),true);
+    
+    [~,stats.(field),annret.(field)] = zeroptf(renameVarNames(rets,'Ret',field),true);
     hold on
 end
-title '1m momentum (no skip)'
+% title '1m momentum (no skip)'
 legend('Close-to-Close','Close-to-Open','Open-to-Close')
 
 % Then start with the momentum
