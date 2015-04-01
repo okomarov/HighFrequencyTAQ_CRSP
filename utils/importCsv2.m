@@ -35,10 +35,10 @@ function importCsv2(path2zip,opt)
 
 if nargin < 2
     opt.Nrec = 1e5;
-    opt.Nblk = 100;
+    opt.Nblk = 200;
     opt.Scan = {'Delimiter',',','HeaderLines',1}; 
 end
-    
+origNblk = opt.Nblk;    
 %% Import CSV
 d         = dir(fullfile(path2zip,'*.zip'));
 filenames = regexp(sort({d.name})', '\d{6}_\d{1,2}.zip','match','once');
@@ -50,19 +50,16 @@ ids  = cell(opt.Nblk,1);
 mst  = cell(opt.Nblk,1);
 ii   = 0;
 c    = 0;
-tt   = 0;
-
 
 % Loop each csv
 for f = 1:numel(filenames)
-    filename = unzip(fullfile(path2zip,filenames{f}),path2zip);
-    fid      = fopen(filename{end});
-    t        = 0;
-    cleanup  = onCleanup(@() fclose(fid)); 
-    status   = true;
+    filename   = unzip(fullfile(path2zip,filenames{f}),path2zip);
+    fid        = fopen(filename{end});
+    cleanup    = onCleanup(@() fclose(fid)); 
+    fileIsOpen = true;
     fprintf('%-40s%s\n',filenames{f},datestr(now,'dd HH:MM:SS'))
     
-    while status
+    while fileIsOpen
         while ii < opt.Nblk && ~feof(fid)
             ii         = ii + 1;
             offset     = ftell(fid);
@@ -70,36 +67,42 @@ for f = 1:numel(filenames)
             % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
             data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
                                   opt.Nrec,opt.Scan{:});
-            tt         = tt+1;
-            t          = t+1;
-            
-            % Fault tolerance, rewind
-            if isempty(data{ii,1}) && ~feof(fid)
-                fseek(fid, offset,'bof'); 
-                continue
-            end
-                              
+             
             % Make sure to keep whole day on same mat file
             if ii == opt.Nblk
-                from       = find(diff(data{ii,2}),1,'last')+1;
-                resdata    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
-                data(ii,:) = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
-                if isempty(resdata{1})
+                if feof(fid)
                     resids = cell(0,1);
                     resmst = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
                 else
-                    [resids,resmst,resdata] = processDataset(resdata);
+                    from = find(diff(data{ii,2}),1,'last')+1;
+                    
+                    % Day has not ended we need to read in another block
+                    if isempty(from)
+                        opt.Nblk = opt.Nblk+1;
+                        data     = [data; cell(1,11)];
+                        ids      = [ids; cell(1)];
+                        mst      = [mst; cell(1)];
+                
+                    % Starting part of next day into next .mat file
+                    elseif from ~= size(data{ii,1},1)
+                        resdata    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
+                        data(ii,:) = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
+                        [resids,resmst,resdata] = processDataset(resdata);
+                    end
                 end
             end
             [ids{ii},mst{ii},data(ii,:)] = processDataset(data(ii,:));
         end
+        
+        % Reset to original block size
+        opt.Nblk = origNblk;
         
         % Close .csv and clean if finished parsing it
         if feof(fid)
             delete(cleanup)
             pause(0.5)
             delete(filename{:})
-            status = false;
+            fileIsOpen = false;
             continue
         end
         
@@ -108,7 +111,10 @@ for f = 1:numel(filenames)
         
         % Saving cell data and master as is - tested 1.6GB - 21 sec to save; 4.5 sec to load; -30% space
         c = c+1;
-        save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','ids','-v7.3')
+        datafname = fullfile(path2zip,'mat', sprintf('T%04d.mat',c));
+        mstfname  = fullfile(path2zip,'mat', sprintf('T%04d.mst',c));
+        save(datafname,'data','-v7.3')
+        save(mstfname ,'mst','ids','-v6')
         fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
         % Reset containers
@@ -122,7 +128,10 @@ end
 % LAST iteration exits without processing saving, thus do it here
 [ids,mst,data] = consolidateDataset(ids,mst,data);
 c              = c+1;
-save(fullfile(path2zip,'mat', sprintf('T%04d.mat',c)),'data','mst','ids','-v7.3')
+datafname      = fullfile(path2zip,'mat', sprintf('T%04d.mat',c));
+mstfname       = fullfile(path2zip,'mat', sprintf('T%04d.mst',c));
+save(datafname,'data','-v7.3')
+save(mstfname ,'mst','ids','-v6')
 fprintf('%-40s%s\n',sprintf('T%04d.mat',c),datestr(now,'dd HH:MM:SS'))
         
 %% Set data to read only and hidden
