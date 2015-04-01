@@ -71,7 +71,7 @@ mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
 ngoodtrades  = nobs - mst.Nbadtot - mst.Nconsolidated;
-ifewtrades   = ngoodtrades < 13;
+ifewtrades   = ngoodtrades < 15;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Timestep = ifewtrades | perfew(mst.UnID);
 
