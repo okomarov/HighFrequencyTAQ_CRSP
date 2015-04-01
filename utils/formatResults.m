@@ -1,10 +1,22 @@
-function out = formatResults(coeff, se, pval,colheaders,rowheaders)
+function out = formatResults(coeff, se, pval, colheaders, rowheaders)
+% formatResults(coeff, se, pval, colheaders, rowheaders)
 
-% Get optional arguments
-coeffFmt = '%.2f';
-seFmt    = '{(%.3f)}';
+% Optional arguments
+coeffFmt   = '%.2f';
+seFmt      = '{(%.3f)}';
 seFontSize = '\footnotesize';
+txtBefore  = ['\begin{tabu}{l *{9}{S[table-format   = -2.2,', 10,...
+              '                      table-space-text-post = $^{****}$,',10,...
+              '                      table-align-text-post = false,',10,...
+              '                      table-text-alignment  = center]',10,...
+              '                      @{}',10,...
+              '                      }',10,...
+              ' }',10,...
+              '\toprule'];
+txtAfter   = ['\bottomrule',10,...
+              '\end{tabu}'];
 
+          
 % Pre-allocate body
 sz   = size(coeff);
 body = cell(sz(1)*2, sz(2));
@@ -34,15 +46,15 @@ end
 chead{nchead} = strrep(chead{nchead},'&','\\');
 
 % Add row headers
-rhead = [rowheaders; repmat({sprintf('\\rowfont{%s}',seFontSize)},1,sz(1))];
-rhead = [cell(2,1); rhead(:)];
+rhead            = [rowheaders; repmat({sprintf('\\rowfont{%s}',seFontSize)},1,sz(1))];
+rhead            = [cell(2,1); rhead(:)];
 % Improve readability
 rhead([1,3:end]) = fixedWidthColSpacing(rhead([1,3:end]));
 
 % Add endlines
 body([1:2:end,end],end) = padEntry(body([1:2:end,end],end), ' \\');
-body(2:2:end-1,end) = padEntry(body(2:2:end-1,end), ' \\[3pt]');
-chead(end)  = padEntry(chead(end), ' \\');
+body(2:2:end-1,end)     = padEntry(body(2:2:end-1,end), ' \\[3pt]');
+chead(end)              = padEntry(chead(end), ' \\');
 
 % Combine all together
 out = [rhead [chead; midrule; body]];
@@ -53,9 +65,9 @@ out(3:end,1:end-1) = padEntry(out(3:end,1:end-1), ' &' );
 
 % Concatenate into one string
 out(:,end) = padEntry(out(:,end), char(10));
-out = num2cell(out,1);
-out = strcat(out{:});
-out = [out{:}];
+out        = num2cell(out,1);
+out        = strcat(out{:});
+out        = [out{:}];
 end
 
 function c = addStars(c, pval)
