@@ -897,8 +897,8 @@ lookback = 21*11;
 skip = 21;
 
 % Daily rets
-rets = loadresults('return_overnight');
-rets = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
+rets = loadresults('return_overnight_intraday');
+% rets = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
 rets = rets(issp500member(rets),:);
 rets = rets(iscommonshare(rets),:);
 
@@ -915,7 +915,7 @@ g  = @(x) [nn(x); f(x(1:end-skip))]./[l(x); f(x(1:end-lookback-skip))];
 score = cell(numel(un),1);
 
 [~,stats,annret] = deal(struct());
-for s = {'Totret','Onret','Ocret'}
+for s = {'RetCC','RetOC','RetCO'}
     field = s{1};
     
 %     score = accumarray(subs, rets.(field), [], g);
@@ -933,7 +933,7 @@ for s = {'Totret','Onret','Ocret'}
     hold on
 end
 % title '1m momentum (no skip)'
-legend('Close-to-Close','Close-to-Open','Open-to-Close')
+legend('Close-to-Close','Open-to-Close','Close-to-Open')
 
 % Then start with the momentum
 BetasHF = getBetas(1,5,true,false,true,true,true);

@@ -307,25 +307,34 @@ end
 function res = return_overnight_intraday(s,cached)
 cached = cached{1};
 
-% Calculate Open-to-Close return with daily initial NaNs offset
-pnan         = find(isnan(s.data.Price));
-edges        = [1; double(s.mst.To) + 0.1];
-offset       = histc(pnan, edges);
-offset       = offset(1:end-1);
-to           = s.mst.To;
-from         = s.mst.From + offset;
-s.mst.RetOC  = s.data.Price(to)./s.data.Price(from)-1;
+% Select relevant portion of data
+idx  = mcolon(cached.From,cached.To);
+data = s.data(idx,:);
 
-% Add OC ret to res
-keyA         = uint64(cached.UnID) * 1e8 + uint64(cached.Date);
-keyB         = uint64(s.mst.UnID)  * 1e8 + uint64(s.mst.Date);
-[~,pos]      = ismember(keyA,keyB);
-cached.RetOC = s.mst.RetOC(pos);
+% Number of observations per day
+nobs = double(cached.To - cached.From + 1);
+nmst = size(cached,1);
+
+% STEP 1) Selection
+invalid = selecttrades(data);
+
+% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
+[~,igoodprice] = histc(data.Price./RunLength(cached.MedPrice, nobs), [.65,1.51]);
+
+% Calculate Open-to-Close return with daily initial NaNs offset
+igoodprice   = ~(invalid | isnan(data.Price)) & igoodprice;
+subs         = RunLength((1:nmst)', nobs);
+pos          = (1:size(data,1))';
+from         = accumarray(subs(igoodprice), pos(igoodprice),[],@min);
+to           = accumarray(subs(igoodprice), pos(igoodprice),[],@max);
+cached.RetOC = NaN(nmst,1);
+idx          = to ~= 0; 
+cached.RetOC(idx) = data.Price(to(idx))./data.Price(from(idx))-1;
 
 % Overnight return
 cached.RetCO = log((1 + cached.RetCC)./(1 + cached.RetOC )); 
 
-res = cached;
+res = cached(idx,{'Id','UnID','Date','RetCC','RetOC','RetCO'});
 end
 
 function res = countnullrets(s,cached)

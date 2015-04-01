@@ -18,28 +18,36 @@ dsfquery = dsfquery(~isnan(dsfquery.Ret),{'Permno','Date','Ret'});
 % dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
 
 % Load UnID - Date pairs and keep common shares only
-uniqueID        = loadresults('uniqueID');
-% Keep common shares only
-uniqueID        = uniqueID(iscommonshare(uniqueID(:,{'UnID','Date'})),:);
+uniqueID = loadresults('uniqueID');
+uniqueID = uniqueID(iscommonshare(uniqueID(:,{'UnID','Date'})),:);
+
 % Map permno
 uniqueID.Permno = unid2permno(uniqueID.UnID);
 
 % Map totret to uniqueID (by combined key to speed up)
-keyA                = uint64(uniqueID.Permno) * 1e8 + uint64(uniqueID.Date);
-keyB                = uint64(dsfquery.Permno) * 1e8 + uint64(dsfquery.Date);
-[idx,pos]           = ismember(keyA, keyB);
-uniqueID.RetCC      = NaN(size(uniqueID.Permno));
-uniqueID.RetCC(idx) = dsfquery.Ret(pos(idx));
+keyA           = uint64(uniqueID.Permno) * 1e8 + uint64(uniqueID.Date);
+keyB           = uint64(dsfquery.Permno) * 1e8 + uint64(dsfquery.Date);
+[idx,pos]      = ismember(keyA, keyB);
+uniqueID       = uniqueID(idx,:);
+uniqueID.RetCC = NaN(size(uniqueID.Permno));
+uniqueID.RetCC = dsfquery.Ret(pos(idx));
 clear dsfquery
 
-% Cache
-path2data     = '.\data\TAQ\sampled\5min\';
+% Add median price
+res               = loadresults('medianprice');
+keyA              = uint64(uniqueID.Id) * 1e8 + uint64(uniqueID.Date);
+keyB              = uint64(res.Id)      * 1e8 + uint64(res.Date);
+[~,pos]           = ismember(keyA, keyB);
+uniqueID.MedPrice = res.MedPrice(pos);
+
+% Add File, From and To
+path2data     = '.\data\TAQ\';
 master        = load(fullfile(path2data,'master'),'-mat');
-keyA          = uint64(uniqueID.Id)   * 1e8 + uint64(uniqueID.Date);
 keyB          = uint64(master.mst.Id) * 1e8 + uint64(master.mst.Date);
-[idx,pos]     = ismember(keyA, keyB);
-uniqueID      = uniqueID(idx,:);
-uniqueID.File = master.mst.File(pos(idx));
+[~,pos]       = ismember(keyA, keyB);
+uniqueID.File = master.mst.File(pos);
+uniqueID.From = master.mst.From(pos);
+uniqueID.To   = master.mst.To(pos);
 clear master
 uniqueID(:,{'Permno'}) = [];
 
