@@ -897,43 +897,50 @@ lookback = 21*11;
 skip = 21;
 
 % Daily rets
-rets = loadresults('return_overnight');
+rets = loadresults('return_intraday_overnight');
 rets = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
 rets = rets(issp500member(rets),:);
 rets = rets(iscommonshare(rets),:);
+rets.RetCO = exp(rets.RetCO )-1;
 
 % Sortrows
 rets = sortrows(rets,{'UnID','Date'});
-[un,~,subs] = unique(rets.UnID);
 
-% Check zeroptf on momentum
-f  = @(x) cumprod(1+x);
-nn = @(x) NaN(min(skip, numel(x)),1);
-l  = @(x) [nn(x); ones(min(lookback, numel(x)-skip),1)]; 
-g  = @(x) [nn(x); f(x(1:end-skip))]./[l(x); f(x(1:end-lookback-skip))];
-
-score = cell(numel(un),1);
-
-[~,stats,annret] = deal(struct());
-for s = {'Totret','Onret','Ocret'}
-    field = s{1};
-    
-%     score = accumarray(subs, rets.(field), [], g);
-    for ii = 1:numel(un)
-        x = rets.(field)(subs==ii);
-        if numel(x) < skip+lookback
-            score{ii} = NaN(numel(x),1);
-        else
-            score{ii} = g(rets.(field)(subs==ii));
-        end
-    end
-    rets.Score = cat(1,score{:})-1;
-    
-    [~,stats.(field),annret.(field)] = zeroptf(renameVarNames(rets,'Ret',field),true);
-    hold on
+% Calculate mom score
+r      = unstack(rets(:,{'Date','UnID','RetCC'}),'RetCC','UnID');
+vnames = r.Properties.VariableNames;
+Date   = r.Date;
+r      = r{:,2:end}+1;
+score  = NaN(size(r));
+inan   = isnan(r);
+for ii = lookback+skip:size(r,1)
+    pos   = ii-lookback-skip+1:ii-skip;
+    slice = r(pos,:);
+    slice(inan(pos)) = 1;
+    score(ii,:) = prod(slice)-1;
 end
-% title '1m momentum (no skip)'
-legend('Close-to-Close','Close-to-Open','Open-to-Close')
+score = [table(Date) array2table(score,'VariableNames',vnames(2:end))];
+
+% Load fama and french
+ff  = loadresults('FFfactors');
+ff  = ff(in(ff.Date, [19931201,20021231]),:);
+mrf = dret2mrets(ff.Date, ff.RF/100);
+
+% Calculate returns and levels
+[~,stats,annret] = deal(struct());
+for s = {'RetCC','RetCO','RetOC'}
+    field = s{1};
+    [strat.(field),lvl.(field)] = zeroptf(renameVarNames(rets,'Ret',field), score);
+    [mret,mdt]      = dret2mrets(strat.(field).Dates, strat.(field){:,2:3});
+    x             = bsxfun(@minus,[mret -diff(mret,[],2)],mrf);
+    stats.(field) = stratstats(mdt,x,'m');
+end
+% legend('Close-to-Close','Overnight','Intraday')
+
+coeff = [stats.RetCC.Avgret, stats.RetCO.Avgret, stats.RetOC.Avgret]*100;
+se    = [stats.RetCC.Se, stats.RetCO.Se, stats.RetOC.Se]*100;
+pval  = [stats.RetCC.Pval, stats.RetCO.Pval, stats.RetOC.Pval];
+formatResults(coeff,se,pval,{'Close-to-Close','Overnight','Intraday'},{'Top','Bottom','T-B'});
 
 % Then start with the momentum
 BetasHF = getBetas(1,5,true,false,true,true,true);
