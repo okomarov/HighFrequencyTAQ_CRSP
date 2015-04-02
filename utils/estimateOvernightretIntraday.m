@@ -39,12 +39,12 @@ uniqueID.RetOC = res.RetOC(pos);
 dsfquery = loadresults('dsfquery');
 
 % % Winsorize returns at 0.1 and 99.9%
-% ptiles = prctile(dsfquery.Ret,[0.1,99.9]);
-% % boxplot(dsfquery.Ret)
-% % idx    = in(dsfquery.Ret, ptiles);
-% % boxplot(dsfquery.Ret(idx))
-% dsfquery.Ret(dsfquery.Ret < ptiles(1)) = ptiles(1);
-% dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
+ptiles = prctile(dsfquery.Ret,[0.1,99.9]);
+% boxplot(dsfquery.Ret)
+% idx    = in(dsfquery.Ret, ptiles);
+% boxplot(dsfquery.Ret(idx))
+dsfquery.Ret(dsfquery.Ret < ptiles(1)) = ptiles(1);
+dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
 
 % Add RetCC from dsfqwuery
 keyA                = uint64(uniqueID.Permno) * 1e8 + uint64(uniqueID.Date);
@@ -61,6 +61,6 @@ uniqueID.RetCO = log((1 + uniqueID.RetCC)./(1 + uniqueID.RetOC ));
 idx = ~(isnan(uniqueID.RetCC) | isnan(uniqueID.RetOC));
 res = uniqueID(idx,:);
 
-filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'returns_intraday_overnight');
+filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'return_intraday_overnight');
 save(fullfile('.\results\',filename), 'res')
 end
