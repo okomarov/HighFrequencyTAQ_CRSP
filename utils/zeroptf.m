@@ -1,94 +1,63 @@
-function [stratret, tbstats, tbarets] = zeroptf(tb, forceplot)
+function [stratret, stratlvl] = zeroptf(tb, score)
 % [stratret, tbstats, tbarets] = zeroptf(tb)
 % 
 %   TB should have 'UnID', 'Date', 'Score' and 'Ret' variables
 
-if nargin < 2 || isempty(forceplot), forceplot = false; end
-
-% Remove rows with no score
-tb = tb(~isnan(tb.Score),:);
-
 warning off MATLAB:table:ModifiedVarnames
 
-% Unstack scores
-score = unstack(tb(:,{'UnID','Date','Score'}),'Score','UnID');
-score = sortrows(score,'Date');
-dates = uint32(score.Date);
+% Unstack returns
+ret    = unstack(tb(:,{'UnID','Date','Ret'}),'Ret','UnID');
+ret    = sortrows(ret,'Date');
+dates  = uint32(ret.Date);
+
+% Unstack scores (eventually)
+if nargin < 2
+    score = unstack(tb(:,{'UnID','Date','Score'}),'Score','UnID');
+    score = sortrows(score,'Date');
+elseif ~isequal(score.Properties.VariableNames,ret.Properties.VariableNames) ||...
+       ~isequal(score.Date, ret.Date)
+    error('zeroptf:wrongScores','Check that SCORE has same IDs and dates.')
+end
+warning on MATLAB:table:ModifiedVarnames
+
+ret   = table2array(ret(:,2:end));
 score = table2array(score(:,2:end));
 
-% Unstack returns
-ret = unstack(tb(:,{'UnID','Date','Ret'}),'Ret','UnID');
-ret = sortrows(ret,'Date');
-ret = table2array(ret(:,2:end));
-
-warning on MATLAB:table:ModifiedVarnames
+% Remove rows with no score
+inan  = all(isnan(score),2);
+score = score(~inan,:);
+ret   = ret(~inan,:);
+dates = dates(~inan);
 
 % Beginning of month rebalancing scheme
 [~, ~, subs] = unique(dates./100);
 rebdate      = find([false; diff(subs)>0]);
 
 N        = numel(dates);
-stratret = NaN(N, 1);
+stratret = table(dates, NaN(N,1),NaN(N,1),NaN(N,1),...
+                 'VariableNames',{'Dates','Top','Bottom','Ptf'});
 for ii = 1:numel(rebdate)
-    [iShort, iLong] = deal(false(1,size(ret,2)));
+    [iBottom, iTop] = deal(false(1,size(ret,2)));
     % Alive on rebalancing date
     ifut    = subs == ii+1;
     isalive = ~isnan(score(rebdate(ii),:));
     
     % Score ranking
-    scores          = score(rebdate(ii)-1,isalive);
-    ptiles          = prctile(scores,[10,90]);
-    iShort(isalive) = scores <= ptiles(1);
-    iLong (isalive) = scores >= ptiles(2);
+    scores           = score(rebdate(ii)-1,isalive);
+    ptiles           = prctile(scores,[10,90]);
+    iBottom(isalive) = scores <= ptiles(1);
+    iTop (isalive)   = scores >= ptiles(2);
        
     % Equal weighted strategy
-    stratret(ifut) = nanmean([ret(ifut,iLong), -ret(ifut,iShort)],2);
+    stratret.Top(ifut)    = nanmean(ret(ifut,iTop),2);
+    stratret.Bottom(ifut) = nanmean(ret(ifut,iBottom),2);
 end
+stratret.Ptf = stratret.Top-stratret.Bottom;
 
-plotdates = yyyymmdd2datetime(dates);
-from      = find(~isnan(stratret),1,'first');
-stratlvl  = [NaN(from-2,1); cumprod([1; stratret(from:end)+1])];
-
-if nargout == 0 || forceplot
-    plot(plotdates, stratlvl)
+if nargout == 2
+    from            = find(~isnan(stratret.Ptf),1,'first');
+    fun             = @(x) [NaN(from-2,1); cumprod([1; x(from:end)+1])];
+    stratlvl        = stratret;
+    stratlvl(:,2:4) = varfun(fun, stratlvl, 'InputVariables',2:4);
 end
-
-[tbstats, tbarets] = stratstats(plotdates(from-1:end), stratret(from:end,:),stratlvl(from-1:end));
-
-stratret  = table(dates, stratret, 'VariableNames',{'Date','Ret'});
-end
-
-function [tbstats, tbarets] = stratstats(dates, ret, lvl)
-monthrets          = dret2mrets(dates(2:end),ret);
-n                  = numel(monthrets);
-[~,se,coeff]       = hac(ones(n,1), monthrets,'intercept',false,'display','off');
-tbstats.Monret     = coeff;
-tbstats.Pval       = tcdf(-abs(coeff/se),n-1)*2; 
-tbstats.Annret     = lvl(end,:)'.^(1/years(dates(end)-dates(1)))-1;
-tbstats.Annstd     = std(monthrets)'*sqrt(12);
-tbstats.Downstd    = std(monthrets > 0 .* monthrets)' * sqrt(12);
-tbstats.Minret     = min(monthrets)';
-tbstats.Maxret     = max(monthrets)';
-tbstats.IR         = tbstats.Annret./tbstats.Annstd;
-[tbstats.Mdd,imdd] = maxdrawdown(lvl);
-tbstats.Mdd        = tbstats.Mdd';
-tbstats.Reclen     = days(dates(imdd(end,:))-dates(imdd(1,:)));
-tbstats.Sortino    = tbstats.Annret./tbstats.Downstd;
-
-tbstats = struct2table(tbstats);
-tbarets = table(unique(year(dates)), level2arets(lvl,dates),'VariableNames',{'Year','Ret'});
-end
-
-function mrets = dret2mrets(dates,ret)
-sz    = size(ret);
-rsub  = repmat(cumsum([1; logical(diff(month(dates)))]), 1, sz(2));
-csub  = repmat(1:sz(2),sz(1),1);
-mrets = accumarray([rsub(:),csub(:)], ret(:), [], @(r) prod((1+r))-1);
-end
-
-function arets = level2arets(lvl,dates)
-sz    = size(lvl);
-rsub  = repmat(cumsum([1; logical(diff(year(dates)))]), 1, sz(2));
-csub  = repmat(1:sz(2),sz(1),1);
-arets = accumarray([rsub(:),csub(:)],lvl(:), [],@(x) x(end)./x(1)-1); 
 end
