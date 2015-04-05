@@ -59,10 +59,7 @@ tbsmall.Permno = taq2crsp.permno(pos(idx));
 % Remove overlapping
 [un,~,subs] = unique(tbsmall);
 overlap     = un(accumarray(subs,1) > 1,:);
-% Speed up with composite key
-keyA        = uint64(tbsmall.Permno) * 1e8 + uint64(tbsmall.Date);
-keyB        = uint64(overlap.Permno) * 1e8 + uint64(overlap.Date);
-ioverlap    = ismember(keyA, keyB);
+ioverlap    = ismembIdDate(tbsmall.Permno, tbsmall.Date, overlap.Permno, overlap.Date);
 tbsmall     = tbsmall(~ioverlap,:);
 idx(idx)    = idx(idx) & ~ioverlap;
 
@@ -101,11 +98,7 @@ tbpanel = tbpanel(tbpanel.Val == 1,1:2);
 tbpanel.Permno = permnos(pos);
 
 % Speed up with composite key
-keyA   = uint64(tbsmall.Permno) * 1e8 + uint64(tbsmall.Date);
-keyB   = uint64(tbpanel.Permno) * 1e8 + uint64(tbpanel.Date);
-ismall = ismember(keyA, keyB);
-
+ismall  = ismembIdDate(tbsmall.Permno, tbsmall.Date, tbpanel.Permno, tbpanel.Date);
 tf      = false(size(tb,1),1);
 tf(idx) = ismall;
-
 end

@@ -1,7 +1,6 @@
 function res = estimateOvernightretIntraday
 % Calulate overnight return from CRSP's close-to-close return and
 % TAQ's open-to-close (intraday) return.
-% NOTE: uses sampled data since it's clean.
 
 % Load overnight
 try
@@ -13,9 +12,7 @@ catch
     % Add File
     path2data   = '.\data\TAQ\';
     master      = load(fullfile(path2data,'master'),'-mat');
-    keyA        = uint64(cached.Id) * 1e8 + uint64(cached.Date);
-    keyB        = uint64(master.mst.Id) * 1e8 + uint64(master.mst.Date);
-    [~,pos]     = ismember(keyA, keyB);
+    [~,pos]     = ismembIdDate(cached.Id, cached.Date, master.mst.Id, master.mst.Date);
     cached.File = master.mst.File(pos);
     clear master
     
@@ -30,26 +27,22 @@ uniqueID = uniqueID(iscommonshare(uniqueID(:,{'UnID','Date'})),:);
 uniqueID.Permno = unid2permno(uniqueID.UnID);
 
 % Add RetOC
-keyA           = uint64(uniqueID.Id) * 1e8 + uint64(uniqueID.Date);
-keyB           = uint64(res.Id)      * 1e8 + uint64(res.Date);
-[~,pos]        = ismember(keyA, keyB);
+[~,pos]        = ismembIdDate(uniqueID.Id, uniqueID.Date, res.Id, res.Date);
 uniqueID.RetOC = res.RetOC(pos);
 
 % Load dsfquery (filtering for common shares done indirectly)
 dsfquery = loadresults('dsfquery');
 
 % % Winsorize returns at 0.1 and 99.9%
-ptiles = prctile(dsfquery.Ret,[0.1,99.9]);
-% boxplot(dsfquery.Ret)
-% idx    = in(dsfquery.Ret, ptiles);
-% boxplot(dsfquery.Ret(idx))
-dsfquery.Ret(dsfquery.Ret < ptiles(1)) = ptiles(1);
-dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
+% ptiles = prctile(dsfquery.Ret,[0.1,99.9]);
+% % boxplot(dsfquery.Ret)
+% % idx    = in(dsfquery.Ret, ptiles);
+% % boxplot(dsfquery.Ret(idx))
+% dsfquery.Ret(dsfquery.Ret < ptiles(1)) = ptiles(1);
+% dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
 
 % Add RetCC from dsfqwuery
-keyA                = uint64(uniqueID.Permno) * 1e8 + uint64(uniqueID.Date);
-keyB                = uint64(dsfquery.Permno) * 1e8 + uint64(dsfquery.Date);
-[idx,pos]           = ismember(keyA, keyB);
+[idx,pos]           = ismembIdDate(uniqueID.Permno, uniqueID.Date, dsfquery.Permno, dsfquery.Date);
 uniqueID.RetCC      = NaN(size(uniqueID.Permno));
 uniqueID.RetCC(idx) = dsfquery.Ret(pos(idx));
 clear dsfquery

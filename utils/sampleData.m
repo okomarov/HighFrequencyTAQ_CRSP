@@ -26,7 +26,7 @@ try
 catch
     res = mapUnid2mst(mst, ids);
 end
-[~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos] = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.UnID = res.UnID(pos);
 
 % Median price
@@ -36,7 +36,7 @@ try
 catch
     res = Analyze(testname,[],mst(:, {'File','Id','Date'}));
 end
-[~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.MedPrice = res.MedPrice(pos);
 
 % Bad prices days
@@ -47,7 +47,7 @@ catch
     dailycut = 0.5;
     res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice'}),[],[],dailycut);
 end
-[~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Isbadday = res.Isbadday(pos);
 mst.Nbadtot  = res.Nbadtot(pos);
 
@@ -66,7 +66,7 @@ try
 catch
     res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}));
 end
-[~,pos] = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
