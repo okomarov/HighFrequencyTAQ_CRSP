@@ -141,30 +141,39 @@ res.Nbadtot  = uint32(accumarray(subs,  inan | igoodprice ~= 1));
 res.Isbadday = res.Nbadtot > ceil(dailycut*nobs);
 end
 
+% Service function to flag bad prices
+function ibad = ibadprices(s,cached)
+% Number of observations per day
+nobs   = double(s.mst.To - s.mst.From + 1);
+
+% STEP 1) Select irregular trades
+ibad = selecttrades(s.data);
+
+% STEP 2) Select bad prices (far from daily median)
+[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.5, 1.5]);
+iprice     = iprice ~= 1;
+ibad       = ibad | iprice;
+
+% STEP 3) Select bad days and whole bad series
+ibad = ibad | RunLength(cached.Isbadday, nobs);
+end
+
 % Count how many observations we loose in consolidation step
 function res = consolidationcounts(s,cached)
 cached = cached{1};
 
 % Number of observations per day
-nobs   = double(s.mst.To - s.mst.From + 1);
-nmst   = size(s.mst,1);
+nobs = double(s.mst.To - s.mst.From + 1);
 
-% STEP 1) Selection
-inan = selecttrades(s.data);
-
-% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
-[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
-iprice     = iprice ~= 1;
-inan       = inan | iprice;
-
-% STEP 3) Bad series/days
-inan = inan | RunLength(cached.Isbadday,nobs);
+% STEP 1-3) Bad prices
+ibad = ibadprices(s,cached);
 
 % STEP 4) Count how many observations we loose from median consolidation
+nmst       = size(s.mst,1);
 mstrow     = RunLength((1:nmst)',nobs);
 % Count by mst row and timestamp
-[un,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
-counts      =  accumarray(subs, 1)-1;
+[un,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
+counts      = accumarray(subs, 1)-1;
 % Aggregate by mst row
 res = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
@@ -184,30 +193,22 @@ nfile  = cached{end};
 cached = cached{1};
 % Number of observations per day
 nobs   = double(s.mst.To - s.mst.From + 1);
-nmst   = size(s.mst,1);
 
-% STEP 1) Selection
-inan = selecttrades(s.data);
-
-% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
-[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
-iprice     = iprice ~= 1;
-inan       = inan | iprice;
-
-% STEP 3) Bad series/days
-inan = inan | RunLength(cached.Isbadday,nobs);
+% STEP 1-3) Bad prices
+ibad = ibadprices(s, cached);
 
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
-inan = inan | RunLength(cached.Timestep,nobs);
+ibad = ibad | RunLength(cached.Timestep,nobs);
 
 % STEP 5) Clean prices - carried out in the median consolidation
 % s.data.Price(inan) = NaN;
 
-if ~all(inan)
+if ~all(ibad)
     
     % STEP 6) Median prices for same timestamps
+    nmst             = size(s.mst,1);
     mstrow           = RunLength((1:nmst)',nobs);
-    [unTimes,~,subs] = unique(mstrow(~inan) + hhmmssmat2serial(s.data.Time(~inan,:)));
+    [unTimes,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
     price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
     
     % STEP 7) Sample on fixed grid (easier to match sp500)
