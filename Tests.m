@@ -779,7 +779,7 @@ end
 lookback = 63;
 
 % Daily rets
-rets = loadresults('return_overnight');
+rets = loadresults('return_intraday_overnight');
 
 % SPY is UnID 29904 in HF data or Permno 84398 in CRSP
 rets = rets(rets.Date > 19930201,:); % No spy before

@@ -54,7 +54,7 @@ catch
     if useon
         fprintf('%s: adding overnight returns to the index.\n', mfilename)
         ion               = find(~ion);
-        reton             = loadresults('return_overnight');
+        reton             = loadresults('return_intraday_overnight');
         spreton           = reton(reton.UnID == 29904,:);
         [idx,pos]         = ismember(serial2yyyymmdd(spret(ion,1)),spreton.Date);
         spret(ion(idx),2) = spreton.Onret(pos(idx));
