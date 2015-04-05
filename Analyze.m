@@ -130,8 +130,8 @@ nobs = double(s.mst.To - s.mst.From + 1);
 % STEP 1) Selection
 inan = selecttrades(s.data);
 
-% STEP 2) Bad prices are < than .65x daily median or > than 1.5x daily median
-[~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.65,1.51]);
+% STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
+[~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.5, 1.5]);
 
 % STEP 3) Bad days
 res          = cached(:,{'Id','Date'});
@@ -314,8 +314,8 @@ nmst = size(s.mst,1);
 % STEP 1) Selection
 invalid = selecttrades(s.data);
 
-% STEP 2) Bad prices prices are 1.5x or .65x the daily median (net of selection nans)
-[~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice, nobs), [.65,1.51]);
+% STEP 2) Bad prices prices are 1.5x or .5x the daily median (net of selection nans)
+[~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice, nobs), [.5, 1.5]);
 
 % Calculate Open-to-Close return with daily initial NaNs offset
 igoodprice         = ~(invalid | isnan(s.data.Price)) & igoodprice;
