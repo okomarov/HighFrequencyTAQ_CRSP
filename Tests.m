@@ -95,12 +95,12 @@ load(fullfile(path2data,'master'),'-mat')
 
 % Map unique ID to mst
 res      = loadresults('uniqueID');
-[~,pos]  = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]  = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
 mst.UnID = res.UnID(pos);
 
 % Bad prices days
 res          = loadresults('badprices');
-[~,pos]      = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
 mst.Nbadsel  = res.Nbadsel(pos);
 mst.Nbadtot  = res.Nbadtot(pos);
 mst.Isbadday = res.Isbadday(pos);
@@ -115,7 +115,7 @@ mst.Isbadseries = badseries(mst.UnID);
 
 % Count losing obs with timestamp consolidation
 res               = loadresults('consolidationcounts');
-[~,pos]           = ismemberb(mst(:,{'Id','Date'}), res(:,{'Id','Date'}));
+[~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
 mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
