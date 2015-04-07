@@ -119,8 +119,12 @@ res               = loadresults('consolidationcounts');
 mst.Nconsolidated = res.Nconsolidated(pos);
 
 % Select on basis of minimum number of observations
-ngoodtrades    = mst.To-mst.From+1 - mst.Nbadtot - mst.Nconsolidated;
-mst.Ifewtrades = ngoodtrades < 13;
+res                = loadresults('NumTimeBuckets');
+[~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
+mst.NumTimeBuckets = res.NumTimeBuckets(pos);
+% ngoodtrades    = mst.To-mst.From+1 - mst.Nbadtot - mst.Nconsolidated;
+% mst.Ifewtrades = ngoodtrades < 13;
+mst.Ifewtrades = mst.NumTimeBuckets < 7;
 perfew         = accumarray(mst.UnID, mst.Ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Ifewseries = perfew(mst.UnID);
 
@@ -171,8 +175,8 @@ relval = bsxfun(@rdivide,[Nbadsel, Nbad+Nbadday+Nbadseries, Nconsolidated, Nfewo
 colormap(lines(size(relval,2)))
 area(plotdates, relval,'LineStyle','none')
 % iperiod = plotdates<=datenum(1998, 12, 31);
-mean(relval(iperiod,:))
-mean(relval(~iperiod,:))
+% mean(relval(iperiod,:))
+% mean(relval(~iperiod,:))
 
 dynamicDateTicks
 axis tight, set(gca,'Layer','top','Ylim',[0,100]),ylabel '%'

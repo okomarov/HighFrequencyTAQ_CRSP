@@ -179,8 +179,30 @@ res = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
+
+function res = NumTimeBuckets(s,cached)
+cached = cached{1};
+grid   = (9.5:0.5:16)/24;
+fun    = @(x) nnz(histc(x, grid));
+
+% Number of observations per day
+nobs = double(s.mst.To - s.mst.From + 1);
+
+% STEP 1-3) Bad prices
+ibad = ibadprices(s, cached);
+
+% STEP 4) Number of time buckets that have a trade
+nmst       = size(s.mst,1);
+mstrow     = RunLength((1:nmst)',nobs);
+Time       = hhmmssmat2serial(s.data.Time(~ibad,:));
+cached.NumTimeBuckets = uint8(accumarray(mstrow(~ibad),Time,[nmst,1], fun));
+
+res = cached(:,{'Id','Date','NumTimeBuckets'});
+end
+    
+
 % Sampling
-function res = sample(s,cached, opt)
+function res = sample(s,cached,opt)
 
 % Sampling params
 if nargin < 3

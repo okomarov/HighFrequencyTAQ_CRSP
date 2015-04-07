@@ -69,9 +69,20 @@ end
 [~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Nconsolidated = res.Nconsolidated(pos);
 
-% Select on basis of minimum number of observations
-ngoodtrades  = nobs - mst.Nbadtot - mst.Nconsolidated;
-ifewtrades   = ngoodtrades < 15;
+% Count number of time buckets in a day that have a trade
+testname = 'NumTimeBuckets';
+try
+    res = loadresults(testname);
+catch
+    res = Analyze('NumTimeBuckets',[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}));
+end
+[~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+mst.NumTimeBuckets = res.NumTimeBuckets(pos);
+
+% Select with minimum number of observations
+% ngoodtrades  = nobs - mst.Nbadtot - mst.Nconsolidated;
+% ifewtrades   = ngoodtrades < 15;
+ifewtrades   = mst.NumTimeBuckets < 7;
 perfew       = accumarray(mst.UnID, ifewtrades)./accumarray(mst.UnID, 1) > .5;
 mst.Timestep = ifewtrades | perfew(mst.UnID);
 
