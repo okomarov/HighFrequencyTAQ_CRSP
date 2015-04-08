@@ -19,9 +19,8 @@ catch
     res = Analyze('return_intraday',[],cached,path2data);
 end
 
-% Load UnID - Date pairs and keep common shares only
+% Load UnID - Date pairs
 uniqueID = loadresults('uniqueID');
-uniqueID = uniqueID(iscommonshare(uniqueID(:,{'UnID','Date'})),:);
 
 % Map permno
 uniqueID.Permno = unid2permno(uniqueID.UnID);
@@ -30,7 +29,7 @@ uniqueID.Permno = unid2permno(uniqueID.UnID);
 [~,pos]        = ismembIdDate(uniqueID.Id, uniqueID.Date, res.Id, res.Date);
 uniqueID.RetOC = res.RetOC(pos);
 
-% Load dsfquery (filtering for common shares done indirectly)
+% Load dsfquery
 dsfquery = loadresults('dsfquery');
 
 % % Winsorize returns at 0.1 and 99.9%
@@ -41,7 +40,7 @@ dsfquery = loadresults('dsfquery');
 % dsfquery.Ret(dsfquery.Ret < ptiles(1)) = ptiles(1);
 % dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
 
-% Add RetCC from dsfqwuery
+% Add RetCC from dsfquery
 [idx,pos]           = ismembIdDate(uniqueID.Permno, uniqueID.Date, dsfquery.Permno, dsfquery.Date);
 uniqueID.RetCC      = NaN(size(uniqueID.Permno));
 uniqueID.RetCC(idx) = dsfquery.Ret(pos(idx));
