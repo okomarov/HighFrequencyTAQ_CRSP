@@ -780,25 +780,30 @@ else
     saveas(gcf, '.\results\BetaCapWeightAll_proxy.png')
 end
 %% Cond alphas
-lookback = 63;
+lookback   = 63;
+commononly = true;
+sp500only  = true;
 
 % Daily rets
 rets = loadresults('return_intraday_overnight');
 
 % SPY is UnID 29904 in HF data or Permno 84398 in CRSP
-rets = rets(rets.Date > 19930201,:); % No spy before
 spy  = rets(rets.UnID == 29904,:);
+rets = rets(rets.Date > 19930201,:); % No spy before
+
+% Filter out non common e only SP500
+if commononly, rets = rets(iscommonshare(rets),:); end
+if sp500only,  rets = rets(issp500member(rets),:); end
 
 % High frequency
 % -------------------------------------------------------------------------
-
-% Point 1) Estimate betas
-BetasHF = getBetas(lookback,    5,     true,     false,      true,       true, true);
-                   %lookback, freq, useovern,  useproxy, sp500only, commononly, keeplong
+% Point 1) 
+% Estimate betas           freq, useovern, useproxy, 
+betas = getBetas(lookback,    5,     true,    false, sp500only, commononly, true);
 % betaPercentiles([], lookback, 5, true, false, true, true)
 
 % Point 2) Estimate cond alphas
-[BetasHF,rets] = estimateCondAlpha(BetasHF, rets);
+[BetasHF,rets] = estimateCondAlpha(betas, rets, spy);
 
 % Point 3) Zero invst ptf
 BetasHF.Ret   = rets.Totret;
@@ -911,7 +916,7 @@ rets.RetCO = exp(rets.RetCO )-1;
 rets = sortrows(rets,{'UnID','Date'});
 
 % Calculate mom score
-r      = unstack(rets(:,{'Date','UnID','RetCC'}),'RetCC','UnID');
+r      = unstack(rets(:,{'Date','Permno','RetCC'}),'RetCC','Permno');
 vnames = r.Properties.VariableNames;
 Date   = r.Date;
 r      = r{:,2:end}+1;
