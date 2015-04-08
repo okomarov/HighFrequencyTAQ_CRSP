@@ -21,7 +21,7 @@ if nargin < 4 || isempty(to),           to        = inf;          end
 if nargin < 5,                          varnames  = [];           end
 if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ'; end
  
-if isstring(tickers),  tickers  = {tickekrs}; end
+if isstring(tickers),  tickers  = {tickers}; end
 if isstring(varnames), varnames = {varnames}; end
 
 % Find tickers in the master file
