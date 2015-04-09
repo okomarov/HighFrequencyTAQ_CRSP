@@ -20,7 +20,13 @@ alldates = union(dates, refdates);
 nullpos      = pos == 0;
 pos(nullpos) = NaN;
 pos          = nanfillts(pos);
-tspanel      = tspanel(pos,:);
+from         = find(~isnan(pos),1,'first');
+tspanel      = tspanel(pos(from:end),:);
+if ~isempty(from) && from > 1
+    filler  = NaN(from-1, width(tspanel)); 
+    filler  = array2table(filler,'VariableNames', getVariableNames(tspanel)); 
+    tspanel = [filler; tspanel];
+end
 tspanel.Date = alldates;
 
 % Fill values
