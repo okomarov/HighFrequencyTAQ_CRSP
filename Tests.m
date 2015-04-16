@@ -274,9 +274,9 @@ catch
             mstscore{ii}(idx) = taq2crsp{ii}.score;
         else
             dates        = [taq2crsp{ii}.datef; inf];
-            scores       = [0; taq2crsp{ii}.score];
+            scoresHF       = [0; taq2crsp{ii}.score];
             [~, datebin] = histc(mst{ii}.Date, dates);
-            mstscore{ii} = scores(datebin+1);
+            mstscore{ii} = scoresHF(datebin+1);
         end
     end
     delete(gcp)
@@ -795,20 +795,33 @@ rets = rets(rets.Date > 19930201,:); % No spy before
 if commononly, rets = rets(iscommonshare(rets),:); end
 if sp500only,  rets = rets(issp500member(rets),:); end
 
+% Filter out less than lookback returns
+[unid,~,subs] = unique(rets.UnID);
+idx  = accumarray(subs,1) < lookback;
+rets = rets(~ismember(rets.UnID, unid(idx)),:);
+
+% Fama and French factors
+FF = loadresults('FFfactors');
+
 % High frequency
 % -------------------------------------------------------------------------
-% Point 1) 
-% Estimate betas           freq, useovern, useproxy, 
-betas = getBetas(lookback,    5,     true,    false, sp500only, commononly, true);
-% betaPercentiles([], lookback, 5, true, false, true, true)
+try
+    scoresHF = loadresults('condAlphaScoresHF');
+catch
+    betas = getBetas(lookback,    5,     true,    false, sp500only, commononly, true);
+    % betaPercentiles([], lookback, 5, true, false, true, true)
+    scoresHF = estimateCondAlpha(lookback, betas, rets, spy, FF(:,{'Date','SMB','HML'}));
+    filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'condAlphaScoresHF');
+    save(fullfile('.\results\',filename), 'scoresHF')
+end
 
-% Point 2) Estimate cond alphas
-[BetasHF,rets] = estimateCondAlpha(betas, rets, spy);
+% Intersect Ids
+vnames = getVariableNames(scoresHF);
+ids    = cell2mat(cellfun(@(x) textscan(x,'x%u16'), vnames(2:end)));
+rets   = rets(ismember(rets.UnID, ids),{'Date','UnID','RetCC'});
 
-% Point 3) Zero invst ptf
-BetasHF.Ret   = rets.Totret;
-[retHF,stats] = zeroptf(renameVarNames(BetasHF,'Score','Alpha'),true);
-hold on
+% Zero invst ptf
+[retHF,lvlHF] = zeroptf(renameVarNames(rets,'Ret','RetCC'),scoresHF);
 
 % Low frequency
 % -------------------------------------------------------------------------
@@ -816,21 +829,23 @@ hold on
 
 % Add benchmark returns
 [~,pos]    = ismember(rets.Date, spy.Date);
-rets.Brets = spy.Totret(pos);
+rets.Brets   = spy.RetCC(pos);
 % Subs by ID
 rets       = sortrows(rets, {'UnID','Date'});
 [~,~,subs] = unique(rets.UnID);
+
 % Running covariance 
 f   = @(x) runsum(lookback, x);
-Exy = accumarray(subs, rets.Brets.*rets.Totret, [],f);
-Ex  = accumarray(subs, rets.Brets             , [],f);
-Ey  = accumarray(subs, rets.Totret            , [],f);
+Exy = accumarray(subs, rets.Brets.*rets.RetCC, [],f);
+Ex  = accumarray(subs, rets.Brets            , [],f);
+Ey  = accumarray(subs, rets.RetCC            , [],f);
 Cov = cat(1,Exy{:})/lookback - cat(1,Ex{:}).*cat(1,Ey{:})/lookback^2;
+
 % Running variance
 Ex2 = accumarray(subs,  rets.Brets.^2         , [],f);
 Var = cat(1,Ex2{:})/lookback - (cat(1,Ex{:})/lookback).^2;
 % Running betas
-BetasLF = rets(:,{'UnID','Date','Totret'});
+BetasLF = rets(:,{'UnID','Date','RetCC'});
 BetasLF.Beta = Cov./Var;
 
 % % Plot percentile betas
@@ -851,26 +866,27 @@ BetasLF.Beta = Cov./Var;
 % saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
 
 % Point 2) Estimate cond alpha
-BetasLF = estimateCondAlpha(BetasLF, rets);
-
+scoresLF = estimateCondAlpha(lookback, BetasLF, BetasLF, spy, FF(:,{'Date','SMB','HML'}));
+filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'condAlphaScoresLF');
+save(fullfile('.\results\',filename), 'scoresLF')
+    
 % Point 3) Zero invest ptf
-[retLF,stats(2,:)] = zeroptf(renameVarNames(BetasLF,{'Score','Ret'},{'Alpha','Totret'}),true);
+[retLF,lvlLF] = zeroptf(renameVarNames(BetasLF,'Ret','RetCC'),scoresLF);
 legend({'High freq','Low freq'})
 
 % Adjust for FF factors
 % -------------------------------------------------------------------------
 FF       = loadresults('FFfactors');
-refdates = intersect(intersect(retLF.Date(~isnan(retLF.Ret)), retHF.Date), FF.Date);
+refdates = intersect(intersect(retLF.Date(~isnan(retLF.Ptf)), retHF.Date), FF.Date);
 
 tb       = table(refdates,'VariableNames',{'Date'});
-tb.RetLF = retLF.Ret(ismember(retLF.Date, refdates));
-tb.RetHF = retHF.Ret(ismember(retHF.Date, refdates));
+tb.RetLF = retLF.Ptf(ismember(retLF.Date, refdates));
+tb.RetHF = retHF.Ptf(ismember(retHF.Date, refdates));
 tb       = [tb FF(ismember(FF.Date   , refdates), 2:end)];
 
 % Convert to monthly % returns
-[mdates,~,subs] = unique(tb.Date/100);
-f               = @(x) accumarray(subs, x,[],@(r) (prod((1+r))-1)*100);
-tbl             = tbextend.varfun(f, tb(:,2:end),'RenameVariables',false);
+f   = @(x) dret2mrets(tb.Date, x)*100;
+tbl = tbextend.varfun(f, tb(:,2:end),'RenameVariables',false);
 
 % Excess returns
 tbl.RetHF   = tbl.RetHF - tbl.RF;
@@ -897,7 +913,7 @@ X = [tbl.MktMinusRF tbl.SMB tbl.HML];
 [~,se(2:5,3),coeff(2:5,3)] = hac(X, tbl.RetLF,'display','off');
 [~,se(2:5,6),coeff(2:5,6)] = hac(X, tbl.RetHF,'display','off');
 [~,se(2:5,9),coeff(2:5,9)] = hac(X, tbl.RetDiff,'display','off');
-pval       = tcdf(-abs(coeff./se), dfe)*2;
+pval       = tcdf(-abs(coeff./se), size(X,1)-1)*2;
 colheaders = {'Low Frequency','High Frequency','HF-LF'};
 rowheaders = {'Excess','$\alpha$','MKT','SMB','HML'};
 formatResults(coeff, se, pval, colheaders,rowheaders)
