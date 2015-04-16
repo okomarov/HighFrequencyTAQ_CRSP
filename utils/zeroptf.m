@@ -35,7 +35,7 @@ rebdate      = find([false; diff(subs)>0]);
 
 N        = numel(dates);
 stratret = table(dates, NaN(N,1),NaN(N,1),NaN(N,1),...
-                 'VariableNames',{'Dates','Top','Bottom','Ptf'});
+                 'VariableNames',{'Date','Top','Bottom','Ptf'});
 for ii = 1:numel(rebdate)
     [iBottom, iTop] = deal(false(1,size(ret,2)));
     % Alive on rebalancing date

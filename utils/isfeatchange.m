@@ -48,7 +48,7 @@ for c = 1:szTb(2)-1
     if any(c == inum)
         idx = idx | tb.(field)(2:end) ~= tb.(field)(1:end-1);
     else
-        idx = idx | ~strcmpi(tb.(field)(2:end),tb.(field)(1:end-1,c));
+        idx = idx | ~strcmpi(tb.(field)(2:end),tb.(field)(1:end-1));
     end
 end
 idx = [true; idx];
