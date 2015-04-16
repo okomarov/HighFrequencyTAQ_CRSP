@@ -688,6 +688,26 @@ else
     title 'Null ret counts: mkt cap percentile averages of all stocks'
     saveas(gcf, '.\results\NullRetCounts_All_mktcap.png')
 end
+%% Count permno match
+try
+    res = loadresults('masterPermno');
+catch
+    res = mapPermno2master();
+end
+
+% Nobs per day 
+master = load(fullfile('.\data\TAQ','master'),'-mat');
+[~,pos] = ismembIdDate(res.Id, res.Date, master.mst.Id,master.mst.Date);
+res.Nobs = master.mst.To(pos) - master.mst.From(pos)+1;
+
+% Tot count by day
+[dates, ~, subs] = unique(res.Date);
+tot = accumarray(subs,res.Nobs);
+imatch = res.Permno ~= 0;
+matched = accumarray(subs(imatch),res.Nobs(imatch));
+
+plot(yyyymmdd2datetime(dates), matched./tot*100)
+
 %% Beta quantiles
 betaPercentiles(10:10:90,1,5,true,false,true,true)
 %% Beta quantiles on mkt cap
