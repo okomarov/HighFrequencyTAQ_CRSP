@@ -1,4 +1,4 @@
-function TAQmaster = importMst(path2zips)
+function TAQmaster = importTaqMaster(path2zips)
 % IMPORTMST Imports .csv and .tab master files into one table
 % 
 %   IMPORTMST(PATH2ZIPS) The .csv and .tab files are both zipped in two
