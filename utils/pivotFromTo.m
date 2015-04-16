@@ -2,11 +2,10 @@ function s = pivotFromTo(tb)
 
 % PIVOTFROMTO Pivots a table spreading the value between the from/to range
 % 
-%   ... = PIVOTFROMTO(TB) TB should be a table with:
-%           - 1st col --> Id, i.e. the indicator variable
-%           - 2nd col --> From date
-%           - 3rd col --> To date
-%           - 4rd col --> Value to pivot
+%   PIVOTFROMTO(TB) TB should be a table with:
+%           ID | From | To | Value
+%       
+%           The ID is the indexing var and Value is the unstacked variable.
 %
 %   S = ... 
 %       Is a structure with:
@@ -24,6 +23,9 @@ tb       = setVariableNames(tb, {'Id','From','To','Val'});
 classval = class(tb.Val);
 tb.Val   = double(tb.Val);
 
+% Reference dates
+s.Date = union(tb.From, tb.To);
+
 % Extend To date by one day (will be nullified by the spread/pivoting)
 tb.To = serial2yyyymmdd(yyyymmdd2serial(tb.To)+1);
 
@@ -39,16 +41,10 @@ s.Id     = unique(tb.Id);
 s.Idname = lower(oldnames{1});
 
 % Pivot and spread membership
-s.Panel = unstack(tb, 'Val','Id');
-fun = @(x) cast(cumsum(nan2zero(x)),classval);
-s.Panel(:,2:end) = varfun(fun, s.Panel(:,2:end));
+s.Panel          = unstack(tb, 'Val','Id');
+fun              = @(x) cast(cumsum(nan2zero(x)),classval);
+s.Panel(:,2:end) = tbextend.varfun(fun, s.Panel(:,2:end),'RenameVariables', false);
 
-% Reset the one day extension of ending date
-if yyyymmdd2serial(s.Panel.Date(end))-1 == yyyymmdd2serial(s.Panel.Date(end-1))
-    s.Panel(end,:) = [];
-else
-    s.Panel.Date(end)  = serial2yyyymmdd(yyyymmdd2serial(s.Panel.Date(end))-1);
-    s.Panel(end,2:end) = s.Panel(end-1,2:end);
-end
-s.Date = s.Panel.Date(2:end,1);
+% Sample at reference dates
+s.Panel = sampledates(s.Panel,s.Date,true);
 end
