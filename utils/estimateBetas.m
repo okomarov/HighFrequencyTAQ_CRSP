@@ -1,7 +1,7 @@
 function betas = estimateBetas(lookback, freq, useon, useproxy)
 if nargin < 1 || isempty(lookback), lookback = 1;     end
 if nargin < 2 || isempty(freq),     freq     = 5;     end
-if nargin < 3 || isempty(useon),    useon    = false; end
+if nargin < 3 || isempty(useon),    useon    = true; end
 if nargin < 4 || isempty(useproxy), useproxy = false; end
 
 writeto = '.\results\';
@@ -11,7 +11,7 @@ try
     name  = matname('betacomponents',freq, useon, useproxy);
     betas = loadresults(name);
 catch
-    fprintf('%s: betacomponents not found. Estimating\n', mfilename)
+    fprintf('%s: betacomponents not found. Estimating...\n', mfilename)
     
     % Sample if data doesn't exist
     path2data = sprintf('.\\data\\TAQ\\sampled\\%dmin', freq);
@@ -55,9 +55,9 @@ catch
         fprintf('%s: adding overnight returns to the index.\n', mfilename)
         ion               = find(~ion);
         reton             = loadresults('return_intraday_overnight');
-        spreton           = reton(reton.UnID == 29904,:);
+        spreton           = reton(reton.Permno == 84398,:);
         [idx,pos]         = ismember(serial2yyyymmdd(spret(ion,1)),spreton.Date);
-        spret(ion(idx),2) = spreton.Onret(pos(idx));
+        spret(ion(idx),2) = spreton.RetCO(pos(idx));
     else
         spret = spret(ion,:);
     end
@@ -74,44 +74,43 @@ catch
     
     unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(unique(x))});
     for ii = 1:nfiles
-        pos        = ismembc2(unMstDates{ii}, spdays);
-        nnzero     = pos ~= 0;
-        isp        = ismembc(spdays, unMstDates{ii});
+        [~,pos]      = ismember(unMstDates{ii}, spdays);
+        nnzero       = pos ~= 0;
+        isp          = ismember(spdays, unMstDates{ii});
         cached(ii,:) = {spret(isp) spdays(pos(nnzero))};
     end
     
     % Cache overnight returns
-    % Note: the match is on Date -Id rather than Date - UnID to avoid the
+    % Note: the match is on Date -Id rather than Date - Permno to avoid the
     %       duplication of overnight returns that comes from the 
-    %       Date - Permno mapping to Date - UnId/Id
+    %       Date - Permno mapping to Date - Permno/Id
     if useon
         fprintf('%s: adding overnight returns to all other series.\n', mfilename)
         reton.File      = zeros(size(reton,1),1,'uint16');
-        [idx,pos]       = ismemberb(reton(:,{'Date','Id'}), mst(:,{'Date','Id'}));
+        [idx,pos]       = ismembIdDate(reton.Id,reton.Date, mst.Id, mst.Date);
         reton.File(idx) = mst.File(pos(idx));
-        reton           = reton(reton.File ~= 0,{'UnID','Date','Onret','File'});
+        reton           = reton(reton.File ~= 0,{'Permno','Date','RetCO','File'});
         cached          = [cached,...
-                           accumarray(reton.File,(1:size(reton))',[],@(x) {reton(x,{'UnID','Date','Onret'})})];
+                           accumarray(reton.File,(1:size(reton))',[],@(x) {reton(x,{'Permno','Date','RetCO'})})];
     end
     
     % Calculate beta components: sum(r*benchr) and sum(benchr^2)
     fprintf('%s: creating betacomponents at %d min.\n', mfilename, freq)
-    fmtname          = sprintf('S%dm_*.mat',freq);
-    [betas,filename] = Analyze('betacomponents', [], cached, fullfile(path2data,fmtname));
+    [betas,filename] = Analyze('betacomponents', [], cached, path2data);
     
     % Rename to append the sampling frequency
     name        = regexp(filename,'\w+?(?=\.mat)','match','once');
-    name        = sprintf(matname(name,freq, useon, useproxy),'.mat');
-    newfullname = fullfile(writeto, matname(name,freq, useon, useproxy));
+    name        = [matname(name,freq, useon, useproxy),'.mat'];
+    newfullname = fullfile(writeto, name);
     movefile(fullfile(writeto,filename), newfullname);
 end
 fprintf('%s: calculating betas with %d day lookback.\n', mfilename, lookback)
 
 % Sort (composite key for speed) and create subs
-key        = uint64(betas.UnID) * 1e8 + uint64(betas.Date);
+key        = uint64(betas.Permno) * 1e8 + uint64(betas.Date);
 [~,isrt]   = sort(key);
 betas      = betas(isrt,:);
-[~,~,subs] = unique(betas.UnID);
+[~,~,subs] = unique(betas.Permno);
 
 % Beta
 num        = accumarray(subs, betas.Num, [], @(x) runsum(lookback,x));
