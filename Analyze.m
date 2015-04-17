@@ -223,7 +223,7 @@ if ~all(ibad)
     nmst             = size(s.mst,1);
     mstrow           = RunLength((1:nmst)',nobs);
     [unTimes,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
-    price            = accumarray(subs, s.data.Price(~inan),[],@fast_median);
+    price            = accumarray(subs, s.data.Price(~ibad),[],@fast_median);
     
     % STEP 7) Sample on fixed grid (easier to match sp500)
     ngrid          = numel(opt.grid);
@@ -260,16 +260,17 @@ dates  = s.data.Datetime;
 ret    = [NaN; diff(log(s.data.Price))];
 idx    = [false; diff(rem(dates,1)) >= 0];
 if useon
-    [~,pos]   = ismember(s.mst(:,{'UnID','Date'}), onret(:,{'UnID','Date'}));
-    ret(~idx) = onret.Onret(pos);
+    [~,pos]   = ismembIdDate(s.mst.Permno, s.mst.Date, onret.Permno, onret.Date);
+    ret(~idx) = onret.RetCO(pos);
 else
     % Keep all except overnight
     ret = ret(idx,:);
 end
 % Use a NaN when we don't have SPY returns
-spyret = [NaN(ngrid,1); spyret];
-days   = yyyymmdd2serial(double(s.mst.Date));
-pos    = ismembc2(days, spdays) + 1;
+spyret  = [NaN(ngrid,1); spyret];
+days    = yyyymmdd2serial(double(s.mst.Date));
+[~,pos] = ismember(days, spdays);
+pos     = pos + 1;
 
 % Map SP500 rets to stock rets
 spret   = cat(1,spyret{pos});
@@ -278,7 +279,7 @@ subsID  = reshape(repmat(1:size(s.mst,1),ngrid,1),[],1);
 ikeep   = ~isnan(prodret);
 
 % Store results
-res     = s.mst(:,{'Id','UnID','Date'});
+res     = s.mst(:,{'Id','Permno','Date'});
 res.Num = accumarray(subsID(ikeep), prodret(ikeep),[],[],NaN);
 res.Den = accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
 end
@@ -347,7 +348,7 @@ res = cached(:,{'Id','Date','RetOC'});
 end
 
 function res = countnullrets(s,cached)
-res          = s.mst(:,{'Id','UnID','Date'});
+res          = s.mst(:,{'Id','Permno','Date'});
 idx          = mcolon(s.mst.From,1,s.mst.To);
 subs         = RunLength(1:size(s.mst,1),s.mst.To-s.mst.From+1);
 res.Nullrets = accumarray(subs(:), s.data.Price(idx),[],@(x) nnz(x(2:end)./x(1:end-1)==1));
