@@ -47,7 +47,7 @@ catch
     end
     
     % SP500 ret 
-    spret = [sp500.Datetime [NaN; sp500.Price(2:end)./sp500.Price(1:end-1)-1]];
+    spret = [sp500.Datetime, [NaN; diff(log(sp500.Price))]];
     ion   = [false; diff(rem(sp500.Datetime,1)) >= 0];
     
     % Add overnight return or discard
