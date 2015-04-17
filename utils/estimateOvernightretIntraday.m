@@ -2,6 +2,10 @@ function res = estimateOvernightretIntraday
 % Calulate overnight return from CRSP's close-to-close return and
 % TAQ's open-to-close (intraday) return.
 
+
+% Load Permno - Date pairs
+mst = loadresults('masterPermno');
+
 % Load overnight
 try
     res = loadresults('return_intraday');
@@ -18,16 +22,9 @@ catch
     
     res = Analyze('return_intraday',[],cached,path2data);
 end
-
-% Load UnID - Date pairs
-uniqueID = loadresults('uniqueID');
-
-% Map permno
-uniqueID.Permno = unid2permno(uniqueID.UnID);
-
-% Add RetOC
-[~,pos]        = ismembIdDate(uniqueID.Id, uniqueID.Date, res.Id, res.Date);
-uniqueID.RetOC = res.RetOC(pos);
+[~,pos]   = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+mst.RetOC = res.RetOC(pos);
+clear res
 
 % Load dsfquery
 dsfquery = loadresults('dsfquery');
@@ -41,18 +38,15 @@ dsfquery = loadresults('dsfquery');
 % dsfquery.Ret(dsfquery.Ret > ptiles(2)) = ptiles(2);
 
 % Add RetCC from dsfquery
-[idx,pos]           = ismembIdDate(uniqueID.Permno, uniqueID.Date, dsfquery.Permno, dsfquery.Date);
-uniqueID.RetCC      = NaN(size(uniqueID.Permno));
-uniqueID.RetCC(idx) = dsfquery.Ret(pos(idx));
+[idx,pos]      = ismembIdDate(mst.Permno, mst.Date, dsfquery.Permno, dsfquery.Date);
+mst.RetCC      = NaN(size(mst.Permno));
+mst.RetCC(idx) = dsfquery.Ret(pos(idx));
 clear dsfquery
 
 % Overnight return
-uniqueID.RetCO = log((1 + uniqueID.RetCC)./(1 + uniqueID.RetOC )); 
+mst.RetCO = log((1 + mst.RetCC)./(1 + mst.RetOC )); 
 
-% Filter out NaNs
-idx = ~(isnan(uniqueID.RetCC) | isnan(uniqueID.RetOC));
-res = uniqueID(idx,:);
-
+res      = mst;
 filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'return_intraday_overnight');
 save(fullfile('.\results\',filename), 'res')
 end
