@@ -203,14 +203,6 @@ end
 
 % Sampling
 function res = sample(s,cached,opt)
-
-% Sampling params
-if nargin < 3
-    opt.grid    = (9.5/24:5/(60*24):16/24)';
-    opt.writeto = '.\data\TAQ\sampled\5min';
-    opt.fmtname = 'S5m_%04d.mat';
-end
-
 nfile  = cached{end};
 cached = cached{1};
 % Number of observations per day
@@ -220,7 +212,7 @@ nobs   = double(s.mst.To - s.mst.From + 1);
 ibad = ibadprices(s, cached);
 
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
-ibad = ibad | RunLength(cached.Timestep,nobs);
+ibad = ibad | RunLength(cached.Isfewobs,nobs);
 
 % STEP 5) Clean prices - carried out in the median consolidation
 % s.data.Price(inan) = NaN;
@@ -243,7 +235,7 @@ if ~all(ibad)
     res        = [];
     s.data     = table(dates,price,'VariableNames',{'Datetime','Price'});
     imst       = RunLength(idx);
-    s.mst      = [s.mst(imst,'Id'), cached(imst, 'UnID'), s.mst(imst,'Date')];
+    s.mst      = [s.mst(imst,'Id'), cached(imst, 'Permno'), s.mst(imst,'Date')];
     s.mst.From = (1:ngrid:size(s.data,1))';
     s.mst.To   = (ngrid:ngrid:size(s.data,1))';
     

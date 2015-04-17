@@ -90,43 +90,7 @@ ha.YRuler.SecondaryLabel.Visible = 'on';
 
 export_fig('.\results\fig\selrulecount0.eps', '-r150','-transparent','-opengl','-a1')
 %% Overall cleaning counts
-path2data = '.\data\TAQ';
-load(fullfile(path2data,'master'),'-mat')
-
-% Map unique ID to mst
-res      = loadresults('uniqueID');
-[~,pos]  = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
-mst.UnID = res.UnID(pos);
-
-% Bad prices days
-res          = loadresults('badprices');
-[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
-mst.Nbadsel  = res.Nbadsel(pos);
-mst.Nbadtot  = res.Nbadtot(pos);
-mst.Isbadday = res.Isbadday(pos);
-
-% Bad series
-nobs            = mst.To - mst.From +1;
-totbad          = accumarray(mst.UnID(mst.Isbadday), nobs(mst.Isbadday),[max(mst.UnID),1]);
-totobs          = accumarray(mst.UnID, nobs);
-badseries       = totbad./totobs > .1;
-badseries(end)  = true; % for the unmatched
-mst.Isbadseries = badseries(mst.UnID);
-
-% Count losing obs with timestamp consolidation
-res               = loadresults('consolidationcounts');
-[~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
-mst.Nconsolidated = res.Nconsolidated(pos);
-
-% Select on basis of minimum number of observations
-res                = loadresults('NumTimeBuckets');
-[~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, mst.Date);
-mst.NumTimeBuckets = res.NumTimeBuckets(pos);
-% ngoodtrades    = mst.To-mst.From+1 - mst.Nbadtot - mst.Nconsolidated;
-% mst.Ifewtrades = ngoodtrades < 13;
-mst.Ifewtrades = mst.NumTimeBuckets < 7;
-perfew         = accumarray(mst.UnID, mst.Ifewtrades)./accumarray(mst.UnID, 1) > .5;
-mst.Ifewseries = perfew(mst.UnID);
+mst = selectAndFilterTrades();
 
 % Accumulate monthly
 [undates,~,subs] = unique(mst.Date/100);
@@ -138,9 +102,9 @@ Nbadday          = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx),sz);
 idx              = mst.Isbadseries & ~mst.Isbadday;
 Nbadseries       = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx),sz);
 Nconsolidated    = accumarray(subs, mst.Nconsolidated);
-idx              = mst.Ifewtrades & ~(mst.Isbadday | mst.Isbadseries);
+idx              = mst.Isfewobsday & ~(mst.Isbadday | mst.Isbadseries);
 Nfewobs          = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx)-mst.Nconsolidated(idx),sz);
-idx              = mst.Ifewseries & ~ (mst.Ifewtrades  | mst.Isbadday | mst.Isbadseries);
+idx              = mst.Isfewobs & ~ (mst.Isfewobsday  | mst.Isbadday | mst.Isbadseries);
 Nfewdays         = accumarray(subs(idx), nobs(idx)-mst.Nbadtot(idx)-mst.Nconsolidated(idx),sz);
 Ntot             = accumarray(subs,nobs);
 
