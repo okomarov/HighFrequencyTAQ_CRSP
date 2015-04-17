@@ -1,4 +1,4 @@
-function [betas, unids] = getBetas(lookback, freq, useon, useproxy, issp, iscs, keeplong)
+function [betas, permnos] = getBetas(lookback, freq, useon, useproxy, issp, iscs, keeplong)
 % GETBETAS Loads betas, applies sp500 and/or common shares filers, unstacks
 %
 %   getBetas(lookback, freq, useon, useproxy, issp, iscs, keeplong)
@@ -19,33 +19,24 @@ betas = estimateBetas(lookback, freq, useon, useproxy);
 % Filter for sp500 members
 if issp
     fprintf('%s: filtering for sp500 members.\n', mfilename)
-    idx   = issp500member(betas(:,{'Date','UnID'}));
+    idx   = issp500member(betas(:,{'Date','Id'}));
     betas = betas(idx,:);
 end
 
 % Filter for common share (share type code 10 and 11)
 if iscs
     fprintf('%s: filtering for common shares only.\n', mfilename)
-    idx   = iscommonshare(betas(:,{'UnID','Date'}));
+    idx   = iscommonshare(betas(:,{'Id','Date'}));
     betas = betas(idx,:);
 end
 
-% Remove overlapping
-[un,~,subs] = unique(betas(:,{'UnID','Date'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-if ~isempty(overlap)
-    [~,idx] = setdiff(betas(:,{'UnID','Date'}), overlap);
-    betas   = betas(idx,:);
-end
-% taq2crsp(ismember(taq2crsp.permno, taq2crsp.permno(taq2crsp.ID == overlap.ID(n))) | taq2crsp.ID == overlap.ID(n),:)
-
 if nargout == 2
-    unids = unique(betas.UnID);
+    permnos = unique(betas.Permno);
 end
 
 % Unstack betas
 if ~keeplong
-    betas = unstack(betas(:,{'Date','UnID','Beta'}), 'Beta','UnID');
+    betas = unstack(betas(:,{'Date','Permno','Beta'}), 'Beta','Permno');
     betas = sortrows(betas,'Date');
 end
     
