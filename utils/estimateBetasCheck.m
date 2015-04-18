@@ -1,34 +1,25 @@
-%% Check 1-day betas
-% Calculate Betas with new interface
-betas = estimateBetas(1,5,true);
-betas = sortrows(betas,{'UnID','Date'});
-
-% Check against previously calculated ones
-load .\results\20140813_1818_betas.mat
-res = sortrows(res,{'UnID','Date'});
-
-% Visualize difference
-abdiff = abs(single(betas.Beta)-res.Beta);
-counts = histc(abdiff, eps*10.^(0:15));
-bar((0:15)', counts)
-
 %% Check if multiple days extends
 
 % Estimate
-lookback = 20;
-betas = estimateBetas(lookback,30,false);
+useovernight = false;
+lookback     = 252;
+betas        = estimateBetas(lookback,5,useovernight);
+
+fprintf('%s: retrieving random series for manual check.\n', mfilename)
 
 % Load spyders
-spy = loadresults('spysampled30m');
+spy = loadresults('spysampled5m');
 
-% Pick one UnID at random
-unids      = randsample(unique(betas.UnID),1);
-path2data  = '.\data\TAQ\sampled\30min\';
+% Pick one Permno at random
+permno    = randsample(unique(betas.Permno),1);
+path2data = '.\data\TAQ\sampled\5min\';
 if ~exist('master','var')
     master = load(fullfile(path2data,'master'),'-mat','mst');
 end
-idx  = ismember(master.mst.UnID,unids);
+idx  = ismember(master.mst.Permno,permno);
 data = getTaqData(master.mst(idx,:), [],[],[],[],path2data);
+
+fprintf('%s: calculating manual betas.\n', mfilename)
 
 % Add spyders
 data.Spy        = NaN(size(data,1),1);
@@ -57,27 +48,31 @@ end
 
 % Drop overnight NaNs and empty days
 data   = data(~isnan(data.Ret),:);
-manual = manual(ismembc(manual.Date, data.Date),:);
+manual = manual(ismember(manual.Date, data.Date),:);
 
 % Calculate Betas
 N = size(manual,1);
 for ii = lookback:N
-    idx = ismembc(data.Date, manual.Date(ii-lookback+1:ii));
-    num = data.Ret(idx)'*data.Spyret(idx);
-    den = data.Spyret(idx)'*data.Spyret(idx);
+    idx             = ismember(data.Date, manual.Date(ii-lookback+1:ii));
+    num             = data.Ret(idx)'*data.Spyret(idx);
+    den             = data.Spyret(idx)'*data.Spyret(idx);
     manual.Beta(ii) = num./den;
 end
 manual.Date = serial2yyyymmdd(manual.Date);
 
 % Compare
-compare = betas(betas.UnID == unids & ismember(betas.Date, manual.Date),:);
+compare = betas(betas.Permno == permno & ismember(betas.Date, manual.Date),:);
 
 % Visual inspection
+subplot(211)
+title(sprintf('%d', permno)) 
 plot(yyyymmdd2datetime(compare.Date), compare.Beta,...
      yyyymmdd2datetime(manual.Date), manual.Beta)
 legend({'Automated','Manual'})
 
 abdiff = abs(compare.Beta - manual.Beta);
 counts = histc(abdiff, eps*10.^(0:15));
+subplot(212)
 bar((0:15)', counts)
 set(gca,'XLim',[-1 16],'Xtick',0:15)
+xlabel 'eps*10 to the nth power'
