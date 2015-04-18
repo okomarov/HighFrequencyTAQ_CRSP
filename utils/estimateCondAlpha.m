@@ -1,6 +1,6 @@
 function scores = estimateCondAlpha(lookback, betas, rets, f, C)
 % estimateCondAlpha(betas, rets)
-% Sorts betas by Date and UnID
+% Sorts betas by Date and Permno
 
 % Cond alphas
 % From r_{i,t+1} = alpha_it + f_{t+1} * beta_it + e_{i,t+1}:
@@ -8,12 +8,12 @@ function scores = estimateCondAlpha(lookback, betas, rets, f, C)
 % 2) estimate the conditional alpha E(^Z_{i,t+1}|C_t)
 
 % Unstack returns and betas
-rets = rets(~isnan(rets.RetCC),{'Date','UnID','RetCC'});
-rets = unstack(rets,'RetCC','UnID');
+rets = rets(~isnan(rets.RetCC),{'Date','Permno','RetCC'});
+rets = unstack(rets,'RetCC','Permno');
 rets = sortrows(rets,'Date');
 
-betas = betas(~isnan(betas.Beta),{'Date','UnID','Beta'});
-betas = unstack(betas(:,{'Date','UnID','Beta'}),'Beta','UnID');
+betas = betas(~isnan(betas.Beta),{'Date','Permno','Beta'});
+betas = unstack(betas(:,{'Date','Permno','Beta'}),'Beta','Permno');
 betas = sortrows(betas,'Date');
 
 % Intersect returns and betas
