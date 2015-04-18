@@ -32,18 +32,9 @@ catch
             fprintf('%s: creating ssp500proxy at %d min.\n', mfilename, freq)
             sp500 = sp500intraday(path2data);
         end
-        % Use spyders
     else
-        name = sprintf('spysampled%dm',freq);
-        try
-            sp500 = loadresults(name);
-        catch
-            fprintf('%s: extracting spyders at %d min.\n', mfilename, freq)
-            master = load(fullfile(path2data,'master'),'-mat');
-            sp500  = getTaqData(master, 'SPY',[],[],'Price',path2data);
-            fname  = fullfile(writeto, sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),name));
-            save(fname, 'sp500')
-        end
+        % Use spyders
+        sp500 = getSpy(5);
     end
     
     % SP500 ret 

@@ -245,6 +245,43 @@ if ~all(ibad)
 end
 end
 
+function res = sampleSpy(s,~,opt)
+
+% Keep spy only
+id = find(strcmpi(s.ids,'SPY'),1);
+if isempty(id)
+    [Datetime,Price] = deal(zeros(0,1));
+    res              = table(Datetime,Price);
+    return
+end
+idx   = s.mst.Id == id;
+s.mst = s.mst(idx,:);
+s.mst = sortrows(s.mst, {'Date','From'});
+
+% Loop for each day
+nmst = size(s.mst,1);
+res = cell(nmst,1);
+for r = 1:size(s.mst,1);
+    from = s.mst.From(r);
+    to   = s.mst.To(r);
+    data = s.data(from:to,:);
+    
+    % STEP 1) Select regular trades
+    data = data(~selecttrades(data),:);
+    
+    % STEP 2) Median prices for same timestamps
+    [unTimes,~,subs] = unique(hhmmssmat2serial(data.Time));
+    Price            = accumarray(subs, double(data.Price),[],@fast_median);
+    
+    % STEP 3) Sample on fixed grid
+    [Price, dates] = fixedsampling(unTimes, Price, opt.grid(:));
+    Datetime       = yyyymmdd2serial(s.mst.Date(r)) + dates;
+    
+    res{r} = table(Datetime,Price);
+end
+res = cat(1,res{:});
+end
+
 function res = betacomponents(s,cached)
 spdays = cached{2};
 spyret = cached{1};
