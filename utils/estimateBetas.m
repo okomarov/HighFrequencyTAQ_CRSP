@@ -34,7 +34,7 @@ catch
         end
     else
         % Use spyders
-        sp500 = getSpy(5);
+        sp500 = getSpy(freq);
     end
     
     % SP500 ret 
