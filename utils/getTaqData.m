@@ -1,47 +1,72 @@
-function out = getTaqData(master, tickers, from, to, varnames, path2data)
+function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data)
 
 % GETTAQDATA Retrieve TAQ data from a given directory
 % 
-%   GETTAQDATA(MASTER, TICKERS, FROM, TO, VARNAMES, PATH2DATA)
+%   GETTAQDATA(IDTYPE, ID, FROM, TO, VARNAMES, PATH2DATA)
 %
 % 
 % Example:
 %   
-%   path2data = '.\data\TAQ\sampled';
-%   master    = load(fullfile(path2data, 'master'), '-mat');
-%   data      = getTaqData(master, {'A','AA'}, 19961231, 20080122, 'Price', path2data);
+%   path2data = '.\data\TAQ\sampled\5min';
+%   data      = getTaqData('symbol', {'A','AA'}, 19961231, 20080122, 'Price', path2data);
 
 addpath .\utils\mcolon
 
 % Checks and defaults
-narginchk(1,6)
-if nargin < 2,                          tickers   = [];           end
-if nargin < 3 || isempty(from),         from      = 0;            end
-if nargin < 4 || isempty(to),           to        = inf;          end
-if nargin < 5,                          varnames  = [];           end
-if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ'; end
+if nargin < 1,                          idtype    = 'symbol';       end
+if nargin < 2,                          id        = [];             end
+if nargin < 3 || isempty(from),         from      = 0;              end
+if nargin < 4 || isempty(to),           to        = inf;            end
+if nargin < 5,                          varnames  = [];             end
+if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ';   end
  
-if isstring(tickers),  tickers  = {tickers}; end
+if isstring(id),  id  = {id}; end
 if isstring(varnames), varnames = {varnames}; end
 
-% Find tickers in the master file
-if ~isempty(tickers)
-    [ifound,ids] = ismember(upper(tickers),upper(master.ids));
+master = load(fullfile(path2data, 'master'), '-mat');
+
+if isempty(id)
+    imst = true(size(master.mst,1),1); 
+else
+    
+    % Find tickers in the master file
+    switch lower(idtype)
+        case 'symbol'
+            [ifound, ids] = ismember(upper(id), upper(master.ids));
+            imst          = ismember(master.mst.Id,ids);
+            
+        case 'permno'
+            id2permno = loadresults('masterPermno');
+            idx       = ismember(id2permno.Permno,id);
+            id2permno = id2permno(idx,:);
+            ifound    = ismember(id, id2permno.Permno);
+            imst      = ismembIdDate(master.mst.Id, master.mst.Date,id2permno.Id, id2permno.Date);
+            id        = cellstr(num2str(id(:)));
+                    
+        case 'id'
+            imst   = ismember(master.mst.Id, id);
+            ifound = ismember(id, master.mst.Id(imst));
+            id     = cellstr(num2str(id(:)));
+            
+        otherwise
+            error('getTaqData:invalidIdtype','IDTYPE can be ''symbol'', ''permno'' or ''id''.')
+    end
+
+    % Check if found matches
     if all(~ifound)
-        warning('None of the TICKERS were found.')
+        warning('None of the IDs were found.')
+        out = [];
         return
     elseif any(~ifound)
-        warning('\nThe following TICKERS were not matched:%s%s.',sprintf(' ''%s'',',tickers{~ifound}),char(8))
+        warning('The following IDs were not matched:%s%s.',sprintf(' ''%s'',',id{~ifound}),char(8))
     end
-    
-    % Filter based on IDs
-    master = master.mst(ismember(master.mst.Id,ids),:);
-elseif isstruct(master)
-    master = master.mst;
 end
 
+% Filter based on IDs
+master = master.mst(imst,:);
+
 % Filter based on dates
-master = master(master.Date <= to & master.Date >= from,:);
+master = master(in(master.Date,[from, to]),:);
 
 % List files
 dd       = dir(fullfile(path2data,'*.mat'));
@@ -93,7 +118,7 @@ for ii = 1:nfiles
     end
     
     % Update waitbar
-    matname  = matnames{files(ii)};
+    matname = matnames{files(ii)};
     if updatebar
         x        = (ii-1)/nfiles;
         time2end = elapsed(ii)*(1-x)/x;
@@ -121,7 +146,7 @@ for ii = 1:nfiles
         out{ii}.Datetime = dates(:) + hhmmssmat2serial(s.data.Time(idata,:));
     end
     for v = 1:numel(varnames)
-        fname = varnames{v};
+        fname           = varnames{v};
         out{ii}.(fname) = s.data.(fname)(idata,:);
     end
 
