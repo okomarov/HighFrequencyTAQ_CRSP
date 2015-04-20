@@ -6,9 +6,8 @@ if nargin < 2 || isempty(lookback), lookback = 1;       end
 if nargin < 3 || isempty(freq),     freq     = 5;       end
 if nargin < 4 || isempty(useon),    useon    = true;    end
 if nargin < 5 || isempty(useproxy), useproxy = false;   end
-if nargin < 6 || isempty(issp),     issp     = false;   end
-if nargin < 7 || isempty(iscs),     iscs     = false;   end
-
+if nargin < 6 || isempty(issp),     issp     = true;   end
+if nargin < 7 || isempty(iscs),     iscs     = true;   end
 
 % Get Betas
 betas = getBetas(lookback, freq, useon, useproxy, issp, iscs);
