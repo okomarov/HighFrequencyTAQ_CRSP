@@ -17,6 +17,4 @@ taq2crsp     = unique(taq2crsp(:,{'permno','ID'}));
 % Map
 [idx,pos]    = ismember(unids, taq2crsp.ID);
 permnos(idx) = taq2crsp.permno(pos(idx));
-
-
 end

@@ -1,4 +1,6 @@
 function idx = in(A, bounds, inclusion)
+% idx = in(A, bounds, inclusion)
+
 bounds = sort(bounds);
 if nargin < 3 || isempty(inclusion)
     inclusion = '[]';
