@@ -1,17 +1,82 @@
+%% 
+fprintf('Checking one random beta.\n')
+beta   = getBetas(1,5,true,false,true,true,true);
+record = beta(randsample(size(beta,1),1),:);
+
+date   = record.Date;
+permno = record.Permno;
+
+% Den
+spy  = getSpy(5,date,date);
+inan = isnan(spy.Price);
+
+% Unsampled spy
+unsampled         = getSpy(inf,date,date);
+unsampled         = unsampled(~selecttrades(unsampled),:);
+[Datetime,~,subs] = unique(unsampled.Datetime);
+Price             = accumarray(subs, unsampled.Price,[],@fast_median);
+
+% Sample with MFE
+pt          = 'D:\TAQ\HFbetas\utils\MFE'; addpath(pt) 
+grid        = (9.5/24:5/(60*24):16/24)';
+Price       = realized_price_filter(double(Price), Datetime,...
+        'unit','fixed', grid+yyyymmdd2serial(date));
+Price(inan) = NaN;
+
+% Returns with overnight
+spylogret = diff(log(Price));
+ret       = loadresults('return_intraday_overnight');
+r         = ret(ret.Date == date & ret.Permno == 84398,:);
+if isnan(spylogret(1))
+    spylogret(1) = r.RetCO;
+else
+    spylogret(1) = spylogret(1)+r.RetCO;
+end
+inan = isnan(spylogret);
+den  = spylogret(~inan)'*spylogret(~inan);
+
+% Num
+s    = getTaqData('permno',permno,date,date,[],'.\data\TAQ\sampled\5min');
+inan = isnan(s.Price);
+
+% Unsampled series
+unsampled         = getTaqData('permno',permno,date,date);
+unsampled         = unsampled(~selecttrades(unsampled),:);
+[Datetime,~,subs] = unique(unsampled.Datetime);
+Price             = accumarray(subs, unsampled.Price,[],@fast_median);
+
+% Sample with MFE
+Price       = realized_price_filter(double(Price), Datetime,...
+        'unit','fixed', grid+yyyymmdd2serial(date));
+Price(inan) = NaN;
+
+% Returns with overnight
+logret = diff(log(Price));
+r      = ret(ret.Date == date & ret.Permno == permno,:);
+if isnan(logret(1))
+    logret(1) = r.RetCO;
+else
+    logret(1) = logret(1)+r.RetCO;
+end
+num               = logret'*spylogret;
+record.ManualNum  = num;
+record.ManualDen  = den;
+record.ManualBeta = num./den;
+disp(record)
 %% Check if multiple days extends
+fprintf('Checking beta with yearly lookback for a single.\n')
 
 % Estimate
 useovernight = false;
 lookback     = 252;
-betas        = estimateBetas(lookback,5,useovernight);
+betas        = getBetas(lookback,5,useovernight);
 
 fprintf('%s: retrieving random series for manual check.\n', mfilename)
 
 % Load spyders
 spy = loadresults('spysampled5m');
 
-% Pick one Permno at random
-permno    = randsample(unique(betas.Permno),1);
+% Load data
 path2data = '.\data\TAQ\sampled\5min\';
 if ~exist('master','var')
     master = load(fullfile(path2data,'master'),'-mat','mst');
