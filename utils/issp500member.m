@@ -8,6 +8,6 @@ if isa(tb,'dataset')
 end
 
 mst = loadresults('issp500');
-mst = mst(mst.Issp500,{'Id','Date'});
-tf  = ismembIdDate(tb.Id, tb.Date, mst.Id, mst.Date);
+mst = mst(mst.Issp500,{'Permno','Date'});
+tf  = ismembIdDate(tb.Permno, tb.Date, mst.Permno, mst.Date);
 end

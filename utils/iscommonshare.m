@@ -7,7 +7,7 @@ if isa(tb,'dataset')
 end
 
 shrcd = loadresults('shrcd');
-shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'Id','Date'});
-tf    = ismembIdDate(tb.Id, tb.Date, shrcd.Id, shrcd.Date);
+shrcd = shrcd(shrcd.Shrcd == 11 | shrcd.Shrcd == 10,{'Permno','Date'});
+tf    = ismembIdDate(tb.Permno, tb.Date, shrcd.Permno, shrcd.Date);
 
 end

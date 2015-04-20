@@ -283,13 +283,14 @@ res = cat(1,res{:});
 end
 
 function res = betacomponents(s,cached)
+% DO NOT RELY on local id!
+
 spdays = cached{2};
 spyret = cached{1};
 useon  = numel(cached) == 4;
 if useon
     onret = cached{3};
 end
-    
 ngrid  = size(spyret{1},1);
 
 % Dates and returns
@@ -316,7 +317,7 @@ subsID  = reshape(repmat(1:size(s.mst,1),ngrid,1),[],1);
 ikeep   = ~isnan(prodret);
 
 % Store results
-res     = s.mst(:,{'Id','Permno','Date'});
+res     = s.mst(:,'Permno','Date');
 res.Num = accumarray(subsID(ikeep), prodret(ikeep),[],[],NaN);
 res.Den = accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
 end
