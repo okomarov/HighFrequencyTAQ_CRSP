@@ -2,17 +2,17 @@ function [stratret, stratlvl] = zeroptf(tb, score)
 % [stratret, tbstats, tbarets] = zeroptf(tb)
 %
 %   Where TB should have (in no order):  
-%       Id | Date | Score | Ret
+%       ID | Date | Score | Ret
 
 warning off MATLAB:table:ModifiedVarnames
 % Unstack returns
-ret    = unstack(tb(:,{'Id','Date','Ret'}),'Ret','Id');
+ret    = unstack(tb(:,{'ID','Date','Ret'}),'Ret','ID');
 ret    = sortrows(ret,'Date');
 dates  = uint32(ret.Date);
 
 % Unstack scores (eventually)
 if nargin < 2
-    score = unstack(tb(:,{'Id','Date','Score'}),'Score','Id');
+    score = unstack(tb(:,{'ID','Date','Score'}),'Score','ID');
     score = sortrows(score,'Date');
 elseif ~isequal(score.Properties.VariableNames,ret.Properties.VariableNames) ||...
        ~isequal(score.Date, ret.Date)
