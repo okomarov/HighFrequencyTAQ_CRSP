@@ -56,14 +56,14 @@ msenames.NAMEENDT = To;
 idx                   = strcmpi(msenames.TSYMBOL,'');
 msenames.TSYMBOL(idx) = msenames.TICKER(idx);
 
-% Forward fill still empty symbols
+% Forward fill intermediate and end of period empty symbols
 msenames     = sortrows(msenames,{'NCUSIP','NAMEDT'});
 iempty       = strcmpi(msenames.TSYMBOL,'');
 pos          = NaN(size(iempty));
 pos(~iempty) = find(~iempty);
 pos          = nanfillts(pos);
 
-% Backward fill still empty symbols
+% Backward fill beginning of period empty symbols
 [~,pstart]       = unique(msenames.PERMNO);
 pstart           = intersect(pstart,find(iempty));
 pos(pstart)      = pstart + 1;
@@ -116,6 +116,6 @@ mst.Permno = cat(1,Permno{:});
 
 % Map back to order in master
 [~,pos] = ismembIdDate(mst.Id,mst.Date,master.mst.Id,master.mst.Date);
-mst     = mst(pos,{'Id','Date','Permno'});
+mst     = mst(pos,{'Id','Permno','Date'});
 
 save(fullfile('.\results\', sprintf('%s_%s.mat', datestr(now,'yyyymmdd_HHMM'),'masterPermno')), 'mst')
