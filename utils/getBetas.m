@@ -19,7 +19,7 @@ betas = estimateBetas(lookback, freq, useon, useproxy);
 % Filter for sp500 members
 if issp
     fprintf('%s: filtering for sp500 members.\n', mfilename)
-    idx   = issp500member(betas(:,{'Date','Permno'}));
+    idx   = issp500member(betas(:,{'Permno','Date'}));
     betas = betas(idx,:);
 end
 
@@ -41,7 +41,5 @@ if ~keeplong
 end
     
 % Convert to double
-names = getVariableNames(betas);
-betas = varfun(@double, betas);
-betas = setVariableNames(betas, names);
+betas = tbextend.varfun(@double, betas, 'RenameVariables', false);
 end
