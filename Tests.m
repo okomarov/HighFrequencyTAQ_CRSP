@@ -764,7 +764,8 @@ else
     saveas(gcf, '.\results\BetaCapWeightAll_proxy.png')
 end
 %% Cond alphas
-lookback   = 63;
+tic
+lookback   = 21*12;
 commononly = true;
 sp500only  = true;
 
@@ -787,6 +788,11 @@ rets = rets(~ismember(rets.Permno, permnos(idx)),:);
 % Fama and French factors
 FF = loadresults('FFfactors');
 
+% Rebalance 1st of month
+rebdates = intersect(unique(rets.Date), unique(spy.Date));
+[~,pos]  = unique(rebdates/100,'first');
+rebdates = rebdates(pos);
+
 % High frequency
 % -------------------------------------------------------------------------
 betasHF = getBetas(lookback,    5,     true,    false, sp500only, commononly);
@@ -800,13 +806,21 @@ scoresLF = estimateCondAlpha(lookback, rebdates, betasLF, rets, spy, FF(:,{'Date
 
 % Zero invst ptf
 % -------------------------------------------------------------------------
-% Intersect scores ids with rets
-vnames = getVariableNames(scoresHF);
-ids    = xstr2num(vnames(2:end), 'u32');
-[permnos,~,pscores] = intersect(rets.Permno, ids);
-irets = ismember(rets.Permno,permnos);
-rets   = rets(irets,{'Date','Permno','RetCC'});
-scoresHF =scoresHF(:,[1; pscores+1]);
+% Intersect id: rets with scores
+vnames    = getVariableNames(scoresHF);
+permnosHF = xstr2num(vnames(2:end), 'u32');
+vnames    = getVariableNames(scoresLF);
+permnosLF = xstr2num(vnames(2:end), 'u32');
+permnos   = intersect(intersect(rets.Permno, permnosHF),permnosLF);
+
+idx = ismember(rets.Permno,permnos);
+rets     = rets(idx,{'Date','Permno','RetCC'});
+
+idx      = ismember(permnosHF,permnos);
+scoresHF = scoresHF(:,[true; idx]);
+
+idx      = ismember(permnosLF,permnos);
+scoresLF = scoresLF(:,[true; idx]);
 
 % Zero invst ptf
 [retHF,lvlHF] = zeroptf(renameVarNames(rets,{'Ret','ID'},{'RetCC','Permno'}),scoresHF);
@@ -855,6 +869,7 @@ pval       = tcdf(-abs(coeff./se), size(X,1)-1)*2;
 colheaders = {'Low Frequency','High Frequency','HF-LF'};
 rowheaders = {'Excess','$\alpha$','MKT','SMB','HML'};
 formatResults(coeff, se, pval, colheaders,rowheaders)
+toc
 %% SP500 momentum
 lookback = 21*11;
 skip = 21;
