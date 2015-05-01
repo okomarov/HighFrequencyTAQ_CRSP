@@ -57,8 +57,8 @@ try
     parfor f = 1:N
         disp(f)
         % Load data
-        s      = load(fullfile(path2data,dd(f).name), varnames{:});
-        cache  = [cached(f,:), f];
+        s     = load(fullfile(path2data,dd(f).name), varnames{:});
+        cache = [cached(f,:), f];
         % Convert to tables
         if isfield(s,'data') && isa(s.data,'dataset'), s.data = dataset2table(s.data); end
         if isfield(s,'mst')  && isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
@@ -71,7 +71,7 @@ try
     % Export results and notify
     filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun);
     save(fullfile(writeto,filename), 'res')
-    message = sprintf('Task ''%s'' terminated in %s',fun,sec2time(toc));
+    message  = sprintf('Task ''%s'' terminated in %s',fun,sec2time(toc));
     disp(message)
     if ~debug, sendmail('o.komarov11@imperial.ac.uk', message,''); end
 catch err
@@ -92,10 +92,10 @@ end
 % Maximum trades per second
 function res = maxtradepsec(s,cached)
 % Count per id, date and second
-Id          = cumsum([ones(1,'uint32'); diff(int8(s.data.Time(:,1))) < 0]);
-Dates       = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
-[un,~,subs] = unique([Id, Dates, s.data.Time],'rows');
-counts      = [un accumarray(subs,1)];
+Id            = cumsum([ones(1,'uint32'); diff(int8(s.data.Time(:,1))) < 0]);
+Dates         = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+[un,~,subs]   = unique([Id, Dates, s.data.Time],'rows');
+counts        = [un accumarray(subs,1)];
 % Pick max per date 
 [date,~,subs] = unique(counts(:,2));
 res           = table(date, accumarray(subs,counts(:,end),[],@max),'VariableNames',{'Date','Maxpsec'});
@@ -114,8 +114,9 @@ nmst = size(cachedmst,1);
 subs = uint32(RunLength((1:nmst)',nobs));
 
 % Daily median price
-cachedmst.MedPrice = accumarray(subs(~inan), s.data.Price(~inan),[nmst,1], @fast_median);
-cachedmst.MedPrice(cachedmst.MedPrice == 0) = NaN;
+cachedmst.MedPrice      = accumarray(subs(~inan), s.data.Price(~inan),[nmst,1], @fast_median);
+idx                     = cachedmst.MedPrice == 0;
+cachedmst.MedPrice(idx) = NaN;
 
 res = cachedmst;
 end
@@ -144,7 +145,7 @@ end
 % Service function to flag bad prices
 function ibad = ibadprices(s,cached)
 % Number of observations per day
-nobs   = double(s.mst.To - s.mst.From + 1);
+nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1) Select irregular trades
 ibad = selecttrades(s.data);
@@ -169,13 +170,13 @@ nobs = double(s.mst.To - s.mst.From + 1);
 ibad = ibadprices(s,cached);
 
 % STEP 4) Count how many observations we loose from median consolidation
-nmst       = size(s.mst,1);
-mstrow     = RunLength((1:nmst)',nobs);
+nmst              = size(s.mst,1);
+mstrow            = RunLength((1:nmst)',nobs);
 % Count by mst row and timestamp
-[un,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
-counts      = accumarray(subs, 1)-1;
+[un,~,subs]       = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
+counts            = accumarray(subs, 1)-1;
 % Aggregate by mst row
-res = cached(:,{'Id','Date'});
+res               = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
@@ -192,9 +193,9 @@ nobs = double(s.mst.To - s.mst.From + 1);
 ibad = ibadprices(s, cached);
 
 % STEP 4) Number of time buckets that have a trade
-nmst       = size(s.mst,1);
-mstrow     = RunLength((1:nmst)',nobs);
-Time       = hhmmssmat2serial(s.data.Time(~ibad,:));
+nmst                  = size(s.mst,1);
+mstrow                = RunLength((1:nmst)',nobs);
+Time                  = hhmmssmat2serial(s.data.Time(~ibad,:));
 cached.NumTimeBuckets = uint8(accumarray(mstrow(~ibad),Time,[nmst,1], fun));
 
 res = cached(:,{'Id','Date','NumTimeBuckets'});
@@ -260,7 +261,7 @@ s.mst = sortrows(s.mst, {'Date','From'});
 
 % Loop for each day
 nmst = size(s.mst,1);
-res = cell(nmst,1);
+res  = cell(nmst,1);
 for r = 1:size(s.mst,1);
     from = s.mst.From(r);
     to   = s.mst.To(r);
@@ -291,12 +292,12 @@ useon  = numel(cached) == 4;
 if useon
     onret = cached{3};
 end
-ngrid  = size(spyret{1},1);
+ngrid = size(spyret{1},1);
 
 % Dates and returns
-dates  = s.data.Datetime;
-ret    = [NaN; diff(log(s.data.Price))];
-idx    = [false; diff(rem(dates,1)) >= 0];
+dates = s.data.Datetime;
+ret   = [NaN; diff(log(s.data.Price))];
+idx   = [false; diff(rem(dates,1)) >= 0];
 if useon
     [~,pos]   = ismembIdDate(s.mst.Permno, s.mst.Date, onret.Permno, onret.Date);
     ret(~idx) = onret.RetCO(pos);
@@ -343,11 +344,11 @@ correction          = table(correction(:,1),correction(:,2),accumarray(subs,1), 
 % Condition
 [condition,~,subs] = unique(table(dates, s.data.Condition));
 condition.Count    = accumarray(subs,1);
-condition.Properties.VariableNames = vnames;
+condition          = setVariableNames(condition,vnames);
 
 % Null price
 bins               = double(s.data.Price ~= 0);
-[nullprice,~,subs] = unique([dates, bins],'rows');
+[nullprice,~,subs] = unique([dates, bins],'rcachedmst.MedPrice== 0ows');
 nullprice          = table(nullprice(:,1), nullprice(:,2), accumarray(subs,1),'VariableNames', vnames);
 
 % Null size
