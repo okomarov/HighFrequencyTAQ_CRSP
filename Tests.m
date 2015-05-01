@@ -1,12 +1,12 @@
 %% Max trades/s
-testname  = 'maxtradepsec';
+testname = 'maxtradepsec';
 try
     counts = loadresults(testname);
 catch
     counts = Analyze(testname);
 end
 [Dates, ~, subs] = unique(counts.Date);
-counts = table(yyyymmdd2datetime(Dates), accumarray(subs,counts.Maxpsec,[],@max),'VariableNames',{'Date','Maxpsec'});
+counts           = table(yyyymmdd2datetime(Dates), accumarray(subs,counts.Maxpsec,[],@max),'VariableNames',{'Date','Maxpsec'});
 plot(counts.Date, counts.Maxpsec)
 set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
 set(gca,'Layer','top')
@@ -34,20 +34,20 @@ for ii = 1:3
         data.Val      = cellstr(data.Val); 
         data.Val(idx) = {'  '};
     end
-    data   = unstack(data,'Count','Val');
+    data = unstack(data,'Count','Val');
     % Filter out problematic dates
     data = data(~isprobdate(data.Date),:);
     
     % Sample dates
-    data    = sampledates(data,refdates,1);
+    data = sampledates(data,refdates,1);
     
-    vnames  = getVariableNames(data(:,2:end));
-    dates   = yyyymmdd2serial(data.Date);
-    data    = table2array(data(:,2:end));
+    vnames            = getVariableNames(data(:,2:end));
+    dates             = yyyymmdd2serial(data.Date);
+    data              = table2array(data(:,2:end));
     data(isnan(data)) = 0;
-    [~,pos] = sort(data(1,:),'descend');
-    data    = data(:,pos);
-    vnames  = vnames(pos);
+    [~,pos]           = sort(data(1,:),'descend');
+    data              = data(:,pos);
+    vnames            = vnames(pos);
     
     close, figure('Color','white','Renderer', 'opengl'), colormap(lines(size(data,2)))
     % Main figure
@@ -78,15 +78,15 @@ end
 close, figure('Color','white','Renderer', 'opengl'), colormap(lines(1))
 
 % Main figure
-data = sum(data,2);
+data                               = sum(data,2);
 plot(dates, data)
 set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
 dynamicDateTicks, axis tight, ylabel 'Number of trades'
-ha = gca;
-ha.YRuler.Exponent = 6;
-ha.YRuler.SecondaryLabel.String = 'millions';
+ha                                 = gca;
+ha.YRuler.Exponent                 = 6;
+ha.YRuler.SecondaryLabel.String    = 'millions';
 ha.YRuler.SecondaryLabel.FontAngle = 'italic';
-ha.YRuler.SecondaryLabel.Visible = 'on';
+ha.YRuler.SecondaryLabel.Visible   = 'on';
 
 export_fig('.\results\fig\selrulecount0.eps', '-r150','-transparent','-opengl','-a1')
 %% Overall cleaning counts
@@ -110,7 +110,7 @@ Ntot             = accumarray(subs,nobs);
 
 % plot dates
 if undates(1) < 19921231
-    undates = double(undates);
+    undates   = double(undates);
     plotdates = datenum(fix(undates/100), mod(undates,100)+1, 1)-1;
 else
     plotdates = yyyymmdd2serial(undates);
@@ -152,15 +152,15 @@ matlab2tikz('.\results\fig\countallrules.tex', 'floatFormat','%.7g')
 
 % Data meta records
 % -----------------
-path2data = '.\data\TAQ';
+path2data         = '.\data\TAQ';
 load(fullfile(path2data,'master'),'-mat','mst','ids');
 % Replace some symbols
-ids = regexprep(ids,'p','PR');
-ids = regexprep(ids,'\.','');
+ids               = regexprep(ids,'p','PR');
+ids               = regexprep(ids,'\.','');
 % Unique symb with min date
-[tmp,~,subs] = unique(mst(:,'Id'));
-tmp.Datedata = accumarray(subs,mst.Date,[],@min);
-tmp.Id       = ids(tmp.Id);
+[tmp,~,subs]      = unique(mst(:,'Id'));
+tmp.Datedata      = accumarray(subs,mst.Date,[],@min);
+tmp.Id            = ids(tmp.Id);
 % Consolidate repetitions due to ids replacements
 [dataSymb,~,subs] = unique(tmp(:,'Id'));
 dataSymb.Datedata = accumarray(subs,tmp.Datedata,[],@min);
@@ -178,10 +178,10 @@ masterSymb.Datemaster = accumarray(subs,TAQmaster.FDATE,[],@min);
 
 % Test data before master records
 [idata,pmaster] = ismember(dataSymb.Id, masterSymb.SYMBOL);
-pmaster   = pmaster(idata);
-pdata     = find(idata);
-iearly    = dataSymb.Datedata(pdata) < masterSymb.Datemaster(pmaster);
-earlySymb = [dataSymb(pdata(iearly),:) masterSymb(pmaster(iearly),:)];
+pmaster         = pmaster(idata);
+pdata           = find(idata);
+iearly          = dataSymb.Datedata(pdata) < masterSymb.Datemaster(pmaster);
+earlySymb       = [dataSymb(pdata(iearly),:) masterSymb(pmaster(iearly),:)];
 
 % In data not in master
 dataSymb(~idata,:);
@@ -208,18 +208,18 @@ catch
     
     % Taq2crsp
     % --------
-    taq2crsp = loadresults('taq2crsp');
-    taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
-    keepvars = {'symbol','datef','score'};
-    taq2crsp = sortrows(taq2crsp(:,keepvars),{'symbol','datef'});
+    taq2crsp       = loadresults('taq2crsp');
+    taq2crsp       = taq2crsp(~isnan(taq2crsp.permno),:);
+    keepvars       = {'symbol','datef','score'};
+    taq2crsp       = sortrows(taq2crsp(:,keepvars),{'symbol','datef'});
     taq2crsp.score = uint8(taq2crsp.score);
     % Reduce variation in score
-    idx      = isfeatchange(taq2crsp(:,{'symbol','score','datef'}),[false,true true]);
-    taq2crsp = taq2crsp(idx,:);
+    idx            = isfeatchange(taq2crsp(:,{'symbol','score','datef'}),[false,true true]);
+    taq2crsp       = taq2crsp(idx,:);
     % Cache according to symbtaq
-    [idx,subs] = ismember(taq2crsp.symbol, symbtaq);
-    f          = @(ii) {sortrows(taq2crsp(ii,{'datef','score'}),'datef')};
-    taq2crsp   = accumarray(subs(idx),find(idx),size(mst),f);
+    [idx,subs]     = ismember(taq2crsp.symbol, symbtaq);
+    f              = @(ii) {sortrows(taq2crsp(ii,{'datef','score'}),'datef')};
+    taq2crsp       = accumarray(subs(idx),find(idx),size(mst),f);
     
     % Preallocation
     mstscore = cell(nsymb,1);
@@ -233,18 +233,18 @@ catch
         end
         % If one date range, i.e. single score
         if size(taq2crsp{ii},1) == 1
-            mstscore{ii} = zeros([size(mst{ii},1),1],'uint8')
-            idx = mst{ii}.Date >= taq2crsp{ii}.datef;
+            mstscore{ii}      = zeros([size(mst{ii},1),1],'uint8')
+            idx               = mst{ii}.Date >= taq2crsp{ii}.datef;
             mstscore{ii}(idx) = taq2crsp{ii}.score;
         else
             dates        = [taq2crsp{ii}.datef; inf];
-            scoresHF       = [0; taq2crsp{ii}.score];
+            scoresHF     = [0; taq2crsp{ii}.score];
             [~, datebin] = histc(mst{ii}.Date, dates);
             mstscore{ii} = scoresHF(datebin+1);
         end
     end
     delete(gcp)
-    mst = cat(1,mst{:});
+    mst       = cat(1,mst{:});
     mst.Score = cat(1,mstscore{:});
     
     % Group by day and score
@@ -265,15 +265,15 @@ end
 
 % Group by month
 [dates, ~, subs] = unique(counts.Dates/100);
-subs = uint16(subs);
+subs             = uint16(subs);
 % Dates
-dates = double(dates);
-dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+dates            = double(dates);
+dates            = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
 % Data
-data  = table2array(counts(:,2:end) );
-nvar  = size(data,2);
-[subsr,subsc] = ndgrid(subs,1:nvar);
-data = accumarray([subsr(:),subsc(:)], data(:));
+data             = table2array(counts(:,2:end) );
+nvar             = size(data,2);
+[subsr,subsc]    = ndgrid(subs,1:nvar);
+data             = accumarray([subsr(:),subsc(:)], data(:));
 
 % Plot
 figure, colormap(parula(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
@@ -285,7 +285,7 @@ vnames = {'0. Unmatched', '1. CUSIP', '2. 1 + expand exact name',...
           '3. 2 + expand through new cusip', '4. SYMBOL + DATE',...
           '5. SYMBOL + lev(NAME)','6. 5 + expand through new cusip',...
           '7. lev(NAME)', '8. 7 + expand through new cusip'};
-l = legend(vnames(order));
+l      = legend(vnames(order));
 set(l,'Location','SouthWest', 'EdgeCOlor','none')
 
 ylabel '%'
@@ -307,42 +307,42 @@ catch
     
     % Type
     % ----
-    TAQmaster = loadresults('TAQmaster');
-    keepvars  = {'SYMBOL','TYPE','FDATE'};
-    TAQmaster = TAQmaster(:,keepvars);
+    TAQmaster      = loadresults('TAQmaster');
+    keepvars       = {'SYMBOL','TYPE','FDATE'};
+    TAQmaster      = TAQmaster(:,keepvars);
     TAQmaster.TYPE = double(TAQmaster.TYPE);
-    TAQmaster = sortrows(TAQmaster,{'SYMBOL','FDATE'});
-    ikeep     = isfeatchange(TAQmaster,[false,true,true]);
-    TAQmaster = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
+    TAQmaster      = sortrows(TAQmaster,{'SYMBOL','FDATE'});
+    ikeep          = isfeatchange(TAQmaster,[false,true,true]);
+    TAQmaster      = sortrows(unstack(TAQmaster(ikeep,:),'TYPE','SYMBOL'), 'FDATE');
     
     % Intersect symbols
     path2data = '.\data\TAQ';
     load(fullfile(path2data, 'master'), '-mat');
-    symbols  = intersect(symbols, ids);
-    symbols  = intersect(symbols, TAQmaster.Properties.VariableNames);
+    symbols   = intersect(symbols, ids);
+    symbols   = intersect(symbols, TAQmaster.Properties.VariableNames);
     
     % TAQmaster
     [~,ia]    = intersect(TAQmaster.Properties.VariableNames,symbols);
     TAQmaster = TAQmaster(:,[1; ia]);
     % Mst
-    [~,idx] = intersect(ids,symbols);
-    mst     = mst(ismember(mst.Id,idx),{'Id','Date'});
-    mst.Val = ones(size(mst,1),1);
-    mst.Id  = ids(mst.Id);
-    mst     = sortrows(unstack(mst,'Val','Id'),'Date');
+    [~,idx]   = intersect(ids,symbols);
+    mst       = mst(ismember(mst.Id,idx),{'Id','Date'});
+    mst.Val   = ones(size(mst,1),1);
+    mst.Id    = ids(mst.Id);
+    mst       = sortrows(unstack(mst,'Val','Id'),'Date');
     
     % Sample dates
-    dates     = mst.Date;
+    dates                                 = mst.Date;
     TAQmaster.Properties.VariableNames{1} = 'Date';
-    TAQmaster = sampledates(TAQmaster,dates);
-    mst       = sampledates(mst ,dates, true);
+    TAQmaster                             = sampledates(TAQmaster,dates);
+    mst                                   = sampledates(mst ,dates, true);
     
     % Data
-    mask      = nan2zero(table2array(mst(:,2:end)));                % Which symbols exist at any time 
-    type      = nan2zero(table2array(TAQmaster(:,2:end)));          % Their type
-    counts    = histc((type.*mask)',[0,1, 2, 3, 4, 5])';            % Count type (0 not only common but also if does not exist)
+    mask        = nan2zero(table2array(mst(:,2:end)));                % Which symbols exist at any time 
+    type        = nan2zero(table2array(TAQmaster(:,2:end)));          % Their type
+    counts      = histc((type.*mask)',[0,1, 2, 3, 4, 5])';            % Count type (0 not only common but also if does not exist)
     counts(:,1) = sum(mask,2) - sum(counts(:,2:end),2);             % Common as total - other types 
-    counts    = [mst.Date, counts];
+    counts      = [mst.Date, counts];
     
     % Save
     save(fullfile('.\results',sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'typeunmatch')), 'counts')
@@ -372,8 +372,8 @@ ylabel '%'
 
 matlab2tikz('.\results\fig\typeunmatch.tex', 'floatFormat', '%.7g')
 %% Justify unid
-taq2crsp    = loadresults('taq2crsp');
-taq2crsp    = taq2crsp(~isnan(taq2crsp.permno),:);
+taq2crsp = loadresults('taq2crsp');
+taq2crsp = taq2crsp(~isnan(taq2crsp.permno),:);
 
 % Same symbol different companies (permno)
 [unsymb,~,symbid] = unique(taq2crsp.symbol);
@@ -402,24 +402,24 @@ catch
     
     % Link to number of records
     path2data = '.\data\TAQ';
-    master = load(fullfile(path2data, 'master'), '-mat');
+    master    = load(fullfile(path2data, 'master'), '-mat');
     
     % Preallocation
-    master.mst.Val  = zeros(numel(subs),1,'uint8');
-    master.ids      = regexprep(master.ids,'p','PR');
-    master.ids      = regexprep(master.ids,'\.','');
+    master.mst.Val = zeros(numel(subs),1,'uint8');
+    master.ids     = regexprep(master.ids,'p','PR');
+    master.ids     = regexprep(master.ids,'\.','');
     
     % LOOP by symbol
     for ii = 1:numel(master.ids)
-        symbol   = master.ids{ii};
-        iTAQ     = strcmpi(TAQmaster.SYMBOL,symbol);
+        symbol = master.ids{ii};
+        iTAQ   = strcmpi(TAQmaster.SYMBOL,symbol);
         if ~any(iTAQ)
             fprintf('No match: %s - iter %d\n', symbol,ii), continue
         end
         types = TAQmaster.TYPE(iTAQ);
         if types == 0, continue, end
         % Map mst records to date bins from TAQmaster
-        imst     = master.mst.Id == ii;
+        imst = master.mst.Id == ii;
         if numel(types) == 1
             master.mst.Val(imst) = types;
             continue
@@ -456,15 +456,15 @@ end
 
 % Group by month
 [dates, ~, subs] = unique(typecounts.Dates/100);
-subs = uint16(subs);
+subs             = uint16(subs);
 % Dates
-dates = double(dates);
-dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+dates            = double(dates);
+dates            = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
 % Data
-data  = table2array(typecounts(:,2:end) );
-nvar  = size(data,2);
-[subsr,subsc] = ndgrid(subs,1:nvar);
-data = accumarray([subsr(:),subsc(:)], data(:));
+data             = table2array(typecounts(:,2:end) );
+nvar             = size(data,2);
+[subsr,subsc]    = ndgrid(subs,1:nvar);
+data             = accumarray([subsr(:),subsc(:)], data(:));
 
 % Plot
 figure, colormap(lines(nvar)), set(gcf, 'Position', get(gcf,'Position').*[1,1,1,.5])
@@ -488,8 +488,8 @@ catch
         res = mapShrcd2mst;
     end
     % Master file
-    path2data  = '.\data\TAQ';
-    master = load(fullfile(path2data, 'master'), '-mat');
+    path2data = '.\data\TAQ';
+    master    = load(fullfile(path2data, 'master'), '-mat');
     
     % Group by day
     [unDates, ~, subs] = unique(res.Date);
@@ -512,15 +512,15 @@ end
 
 % Group by month
 [dates, ~, subs] = unique(counts.Dates/100);
-subs = uint16(subs);
+subs             = uint16(subs);
 % Dates
-dates = double(dates);
-dates = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
+dates            = double(dates);
+dates            = datenum(fix(dates/100), rem(dates,100)+1, 1)-1;
 % Data
-data  = table2array(counts(:,2:end) );
-nvar  = size(data,2);
-[subsr,subsc] = ndgrid(subs,1:nvar);
-data = accumarray([subsr(:),subsc(:)], data(:));
+data             = table2array(counts(:,2:end) );
+nvar             = size(data,2);
+[subsr,subsc]    = ndgrid(subs,1:nvar);
+data             = accumarray([subsr(:),subsc(:)], data(:));
 
 % Select a few
 map       = table({'common';'common-undefined';'not matched';'common-incorporated not US';'ADR';'ETFs'},'RowNames',{'x11','x10','x0','x12','x31','x73'});
@@ -570,7 +570,7 @@ plot(plotdates,avgcounts)
 title 'SP500 members'
 
 % Spyders
-spy         = sortrows(counts(counts.UnID == 29904,{'Date','Nullrets'}),'Date');
+spy = sortrows(counts(counts.UnID == 29904,{'Date','Nullrets'}),'Date');
 
 counts      = NaN(numel(refdates),1);
 pos         = ismembc2(spy.Date,refdates);
@@ -626,7 +626,7 @@ counts          = table2array(counts(:, icount(2:end)));
 mktcap          = table2array(mktcap(:, icap(2:end)));
 
 % Intersect NaNs
-inan = isnan(mktcap) | isnan(counts);
+inan         = isnan(mktcap) | isnan(counts);
 mktcap(inan) = NaN;
 counts(inan) = NaN;
 
@@ -634,11 +634,11 @@ counts(inan) = NaN;
 ptiles = prctile(mktcap,10:10:90,2);
 N      = size(ptiles,1);
 ptiles = [zeros(N,1), ptiles, inf(N,1)];
-subs = mktcap;
+subs   = mktcap;
 for r = 1:N
     [~, subs(r,:)] = histc(mktcap(r,:), ptiles(r,:));
 end
-rsubs = repmat((1:N)',1,size(mktcap,2));
+rsubs    = repmat((1:N)',1,size(mktcap,2));
 averages = accumarray([rsubs(~inan),subs(~inan)], counts(~inan),[N, 10],@mean);
 
 plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
@@ -660,15 +660,15 @@ catch
 end
 
 % Nobs per day 
-master = load(fullfile('.\data\TAQ','master'),'-mat');
-[~,pos] = ismembIdDate(res.Id, res.Date, master.mst.Id,master.mst.Date);
+master   = load(fullfile('.\data\TAQ','master'),'-mat');
+[~,pos]  = ismembIdDate(res.Id, res.Date, master.mst.Id,master.mst.Date);
 res.Nobs = master.mst.To(pos) - master.mst.From(pos)+1;
 
 % Tot count by day
 [dates, ~, subs] = unique(res.Date);
-tot = accumarray(subs,res.Nobs);
-imatch = res.Permno ~= 0;
-matched = accumarray(subs(imatch),res.Nobs(imatch));
+tot              = accumarray(subs,res.Nobs);
+imatch           = res.Permno ~= 0;
+matched          = accumarray(subs(imatch),res.Nobs(imatch));
 
 plot(yyyymmdd2datetime(dates), matched./tot*100)
 
@@ -700,19 +700,19 @@ Betas           = table2array(Betas(:, ibetas(2:end)));
 mktcap          = table2array(mktcap(:, icap(2:end)));
 
 % Intersect NaNs
-inan = isnan(mktcap) | isnan(Betas);
+inan         = isnan(mktcap) | isnan(Betas);
 mktcap(inan) = NaN;
-Betas(inan) = NaN;
+Betas(inan)  = NaN;
 
 % Index Betas by market cap
 ptiles = prctile(mktcap,10:10:90,2);
 N      = size(ptiles,1);
 ptiles = [zeros(N,1), ptiles, inf(N,1)];
-subs = mktcap;
+subs   = mktcap;
 for r = 1:N
     [~, subs(r,:)] = histc(mktcap(r,:), ptiles(r,:));
 end
-rsubs = repmat((1:N)',1,size(Betas,2));
+rsubs    = repmat((1:N)',1,size(Betas,2));
 averages = accumarray([rsubs(~inan),subs(~inan)], Betas(~inan),[N, 10],@mean);
 
 plotdates = datetime(yyyymmdd2serial(refdates),'ConvertFrom','datenum');
@@ -782,8 +782,8 @@ if sp500only,  rets = rets(issp500member(rets),:); end
 
 % Filter out less than lookback returns
 [permnos,~,subs] = unique(rets.Permno);
-idx  = accumarray(subs,1) < lookback;
-rets = rets(~ismember(rets.Permno, permnos(idx)),:);
+idx              = accumarray(subs,1) < lookback;
+rets             = rets(~ismember(rets.Permno, permnos(idx)),:);
 
 % Fama and French factors
 FF = loadresults('FFfactors');
@@ -795,13 +795,13 @@ rebdates = rebdates(pos);
 
 % High frequency
 % -------------------------------------------------------------------------
-betasHF = getBetas(lookback,    5,     true,    false, sp500only, commononly);
+betasHF  = getBetas(lookback,    5,     true,    false, sp500only, commononly);
 % betaPercentiles([], lookback, 5, true, false, sp500only, commononly)
 scoresHF = estimateCondAlpha(lookback, rebdates, betasHF, rets, spy, FF(:,{'Date','SMB','HML'}));
 
 % Low frequency
 % -------------------------------------------------------------------------
-betasLF = estimateBetasLow(lookback, rets, spy(:,{'Date','RetCC'}));
+betasLF  = estimateBetasLow(lookback, rets, spy(:,{'Date','RetCC'}));
 scoresLF = estimateCondAlpha(lookback, rebdates, betasLF, rets, spy, FF(:,{'Date','SMB','HML'}));
 
 % Zero invst ptf
@@ -813,8 +813,8 @@ vnames    = getVariableNames(scoresLF);
 permnosLF = xstr2num(vnames(2:end), 'u32');
 permnos   = intersect(intersect(rets.Permno, permnosHF),permnosLF);
 
-idx = ismember(rets.Permno,permnos);
-rets     = rets(idx,{'Date','Permno','RetCC'});
+idx  = ismember(rets.Permno,permnos);
+rets = rets(idx,{'Date','Permno','RetCC'});
 
 idx      = ismember(permnosHF,permnos);
 scoresHF = scoresHF(:,[true; idx]);
@@ -856,29 +856,29 @@ l = ones(n,1);
 [~,se(1,4),coeff(1,4)] = hac(l, tbl.RetHF, 'intercept',false,'display','off');
 [~,se(1,7),coeff(1,7)] = hac(l, tbl.RetDiff, 'intercept',false,'display','off');
 
-X = tbl.MktMinusRF;
+X                          = tbl.MktMinusRF;
 [~,se(2:3,2),coeff(2:3,2)] = hac(X, tbl.RetLF,'display','off');
 [~,se(2:3,5),coeff(2:3,5)] = hac(X, tbl.RetHF,'display','off');
 [~,se(2:3,8),coeff(2:3,8)] = hac(X, tbl.RetDiff,'display','off');
 
-X = [tbl.MktMinusRF tbl.SMB tbl.HML];
+X                          = [tbl.MktMinusRF tbl.SMB tbl.HML];
 [~,se(2:5,3),coeff(2:5,3)] = hac(X, tbl.RetLF,'display','off');
 [~,se(2:5,6),coeff(2:5,6)] = hac(X, tbl.RetHF,'display','off');
 [~,se(2:5,9),coeff(2:5,9)] = hac(X, tbl.RetDiff,'display','off');
-pval       = tcdf(-abs(coeff./se), size(X,1)-1)*2;
-colheaders = {'Low Frequency','High Frequency','HF-LF'};
-rowheaders = {'Excess','$\alpha$','MKT','SMB','HML'};
+pval                       = tcdf(-abs(coeff./se), size(X,1)-1)*2;
+colheaders                 = {'Low Frequency','High Frequency','HF-LF'};
+rowheaders                 = {'Excess','$\alpha$','MKT','SMB','HML'};
 formatResults(coeff, se, pval, colheaders,rowheaders)
 toc
 %% SP500 momentum
 lookback = 21*11;
-skip = 21;
+skip     = 21;
 
 % Daily rets
-rets = loadresults('return_intraday_overnight');
-rets = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
-rets = rets(issp500member(rets),:);
-rets = rets(iscommonshare(rets),:);
+rets       = loadresults('return_intraday_overnight');
+rets       = rets(rets.Date/10000 < 2003,:); % Exclude year > 2002
+rets       = rets(issp500member(rets),:);
+rets       = rets(iscommonshare(rets),:);
 rets.RetCO = exp(rets.RetCO )-1;
 
 % Sortrows
@@ -892,10 +892,10 @@ r      = r{:,2:end}+1;
 score  = NaN(size(r));
 inan   = isnan(r);
 for ii = lookback+skip:size(r,1)
-    pos   = ii-lookback-skip+1:ii-skip;
-    slice = r(pos,:);
+    pos              = ii-lookback-skip+1:ii-skip;
+    slice            = r(pos,:);
     slice(inan(pos)) = 1;
-    score(ii,:) = prod(slice)-1;
+    score(ii,:)      = prod(slice)-1;
 end
 score = [table(Date) array2table(score,'VariableNames',vnames(2:end))];
 
@@ -907,11 +907,11 @@ mrf = dret2mrets(ff.Date, ff.RF/100);
 % Calculate returns and levels
 [~,stats,annret] = deal(struct());
 for s = {'RetCC','RetCO','RetOC'}
-    field = s{1};
+    field                       = s{1};
     [strat.(field),lvl.(field)] = zeroptf(renameVarNames(rets,'Ret',field), score);
-    [mret,mdt]      = dret2mrets(strat.(field).Dates, strat.(field){:,2:3});
-    x             = bsxfun(@minus,[mret -diff(mret,[],2)],mrf);
-    stats.(field) = stratstats(mdt,x,'m');
+    [mret,mdt]                  = dret2mrets(strat.(field).Dates, strat.(field){:,2:3});
+    x                           = bsxfun(@minus,[mret -diff(mret,[],2)],mrf);
+    stats.(field)               = stratstats(mdt,x,'m');
 end
 % legend('Close-to-Close','Overnight','Intraday')
 
@@ -936,9 +936,9 @@ catch
 end
 
 % Betasspy*spy
-spy             = iprice2dret(spy);
-[~,pos]         = ismember(BetasHF.Date,spy.Date);
-ret             = [NaN; spy.Ret];
+spy            = iprice2dret(spy);
+[~,pos]        = ismember(BetasHF.Date,spy.Date);
+ret            = [NaN; spy.Ret];
 BetasHF.Sysret = ret(pos+1).*BetasHF.Beta;
 
 % % Get Betas
@@ -961,9 +961,9 @@ BetasHF.Sysret = ret(pos+1).*BetasHF.Beta;
 % rets.Netprx(pos) = rets.Dret(pos) - Betas.Sysret;
 
 % Net rets spy
-[~,ia,ib] = intersect(BetasHF(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
-BetasHF  = BetasHF(ia,:);
-rets      = rets(ib,:);
+[~,ia,ib]   = intersect(BetasHF(:,{'UnID','Date'}), rets(:,{'UnID','Date'}));
+BetasHF     = BetasHF(ia,:);
+rets        = rets(ib,:);
 rets.Netspy = rets.Totret - BetasHF.Sysret;
 
 momstrat(setVariableNames(rets(~isnan(rets.Netspy),{'UnID','Date','Totret','Netspy'}),{'UnID','Date','Dayret','Netret'}))
@@ -976,15 +976,15 @@ ret = ret(issp500member(ret),:);
 ret = ret(iscommonshare(ret),:);
 
 % Sortrows
-ret = sortrows(ret,{'UnID','Date'});
+ret        = sortrows(ret,{'UnID','Date'});
 [~,~,subs] = unique(ret.UnID);
 
 % Check zeroptf on momentum
-lookback = 21;
-f    = @(x) cumprod(1+x);
-Ones = @(x) ones(min(lookback, numel(x)),1); 
-g    = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
-score = accumarray(subs, ret.Dret, [], g);
+lookback  = 21;
+f         = @(x) cumprod(1+x);
+Ones      = @(x) ones(min(lookback, numel(x)),1); 
+g         = @(x) {f(x)./[Ones(x); f(x(1:end-lookback))]};
+score     = accumarray(subs, ret.Dret, [], g);
 ret.Score = cat(1,score{:})-1;
 
 zeroptf(renameVarNames(ret, 'Ret','Dret'));
@@ -993,7 +993,7 @@ zeroptf(renameVarNames(ret, 'Ret','Dret'));
 %% Check Betas
 addpath .\utils\ .\utils\nth_element\ .\utils\MFE
 
-symbol = 'AAPL';
+symbol     = 'AAPL';
 dovernight = false;
 
 % Load SP500
@@ -1020,7 +1020,7 @@ parfor (f = 1:nfiles, 4)
     
     disp(f)
     % Load data
-    s = load(fullfile(d, sprintf('T%04d.mat',files(f))));
+    s     = load(fullfile(d, sprintf('T%04d.mat',files(f))));
     % Select symbol
     idx   = s.mst.Id == find(strcmpi(s.ids,symbol));
     s.mst = s.mst(idx,:);
@@ -1031,13 +1031,13 @@ parfor (f = 1:nfiles, 4)
     % LOOP by days
     for ii = 1:nmst
         % Data selection
-        from = s.mst.From(ii);
-        to   = s.mst.To(ii);
-        data = s.data(from:to,:);
-        data = data(~selecttrades(data),{'Time','Price'});
+        from            = s.mst.From(ii);
+        to              = s.mst.To(ii);
+        data            = s.data(from:to,:);
+        data            = data(~selecttrades(data),{'Time','Price'});
         % Datetime
-        day           = yyyymmdd2serial(s.mst.Date(ii));
-        data.Datetime = day + hhmmssmat2serial(data.Time);
+        day             = yyyymmdd2serial(s.mst.Date(ii));
+        data.Datetime   = day + hhmmssmat2serial(data.Time);
         % Median
         [dates, ~,subs] = unique(data.Datetime);
         prices          = accumarray(subs,data.Price,[],@fast_median);
@@ -1061,7 +1061,7 @@ parfor (f = 1:nfiles, 4)
             pos  = find(iday,1,'first');
             onsp = SPY.Price(pos)./ SPY.Price(pos-1)-1;
         else
-            onp = 0;
+            onp  = 0;
             onsp = 0;
         end
         res(ii,:) = [day (rcss(2)+onp*onsp)/(rcss(1)+onsp^2)];
@@ -1073,19 +1073,19 @@ betas = betas(~isnan(betas(:,2)),:);
 save debugstate2
 
 refdates = datenum(1993,2:234,1)-1;
-out = interp1(betas(:,1), betas(:,2), refdates');
+out      = interp1(betas(:,1), betas(:,2), refdates');
 plot(refdates, out)
 dynamicDateTicks
 hold on
 
 % Compare against saved betas [Different!]
 taq2crsp = loadresults('taq2crsp');
-betas2 = loadresults('betas');
-ID = taq2crsp.ID(strcmpi(taq2crsp.symbol,symbol),:);
-betas2 = betas2(betas2.UnID == ID,:);
-betas2 = betas2(~isnan(betas2.Beta),:);
+betas2   = loadresults('betas');
+ID       = taq2crsp.ID(strcmpi(taq2crsp.symbol,symbol),:);
+betas2   = betas2(betas2.UnID == ID,:);
+betas2   = betas2(~isnan(betas2.Beta),:);
 refdates = serial2yyyymmdd(refdates);
-out = interp1(double(betas2.Date), betas2.Beta, refdates');
+out      = interp1(double(betas2.Date), betas2.Beta, refdates');
 plot(yyyymmdd2serial(refdates), out,'r')
 %% Detailed check
 date = 19970806;
@@ -1157,10 +1157,10 @@ axes
 perATE = abs(tick2ret(SP500crsp.spindx(icrsp)) - tick2ret(SP500tick.Price(itick)))*100;
 boxplot(gca,perATE)
 set(gca,'pos',[.7,.12,.25,.65])
-str = {'PERcentage Absolute Tracking Error'
+str    = {'PERcentage Absolute Tracking Error'
     sprintf('%-10s%5.2f%%','mean:',mean(perATE))
     sprintf('%-10s%5.2f%%','std:',std(perATE))};
-h = title(str,'hor','left');
+h      = title(str,'hor','left');
 oldpos = get(h,'pos');
 set(h,'pos',[0.5,oldpos(2:end)])
 % Save figure
@@ -1172,14 +1172,14 @@ delete(filename{:})
 %% Discard first years [No]
 cd C:\HFbetas
 addpath .\utils\
-d   = '.\data\TAQ';
+d = '.\data\TAQ';
 load(fullfile(d,'master'),'-mat')
 load .\results\20131121_1703_avgtimestep.mat
 
 % Number of few trades per month
-ifewtrades = isnan(res.Timestep) | res.Timestep > 1/48;
+ifewtrades    = isnan(res.Timestep) | res.Timestep > 1/48;
 [unym,~,subs] = unique(mst.Date(ifewtrades)/100);
-dates = yyyymmdd2serial( double(unym)*100+1);
+dates         = yyyymmdd2serial( double(unym)*100+1);
 area(dates, accumarray(subs,1))
 dynamicDateTicks
 axis tight
@@ -1188,7 +1188,7 @@ plot(dates, accumarray(subs,single(mst.Id(ifewtrades)),[],@ginicoeff))
 dynamicDateTicks
 axis tight
 % Histogram of percentage of few trades per security
-perfew = accumarray(mst.Id, ifewtrades)./accumarray(mst.Id, 1);
+perfew        = accumarray(mst.Id, ifewtrades)./accumarray(mst.Id, 1);
 hist(perfew,100);
 %% One symbol per csv
 cd C:\HFbetas
@@ -1203,9 +1203,9 @@ writeto = 'E:\HFbetas\data\TAQ\Kasra';
 setupemail
 try
     tic
-    d   = '.\data\TAQ';
-    dd  = dir(fullfile(d,'*.mat'));
-    N   = numel(dd);
+    d  = '.\data\TAQ';
+    dd = dir(fullfile(d,'*.mat'));
+    N  = numel(dd);
     
     % Series to zip after they won't appear in the next files
     load(fullfile(d,'master'),'-mat','ids','mst')
@@ -1236,9 +1236,9 @@ try
     for f = 1:N
         disp(f)
         % Load data and slice it by Id
-        s      = load(fullfile(d,dd(f).name));
-        nids   = numel(s.ids);
-        s.mst  = arrayfun(@(x) s.mst(s.mst.Id == x,{'Date','From','To'}),1:nids,'un',0);
+        s     = load(fullfile(d,dd(f).name));
+        nids  = numel(s.ids);
+        s.mst = arrayfun(@(x) s.mst(s.mst.Id == x,{'Date','From','To'}),1:nids,'un',0);
         
         % LOOP by id
         for t = 1:nids
@@ -1249,7 +1249,7 @@ try
             end
             % Open in append mode
             file2append = fullfile(writeto, sprintf('%s_.csv', symb));
-            fid = fopen(file2append,'a');
+            fid         = fopen(file2append,'a');
             for ii = 1:size(s.mst{t},1)
                 fmt = sprintf('%s,%d,%s',symb, s.mst{t}.Date(ii),'%d:%d:%d,%f,%d,%d,%d,%c%c,%c\n');
                 fprintf(fid, fmt, double(s.data(s.mst{t}.From(ii):s.mst{t}.To(ii),:))');
@@ -1302,29 +1302,29 @@ ikeep    = ~ismember(Betas.UnID, unID(ifewdays));
 
 % Moving averages
 % tmp = accumarray(subsID(ikeep), Betas.Date(ikeep),[],@issorted, true);
-sz     = size(unID);
-Betasd = dataset();
-tmp    = accumarray(subsID(ikeep), Betas.UnID(ikeep),sz,@(x) {x(5:end)});
-Betasd.ID = cat(1,tmp{:});
-tmp    = accumarray(subsID(ikeep), Betas.Date(ikeep),sz,@(x) {x(5:end)});
+sz          = size(unID);
+Betasd      = dataset();
+tmp         = accumarray(subsID(ikeep), Betas.UnID(ikeep),sz,@(x) {x(5:end)});
+Betasd.ID   = cat(1,tmp{:});
+tmp         = accumarray(subsID(ikeep), Betas.Date(ikeep),sz,@(x) {x(5:end)});
 Betasd.Date = cat(1,tmp{:});
-tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
-Betasd.SMA = cat(1,tmp{:});
+tmp         = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {conv(x,ones(1,5)/5,'valid')});
+Betasd.SMA  = cat(1,tmp{:});
 % tmp = accumarray(subsID(ikeep), Betas.Beta(ikeep),sz,@(x) {movavg(x,1,5,'e')});
 % Betasd.EMA = cat(1,tmp{:});
 
 % Weekly betas
 % Remove overlapping
-[un,~,subs] = unique(Betas(:,{'UnID','Date'}));
-overlap     = un(accumarray(subs,1) > 1,:);
-ioverlap    = ismember(Betas(:,{'UnID','Date'}), overlap);
+[un,~,subs]      = unique(Betas(:,{'UnID','Date'}));
+overlap          = un(accumarray(subs,1) > 1,:);
+ioverlap         = ismember(Betas(:,{'UnID','Date'}), overlap);
 % Calculate weekly
-year   = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
-week   = weeknum(yyyymmdd2serial(Betas.Date(ikeep & ~ioverlap)))';
+year             = fix(double(Betas.Date(ikeep & ~ioverlap))/1e4);
+week             = weeknum(yyyymmdd2serial(Betas.Date(ikeep & ~ioverlap)))';
 [unW,~,subsWeek] = unique([Betas.UnID(ikeep & ~ioverlap) year week],'rows');
-dates  = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
-tmp    = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
-Betasw = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
+dates            = accumarray(subsWeek, Betas.Date(ikeep & ~ioverlap),[size(unW,1),1],@max);
+tmp              = accumarray(subsWeek, Betas.Beta(ikeep & ~ioverlap),[size(unW,1),1],@(x) sum(x)/numel(x),NaN);
+Betasw           = dataset({unW(:,1),'ID'},{dates, 'Date'},{tmp, 'Week'});
 
 clearvars -except Betas Betasd Betasw ikeep resdir
 % save debugstate
