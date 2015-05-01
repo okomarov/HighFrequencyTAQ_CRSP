@@ -789,16 +789,17 @@ FF = loadresults('FFfactors');
 
 % High frequency
 % -------------------------------------------------------------------------
-try
-    scoresHF = loadresults('condAlphaScoresHF');
-catch
-    betas = getBetas(lookback,    5,     true,    false, sp500only, commononly, true);
-    % betaPercentiles([], lookback, 5, true, false, sp500only, commononly)
-    scoresHF = estimateCondAlpha(lookback, betas, rets, spy, FF(:,{'Date','MktMinusRF','SMB','HML'}));
-    filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'condAlphaScoresHF');
-    save(fullfile('.\results\',filename), 'scoresHF')
-end
+betasHF = getBetas(lookback,    5,     true,    false, sp500only, commononly);
+% betaPercentiles([], lookback, 5, true, false, sp500only, commononly)
+scoresHF = estimateCondAlpha(lookback, rebdates, betasHF, rets, spy, FF(:,{'Date','SMB','HML'}));
 
+% Low frequency
+% -------------------------------------------------------------------------
+betasLF = estimateBetasLow(lookback, rets, spy(:,{'Date','RetCC'}));
+scoresLF = estimateCondAlpha(lookback, rebdates, betasLF, rets, spy, FF(:,{'Date','SMB','HML'}));
+
+% Zero invst ptf
+% -------------------------------------------------------------------------
 % Intersect scores ids with rets
 vnames = getVariableNames(scoresHF);
 ids    = xstr2num(vnames(2:end), 'u32');
@@ -809,60 +810,6 @@ scoresHF =scoresHF(:,[1; pscores+1]);
 
 % Zero invst ptf
 [retHF,lvlHF] = zeroptf(renameVarNames(rets,{'Ret','ID'},{'RetCC','Permno'}),scoresHF);
-
-% Low frequency
-% -------------------------------------------------------------------------
-
-try
-    scoresLF = loadresults('condAlphaScoresLF');
-catch
-    % Point 1) Estimate betas
-    
-    % Add benchmark returns
-    [~,pos]    = ismember(rets.Date, spy.Date);
-    rets.Brets   = spy.RetCC(pos);
-    % Subs by ID
-    rets       = sortrows(rets, {'Permno','Date'});
-    [~,~,subs] = unique(rets.Permno);
-    
-    % Running covariance
-    f   = @(x) runsum(lookback, x);
-    Exy = accumarray(subs, rets.Brets.*rets.RetCC, [],f);
-    Ex  = accumarray(subs, rets.Brets            , [],f);
-    Ey  = accumarray(subs, rets.RetCC            , [],f);
-    Cov = cat(1,Exy{:})/lookback - cat(1,Ex{:}).*cat(1,Ey{:})/lookback^2;
-    
-    % Running variance
-    Ex2 = accumarray(subs,  rets.Brets.^2         , [],f);
-    Var = cat(1,Ex2{:})/lookback - (cat(1,Ex{:})/lookback).^2;
-    % Running betas
-    BetasLF = rets(:,{'Permno','Date','RetCC'});
-    BetasLF.Beta = Cov./Var;
-    
-    % % Plot percentile betas
-    % betas = unstack(BetasLF(:,{'Date','Permno','Beta'}), 'Beta','Permno');
-    % betas = sortrows(betas,'Date');
-    % betas = betas(~isprobdate(betas.Date),:);
-    % refdates = serial2yyyymmdd(datenum(1993,3:234,1)-1);
-    % betas    = sampledates(betas,refdates,1);
-    % % All days
-    % % refdates = Betas.Date;
-    % % tmp      = table2array(Betas);
-    % ptiles   = 10:10:90;
-    % plotdates   = yyyymmdd2datetime(refdates);
-    % percentiles = prctile(table2array(betas(:,2:end)),ptiles,2);
-    % plot(plotdates, percentiles)
-    % legend(arrayfun(@(x) sprintf('%d^{th} ',x),ptiles,'un',0))
-    % title BetaPercentiles_3600m63d_withON_spy_sp500_commonshares interpreter none
-    % saveas(gcf, fullfile('results','fig','BetaPercentiles_3600m63d_withON_spy_sp500_commonshares.png'))
-    
-    % Point 2) Estimate cond alpha
-    scoresLF = estimateCondAlpha(lookback, BetasLF, BetasLF, spy, FF(:,{'Date','MktMinusRF','SMB','HML'}));
-    filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'condAlphaScoresLF');
-    save(fullfile('.\results\',filename), 'scoresLF')
-end
-
-% Point 3) Zero invest ptf
 [retLF,lvlLF] = zeroptf(renameVarNames(rets,{'Ret','ID'},{'RetCC','Permno'}),scoresLF);
 
 % Adjust for FF factors

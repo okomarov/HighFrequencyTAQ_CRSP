@@ -7,14 +7,12 @@ function scores = estimateCondAlpha(lookback, rebdates, betas, rets, f, C)
 % 1) estimate the daily risk-adjusted return ^Z_it = r_it - f_t * ^beta_{i,t-1}
 % 2) estimate the conditional alpha E[^Z_it | C_{t-1}]
 
-% Unstack returns and betas
+% Unstack returns
+warning off MATLAB:table:ModifiedVarnames
 rets = rets(~isnan(rets.RetCC),{'Date','Permno','RetCC'});
 rets = unstack(rets,'RetCC','Permno');
 rets = sortrows(rets,'Date');
-
-betas = betas(~isnan(betas.Beta),{'Date','Permno','Beta'});
-betas = unstack(betas(:,{'Date','Permno','Beta'}),'Beta','Permno');
-betas = sortrows(betas,'Date');
+warning on MATLAB:table:ModifiedVarnames
 
 % Intersect columns
 [~,ia,ib] = intersect(getVariableNames(betas),getVariableNames(rets));
