@@ -4,9 +4,10 @@ msenames             = loadresults('msenames');
 msenames             = msenames(msenames.NAMEENDT > 19923112,{'PERMNO','NAMEDT','NAMEENDT','NCUSIP','TICKER','TSYMBOL'});
 idx                  = msenames.NAMEDT <= 19923112;
 msenames.NAMEDT(idx) = 19930101;
+
 % Import TAQ data
-taqmaster            = loadresults('TAQmaster');
-taqmaster            = taqmaster(:,{'SYMBOL','CUSIP','FDATE'});
+taqmaster = loadresults('TAQmaster');
+taqmaster = taqmaster(:,{'SYMBOL','CUSIP','FDATE'});
 
 % Msenames cusip
 msecusip = msenames.NCUSIP;
@@ -77,14 +78,13 @@ ids = master.ids;
 ids = regexprep(ids,'p','PR');
 ids = regexprep(ids,'\.','');
 
-% Intersect symbols
-symbols          = intersect(ids, msenames.TSYMBOL);
-idx              = ismember(ids,symbols);
-master.ids(~idx) = {[]};
-idx              = ismember(msenames.TSYMBOL, symbols);
-msenames         = sortrows(msenames(idx,:),{'TSYMBOL','NAMEDT'});
+% Intersect symbols with ismember (beware of duplicates after previous step)
+idx       = ismember(ids, msenames.TSYMBOL);
+ids(~idx) = {''};
+idx       = ismember(msenames.TSYMBOL, ids);
+msenames  = sortrows(msenames(idx,:),{'TSYMBOL','NAMEDT'});
 
-% Cache mst
+% Cache mst by Id
 mst   = sortrows(master.mst,{'Id','Date'});
 nrows = accumarray(mst.Id,1);
 mst   = mat2cell(mst, nrows);
@@ -93,7 +93,7 @@ mst   = mat2cell(mst, nrows);
 Permno = cell(numel(nrows),1);
 
 for ii = 1:numel(master.ids)
-    symbol     = master.ids{ii};
+    symbol     = ids{ii};
     Permno{ii} = zeros(nrows(ii),1,'like',msenames.PERMNO);
     if isempty(symbol)
         continue
