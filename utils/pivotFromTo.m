@@ -23,9 +23,6 @@ tb       = setVariableNames(tb, {'Id','From','To','Val'});
 classval = class(tb.Val);
 tb.Val   = double(tb.Val);
 
-% Reference dates
-s.Date = union(tb.From, tb.To);
-
 % Extend To date by one day (will be nullified by the spread/pivoting)
 tb.To = serial2yyyymmdd(yyyymmdd2serial(tb.To)+1);
 
@@ -47,5 +44,6 @@ s.Panel(:,2:end) = tbextend.varfun(fun, s.Panel(:,2:end),'RenameVariables', fals
 s.Panel          = convertColumn(s.Panel, classval, 2:size(s.Panel,2));
 
 % Sample at reference dates
+s.Date  = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date)));
 s.Panel = sampledates(s.Panel,s.Date,true);
 end
