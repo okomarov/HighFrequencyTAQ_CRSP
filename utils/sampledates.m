@@ -30,9 +30,8 @@ end
 tspanel.Date = alldates;
 
 % Fill values
-names            = getVariableNames(tspanel);
-tspanel(:,2:end) = varfun(@(x) nanfillts(x,notrail), tspanel(:,2:end));
-tspanel          = setVariableNames(tspanel, names);
+tspanel(:,2:end) = tbextend.varfun(@(x) nanfillts(x,notrail), tspanel(:,2:end),...
+                   'RenameVariables',false);
 
 % Eventually cut off the notrail part
 if notrail
