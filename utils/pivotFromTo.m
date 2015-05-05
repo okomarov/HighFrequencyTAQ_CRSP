@@ -41,9 +41,10 @@ s.Id     = unique(tb.Id);
 s.Idname = lower(oldnames{1});
 
 % Pivot and spread membership
-s.Panel          = unstack(tb, 'Val','Id');
-fun              = @(x) cast(cumsum(nan2zero(x)),classval);
+s.Panel          = tbextend.unstack(tb, 'Val','Id');
+fun              = @(x) cumsum(nan2zero(x));
 s.Panel(:,2:end) = tbextend.varfun(fun, s.Panel(:,2:end),'RenameVariables', false);
+s.Panel          = convertColumn(s.Panel, classval, 2:size(s.Panel,2));
 
 % Sample at reference dates
 s.Panel = sampledates(s.Panel,s.Date,true);
