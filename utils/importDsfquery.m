@@ -52,7 +52,7 @@ while ~feof(fid)
     
     % Adjust for delisting returns as in Beaver, McNichols, Price 2007
     idx         = ~isnan(txt{4});
-    txt{8}(idx) = (1 + txt{4}(idx)) * (1 + txt{8}(idx)) - 1;
+    txt{8}(idx) = (1 + txt{4}(idx)) .* (1 + txt{8}(idx)) - 1;
     
     % Expand pre-allocation
     if mod(c,100) == 1
