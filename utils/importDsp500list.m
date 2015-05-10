@@ -10,7 +10,7 @@ writeto = '.\results';
 spconst = readtable(fullfile(path2csv,csvfile),'Delimiter',',','ReadVariableNames',1);
 
 % Pivot ranges 
-spconst.Val = true(size(spconst,1),1);
+spconst.Val = ones(size(spconst,1),1);
 spconst     = pivotFromTo(spconst);
 
 % Stack back to tall
