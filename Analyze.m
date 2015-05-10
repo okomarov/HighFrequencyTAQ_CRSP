@@ -386,6 +386,41 @@ cached.RetOC(~idx) = NaN;
 res = cached(:,{'Id','Date','RetOC'});
 end
 
+function res = rv(s,cached)
+
+% Dates and returns
+dates = s.data.Datetime;
+ret   = [NaN; diff(log(s.data.Price))];
+idx   = [false; diff(rem(dates,1)) >= 0];
+
+% Use overnight
+useon = numel(cached) == 2;
+if useon
+    onret     = cached{1};
+    [~,pos]   = ismembIdDate(s.mst.Permno, s.mst.Date, onret.Permno, onret.Date);
+    ret(~idx) = onret.RetCO(pos);
+else
+    % Keep all except overnight
+    ret = ret(idx,:);
+end
+
+% Number of observations per day
+nobs = double(s.mst.To - s.mst.From + 1);
+nmst = size(s.mst,1);
+subs = RunLength((1:nmst)', nobs);
+
+% Filter out NaNs
+ikeep = ~isnan(ret);
+subs  = subs(ikeep);
+ret   = ret(ikeep);
+
+% RV, sum and count
+res     = s.mst(:,{'Permno','Date'});
+res.RV  = accumarray(subs, ret.^2,[],[],NaN);
+res.Sx  = accumarray(subs, ret   ,[],[],NaN);
+res.N   = uint8(accumarray(subs,      1,[],[],NaN));
+end
+
 function res = countnullrets(s,cached)
 res          = s.mst(:,{'Id','Permno','Date'});
 idx          = mcolon(s.mst.From,1,s.mst.To);
