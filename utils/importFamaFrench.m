@@ -6,8 +6,8 @@ function data = importFamaFrench(zipname, outdir)
 %
 %   IMPORTFAMAFRENCH(...,OUTDIR) Specify in which folder to save the
 %                                imported data. 
-%                                By default it will be  saved under 
-%                                '.\results\ZIPNAME.mat'
+%                                By default it will be saved under 
+%                                '.\ZIPNAME.mat'
 %
 %   IMPORTFAMAFRENCH() Lists available datasets, their ZIPNAMEs and the
 %                      description.
@@ -24,7 +24,7 @@ if nargin < 1
     return
 end
 if nargin < 2
-    outdir = '.\results';
+    outdir = '';
 end
 
 % Try to load from web
