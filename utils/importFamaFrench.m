@@ -44,6 +44,7 @@ tline = fgetl(fid);
 Desc  = '';
 while ischar(tline)
     if isempty(tline)
+        tline = fgetl(fid);
         continue
     end
     
