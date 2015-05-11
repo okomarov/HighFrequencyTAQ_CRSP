@@ -1,17 +1,17 @@
 function data = importFamaFrench(zipname, outdir)
 % IMPORTFAMAFRENCH Imports datasets from Kenneth French's Data Library webpage
 %
-%   IMPORTFAMAFRENCH(ZIPNAME) Imports into a table the dataset specified 
+%   IMPORTFAMAFRENCH(ZIPNAME) Imports into a table the dataset specified
 %                             by ZIPNAME.
 %
 %   IMPORTFAMAFRENCH(...,OUTDIR) Specify in which folder to save the
-%                                imported data. 
-%                                By default it will be saved under 
+%                                imported data.
+%                                By default it will be saved under
 %                                '.\ZIPNAME.mat'
 %
 %   IMPORTFAMAFRENCH() Lists available datasets, their ZIPNAMEs and the
 %                      description.
-%                       
+%
 %
 % See <a href="http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">Fama French data</a>
 
@@ -38,36 +38,51 @@ end
 %   Usually has few lines of description followed by one blank line, one
 %   line of variable names, and then data. Uses multiple whitespaces as
 %   delimiter.
-fid      = fopen(char(txtfile));
-tline    = fgetl(fid);
-isHeader = false;
-Desc     = '';
+fid   = fopen(char(txtfile));
+clean = onCleanup(@() cleanupFcn(fid,txtfile{:}));
+tline = fgetl(fid);
+Desc  = '';
 while ischar(tline)
-    % Are we parsing the header line? 
-    if isHeader
-        vnames = textscan(tline, '%s','MultipleDelimsAsOne',true);
-        vnames = vnames{1};
-        vnames = strrep(vnames,'-','Minus');
-        break
-    end
-    % Empty line, next is header
     if isempty(tline)
-        isHeader = true;
+        continue
+    end
+    
+    % First line of data?
+    tmp = textscan(tline, '%d','MultipleDelimsAsOne',true);
+    tmp = tmp{1};
+    if ~isempty(tmp)
+        % Parse previous line for variable names
+        vnames   = textscan(prevline, '%s','MultipleDelimsAsOne',true);
+        vnames   = vnames{1};
+        ncoldata = numel(tmp);
+        % Create variable names
+        if ncoldata == numel(vnames)+1 && vnames{end}(end) ~= '.'
+            vnames = strrep(vnames,'-','Minus');
+        else
+            vnames = matlab.lang.makeUniqueStrings(repmat({'Var'},1,ncoldata-1));
+        end
+        vnames = ['Date'; vnames(:)];
+        
+        % Rewind to beginning of data
+        fseek(fid, prevpos, 'bof');
+        break
     else
+        % Store description
         Desc = [Desc, tline];
     end
-    tline = fgetl(fid);
+    
+    prevpos  = ftell(fid);
+    prevline = tline;
+    tline    = fgetl(fid);
 end
+
 % Parse data
-fmt = ['%u' repmat('%f',1,numel(vnames))];
+fmt = ['%u' repmat('%f',1, ncoldata-1)];
 txt = textscan(fid, fmt,'MultipleDelimsAsOne',true);
 
 % Convert into table
-data                        = table(txt{:},'VariableNames',['Date'; vnames(:)]);
+data                        = table(txt{:},'VariableNames', vnames);
 data.Properties.Description = Desc;
-
-% Delete temporary .txt
-delete(txtfile{:})
 
 % Save
 [~,name] = fileparts(zipname);
@@ -91,4 +106,10 @@ for ii = 1:numel(enpos)
     tmp                    = regexprep(str(p+1:p+150),'(<[ba]>|</b>)','');
     list.Description(ii,1) = strtrim(regexp(tmp, '.*(?=</a>)','match'));
 end
+end
+
+function cleanupFcn(fid,fname)
+% Cleanup performed at end or error
+fclose(fid);
+delete(fname);
 end
