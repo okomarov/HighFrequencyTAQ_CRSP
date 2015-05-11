@@ -61,10 +61,6 @@ end
 % Parse data
 fmt = ['%u' repmat('%f',1,numel(vnames))];
 txt = textscan(fid, fmt,'MultipleDelimsAsOne',true);
-fclose(fid);
-
-% Convert percentage returns to decimal
-txt(2:end) = cellfun(@(x) x/100, txt(2:end),'un',0);
 
 % Convert into table
 data                        = table(txt{:},'VariableNames',['Date'; vnames(:)]);
