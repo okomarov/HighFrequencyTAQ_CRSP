@@ -180,10 +180,10 @@ res               = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
-
 function res = NumTimeBuckets(s,cached)
 cached = cached{1};
-grid   = (9.5:0.5:16)/24;
+% Note: last bin is lb <= x <= ub since data ends at 16:00
+grid   = ([9.5:0.5:15.5, 16.5])/24;
 fun    = @(x) nnz(histc(x, grid));
 
 % Number of observations per day
