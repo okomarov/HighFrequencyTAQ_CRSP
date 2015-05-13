@@ -44,9 +44,9 @@ rv         = rv(isrt,:);
 % RV = ?x^2; 
 % RVscaled = RV/n = E[x^2]; 
 % Var = E[x^2] - E[x]^2 = RVscaled - (?x/n)^2;
-RVroll      = accumarray(subs, rv.RV, [], @(x) runsum(lookback,x));
-Sx          = accumarray(subs, rv.Sx, [], @(x) runsum(lookback,x));
-N           = accumarray(subs, rv.N,  [], @(x) runsum(lookback,x));
+RVroll      = accumarray(subs,        rv.RV, [], @(x) runsum(lookback,x));
+Sx          = accumarray(subs,        rv.Sx, [], @(x) runsum(lookback,x));
+N           = accumarray(subs, double(rv.N),  [], @(x) runsum(lookback,x));
 rv.RVscaled = cat(1,RVroll{:})./cat(1,N{:});
 rv.Var      = rv.RVscaled - (cat(1,Sx{:})./cat(1,N{:})).^2;
 end
