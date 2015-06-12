@@ -46,13 +46,13 @@ while ~feof(fid)
     %     txt    = cellfun(@(x) x(ishrcd),txt,'un',0);
     
     % Import delisting returns and returns
-    [txt{4}, missing{1}] = dealWithMissingCodes(txt{4});
+    %     [txt{4}, missing{1}] = dealWithMissingCodes(txt{4});
     [txt{8}, missing{2}] = dealWithMissingCodes(txt{8});
-    imissing             = missing{1}~=0 | missing{2}~=0;
+%     imissing             = missing{1}~=0 | missing{2}~=0;
     
-    % Adjust for delisting returns as in Beaver, McNichols, Price 2007
-    idx         = ~isnan(txt{4});
-    txt{8}(idx) = (1 + txt{4}(idx)) .* (1 + txt{8}(idx)) - 1;
+    %     % Adjust for delisting returns as in Beaver, McNichols, Price 2007
+    %     idx         = ~isnan(txt{4});
+    %     txt{8}(idx) = (1 + txt{4}(idx)) .* (1 + txt{8}(idx)) - 1;
     
     % Expand pre-allocation
     if mod(c,100) == 1
@@ -61,20 +61,20 @@ while ~feof(fid)
     end
     % Convert into table
     dsfquery{c}     = table(txt{[1:3,5:8]}, 'VariableNames',headers([1:3,5:8]));
-    missingcodes{c} = table(txt{1:2}, missing{:}, 'VariableNames',[headers(1:2),'RetMissing','DlretMissing']);
-    missingcodes{c} = missingcodes{c}(imissing,:);
+%     missingcodes{c} = table(txt{1:2}, missing{:}, 'VariableNames',[headers(1:2),'RetMissing','DlretMissing']);
+%     missingcodes{c} = missingcodes{c}(imissing,:);
 end
 
 % Concatenate
 dsfquery     = cat(1,dsfquery{:});
 missingcodes = cat(1,missingcodes{:});
 
+% Adjust for delisting returns as in Beaver, McNichols, Price 2007
+dsfquery = adjustDelist(dsfquery);
+
 % Save
 filename = sprintf('%s_dsfquery.mat',datestr(now,'yyyymmdd_HHMM'));
 save(fullfile(writeto, filename), 'dsfquery')
-
-% Close and delete .csv
-delete(cleanup)
 end
 
 function [out, codes] = dealWithMissingCodes(c)
@@ -92,6 +92,25 @@ out      = NaN(size(c));
 idx      = ~(iempty | imisscode);
 tmp      = textscan(char(c(idx))', '%9f64');
 out(idx) = tmp{1};
+end
+
+function dsf = adjustDelist(dsf)
+% Load delisting returns
+try
+    delist = loadresults('dsedelist');
+catch
+    delist = importDsedelist('dsedelist');
+end
+% Estimate replacement values by delisting code for delisting dates with 
+% missing delisting returns
+[unid, ~, subs]    = unique(delist.Dlstcd);
+repval             = accumarray(subs, delist.Dlret,[],@nanmean);
+inan               = isnan(delist.Dlret);
+delist.Dlret(inan) = repval(subs(inan));
+
+% Adjust returns in dsfquery
+[idx,pos]    = ismembIdDate(dsf.Permno,dsf.Date,delist.Permno,delist.Dlstdt);
+dsf.Ret(idx) = (1 + dsf.Ret(idx)) .* (1 + delist.Dlret(pos(idx))) - 1;
 end
 
 function cleanupFile(fid)
