@@ -34,7 +34,14 @@ function bool = isExchange(data, code)
 %          33   When-Issued Trading on NASDAQ
 %          34   When-Issued Trading on Arca
 
-if nargin < 2 || isempty(code), code = 1; end
+if nargin < 2 || isempty(code)
+    code = 1; 
+else
+    ivalid = ismember(code, cast([-2:5, 10,13,16,17,19,20,31:34],'like',code));
+    if ~all(ivalid);
+        error('isExchange:invalidCode','Invalid CODE. See help for a list of valid CRSP codes.')
+    end
+end
 
 % DATA handling
 if isa(data, 'fints')
@@ -44,7 +51,10 @@ if isa(data, 'fints')
                   'Date',   serial2yyyymmdd(tmp(:,1)));
 elseif isa(data,'table')
     vnames = getVariableNames(data);
-    data   = struct('Data',data{:,2:end},'Permno',{vnames(2:end)},'Date',data.Date);
+    data   = struct('Panel',data{:,2:end},'Permno',{vnames(2:end)},'Date',data.Date);
+elseif isfield(data,'Data')
+    data.Panel = data.Data;
+    data       = rmfield(data,'Data');
 end
 % Convert xPermnos
 data.Permno = xstr2num(data.Permno);
