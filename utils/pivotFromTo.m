@@ -1,4 +1,4 @@
-function s = pivotFromTo(tb)
+function s = pivotFromTo(tb, refdates)
 
 % PIVOTFROMTO Pivots a table spreading the value between the from/to range
 % 
@@ -6,6 +6,10 @@ function s = pivotFromTo(tb)
 %           ID | From | To | Value
 %       
 %           The ID is the indexing var and Value is the unstacked variable.
+%
+%   PIVOTFROMTO(..., REFDATES) Retains the dates specified by REFDATES. 
+%                              By default it keeps all days in the range
+%                              [min(From), max(To)].
 %
 %   S = ... 
 %       Is a structure with:
@@ -48,6 +52,10 @@ if ~strcmpi(classval, 'double')
 end
 
 % Sample at reference dates
-s.Date  = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date)));
+if nargin < 2
+    s.Date = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date)));
+else
+    s.Date = refdates;
+end
 s.Panel = sampledates(s.Panel,s.Date,true);
 end
