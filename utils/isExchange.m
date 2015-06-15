@@ -55,6 +55,8 @@ elseif isa(data,'table')
 elseif isfield(data,'Data')
     data.Panel = data.Data;
     data       = rmfield(data,'Data');
+else
+    error('isExchange:invalidData','DATA must be a structure, a fints or table panel.')
 end
 % Convert xPermnos
 data.Permno = xstr2num(data.Permno);
