@@ -57,7 +57,7 @@ idx    = ismember(mnames.Permno, permnos);
 mnames = mnames(idx,:);
 
 % LOOP by batches of # permnos
-N    = numel(data.Permno);
+N    = numel(permnos);
 bool = false(numel(dates), N);
 s    = 1000;
 for ii = 1:s:N
