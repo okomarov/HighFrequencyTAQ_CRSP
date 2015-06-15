@@ -39,8 +39,6 @@ ccmsic = table(txt{:}, 'VariableNames', headers([1:2,6,8:9]));
 filename = sprintf('%s_ccmsic.mat',datestr(now,'yyyymmdd_HHMM'));
 save(fullfile(writeto, filename), 'ccmsic')
 
-% Close and delete .csv
-delete(cleanup)
 end
 
 function cleanupFile(fid)
