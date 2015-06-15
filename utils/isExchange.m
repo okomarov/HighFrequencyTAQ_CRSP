@@ -1,13 +1,9 @@
-function bool = isExchange(data, code)
+function bool = isExchange(permnos, dates, code)
 
 % ISEXCHANGE Checks from CRSP if and when stocks are traded on exchange(s)
 % 
-%   ISEXCHANGE(DATA) DATA should be structure with the exact fields:
-%                       .Panel  - with numeric data and NaNs
-%                       .Permno - a cell array of 'xNumbers' (strings)
-%                       .Date   - in yyyymmdd numeric format
-%
-%                    DATA can also be a fints or a table panel.
+%   ISEXCHANGE(PERMNOS, DATES) PERMNOS can be 'xNumbers' or numeric and
+%                              DATES should be in the yyyymmdd format.
 %
 %   ISEXCHANGE(..., CODE) CODE can be one or a combination from the list
 %                         below. (default CODE = 1)
@@ -34,7 +30,12 @@ function bool = isExchange(data, code)
 %          33   When-Issued Trading on NASDAQ
 %          34   When-Issued Trading on Arca
 
-if nargin < 2 || isempty(code)
+%% Checks
+
+if iscellstr(permnos)
+    permnos = xstr2num(permnos);
+end
+if nargin < 3 || isempty(code)
     code = 1; 
 else
     ivalid = ismember(code, cast([-2:5, 10,13,16,17,19,20,31:34],'like',code));
@@ -43,43 +44,29 @@ else
     end
 end
 
-% DATA handling
-if isa(data, 'fints')
-    tmp  = fts2mat(data,1);
-    data = struct('Panel' , tmp(:,2:end),...
-                  'Permno', {fieldnames(data,1)},...
-                  'Date',   serial2yyyymmdd(tmp(:,1)));
-elseif isa(data,'table')
-    vnames = getVariableNames(data);
-    data   = struct('Panel',data{:,2:end},'Permno',{vnames(2:end)},'Date',data.Date);
-elseif isfield(data,'Data')
-    data.Panel = data.Data;
-    data       = rmfield(data,'Data');
-else
-    error('isExchange:invalidData','DATA must be a structure, a fints or table panel.')
-end
-% Convert xPermnos
-data.Permno = xstr2num(data.Permno);
-
+%% Engine
 % Load CRSP info
 mnames = loadresults('msenames');
 
 % Filter out by exchange code
-idx    = ismember(mnames.EXCHCD, code);
-mnames = mnames(idx, {'PERMNO','NAMEDT','NAMEENDT','EXCHCD'});
+idx    = ismember(mnames.Exchcd, code);
+mnames = mnames(idx, {'Permno','Namedt','Nameendt','Exchcd'});
 
-% LOOP by batches of 5000 permnos
-bool = false(size(data.Panel));
-s    = 1000;
+% Filter out permnos
+idx    = ismember(mnames.Permno, permnos);
+mnames = mnames(idx,:);
+
+% LOOP by batches of # permnos
 N    = numel(data.Permno);
+bool = false(numel(dates), N);
+s    = 1000;
 for ii = 1:s:N
     % Select relevant portion of permnos from msenames 
-    range       = ii:min(ii+s-1,N);
-    [idx,pos]   = ismember(data.Permno(range), mnames.PERMNO);
-    pos         = pos(idx);
-    tmpnames    = mnames(pos,:);
-    % Pivot from to date ranges of selected exchange codes and convert to logical 
-    exchcd      = pivotFromTo(tmpnames, data.Date);
-    bool(:,idx) = logical(exchcd.Panel{:,2:end});
+    range         = ii:min(ii+s-1,N);
+    [idx,pos]     = ismember(mnames.Permno, permnos(range));
+    range         = unique(pos(idx));
+    % Pivot from to date ranges of selected exchange codes and convert to logical
+    exchcd        = pivotFromTo(mnames(idx,:), dates);
+    bool(:,range) = logical(exchcd.Panel{:,2:end});
 end
 end
