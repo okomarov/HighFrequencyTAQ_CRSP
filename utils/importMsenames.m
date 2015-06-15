@@ -7,40 +7,27 @@ zipfile = 'CRSPmsenames.csv.zip';
 writeto = '.\results';
 
 % Unzip and loadf as row strings
-csvfile  = unzip(fullfile(path2zip, zipfile),path2zip);
-fid      = fopen(char(csvfile));
-txt      = textscan(fid, '%s','Delimiter','');
-fclose(fid);
-
-% Replace empty and last column
-txt = regexprep(txt{:},'""','"N/A"');
-txt = regexprep(txt,',0$',char(10));
-
-% Headers
-vnames = setdiff(regexp(txt{1},'[^A-Z_]*','split'),'','stable');
+csvfile = unzip(fullfile(path2zip, zipfile),path2zip);
+fid     = fopen(char(csvfile));
+cleanup = onCleanup(@()cleanupFile(fid));
+headers = textscan(fid, '%s',1,'Delimiter','');
+headers = upperfirst(regexp(headers{1}{1},',','split'));
 
 % Parse fields
-fmt    = ['"%u32" "%d32" "%d32" "%u8" "%d8" "%u16" %s %s %s %s '...
-          '%s "%u32" %s %s %s "%u32" "%u32" "%u32" "%u8" "%u16" %s%*[\n]'];
-data   = textscan([txt{2:end}], fmt, 'Delimiter',',','TreatAsEmpty','N/A');
+fmt  = ['%u32%u32%u32%u8%u8%u16%s%s%s%s '...
+          '%s%u32%s%s%s%u32%u32%u32%u8%u16%s'];
+data = textscan(fid, fmt, 'Delimiter',',');
 
-% Convert dates to yyyymmdd fmt
-c        = datenum('19600101','yyyymmdd');
-f        = @(x) uint32(serial2yyyymmdd(double(x + c)));
-data{2}  = f(data{2});
-data{3}  = f(data{3});
-
-% Get rid of the ""
-icstr       = cellfun(@iscellstr, data);
-data(icstr) = cellfun(@(x) regexprep(x,'"',''),data(icstr),'un',0);
-
-% Convert into table and replace missing
-msenames = table(data{:},'VariableNames',vnames(1:end-1));
-msenames = standardizeMissing(msenames,'N/A');
-
-% Delete unzipped .csv
-delete(csvfile{:})
+% Convert to table
+msenames = table(data{:}, 'VariableNames', headers);
 
 % Save
-save(fullfile(writeto,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'msenames')), 'msenames')
+filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'msenames');
+save(fullfile(writeto, filename), 'msenames')
+end
+
+function cleanupFile(fid)
+fname = fopen(fid);
+fclose(fid);
+delete(fname)
 end
