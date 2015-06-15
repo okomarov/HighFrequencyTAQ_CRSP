@@ -30,16 +30,12 @@ txt     = textscan(fid, '%u32%u32%u16%*s%*s%*s%*s%*s%*s%*s%s%*[^\n]','Delimiter'
 % Deal with missing codes
 [txt{4}, missing{1}] = dealWithMissingCodes(txt{4});
 
-
 % Convert to table
 dsedelist = table(txt{:}, 'VariableNames', headers([1:3,11]));
 
 % Save
 filename = sprintf('%s_dsedelist.mat',datestr(now,'yyyymmdd_HHMM'));
 save(fullfile(writeto, filename), 'dsedelist')
-
-% Close and delete .csv
-delete(cleanup)
 end
 
 function [out, codes] = dealWithMissingCodes(c)
