@@ -28,12 +28,15 @@ classval = class(tb.Val);
 tb.Val   = double(tb.Val);
 
 % Extend To date by one day (will be nullified by the spread/pivoting)
-tb.To = serial2yyyymmdd(yyyymmdd2serial(tb.To)+1);
+to    = tb.To;
+tb.To = serial2yyyymmdd(yyyymmdd2serial(to)+1);
 
 % Stack start/end position to get +1/-1 Val
-tb = table(repmat(tb.Id,2,1),...
-           [tb.From; tb.To],...
-           [tb.Val; -tb.Val],...
+% NOTE: ensure that the original To is preserved
+o  = zeros(size(to,1),1);
+tb = table(repmat(tb.Id,3,1),...
+           [tb.From; to;  tb.To],...
+           [tb.Val;   o; -tb.Val],...
            'VariableNames',{'Id','Date','Val'});
 tb = sortrows(tb,{'Date','Id'});
 
