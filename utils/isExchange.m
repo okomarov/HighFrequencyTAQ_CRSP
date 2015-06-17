@@ -64,7 +64,7 @@ for ii = 1:s:N
     % Select relevant portion of permnos from msenames 
     range         = ii:min(ii+s-1,N);
     [idx,pos]     = ismember(mnames.Permno, permnos(range));
-    range         = unique(pos(idx));
+    range         = unique(range(pos(idx)));
     % Pivot from to date ranges of selected exchange codes and convert to logical
     exchcd        = pivotFromTo(mnames(idx,:), dates);
     bool(:,range) = logical(exchcd.Panel{:,2:end});
