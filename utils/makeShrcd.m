@@ -5,19 +5,19 @@ try
 catch
     msenames = importMsenames('.\data\CRSP\');
 end
-msenames             = msenames(:,{'PERMNO','NAMEDT','NAMEENDT','SHRCD'});
-msenames             = msenames(msenames.NAMEENDT >= 19930101,:);
-idx                  = msenames.NAMEDT < 19930101;
-msenames.NAMEDT(idx) = 19930101;
+msenames             = msenames(:,{'Permno','Namedt','Nameendt','Shrcd'});
+msenames             = msenames(msenames.Nameendt >= 19930101,:);
+idx                  = msenames.Namedt < 19930101;
+msenames.Namedt(idx) = 19930101;
 
 % Time consolidation
-msenames          = sortrows(msenames,{'PERMNO','NAMEDT'});
-idx               = isfeatchange(msenames(:,{'PERMNO','SHRCD','NAMEDT'}));
+msenames          = sortrows(msenames,{'Permno','Namedt'});
+idx               = isfeatchange(msenames(:,{'Permno','Shrcd','Namedt'}));
 st                = find(idx);
 en                = [st(2:end)-1; size(msenames,1)];
-enddate           = msenames.NAMEENDT(en);
+enddate           = msenames.Nameendt(en);
 msenames          = msenames(st,:);
-msenames.NAMEENDT = enddate;
+msenames.Nameendt = enddate;
 
 % Pivot ranges 
 msenames = pivotFromTo(msenames);
