@@ -49,13 +49,13 @@ while ischar(tline)
     end
     
     % First line of data?
-    tmp = textscan(tline, '%d','MultipleDelimsAsOne',true);
-    tmp = tmp{1};
-    if ~isempty(tmp)
+    tmp      = textscan(tline, '%d','MultipleDelimsAsOne',true);
+    tmp      = tmp{1};
+    ncoldata = numel(tmp);
+    if ~isempty(tmp) && ncoldata > 1
         % Parse previous line for variable names
-        vnames   = textscan(prevline, '%s','MultipleDelimsAsOne',true);
-        vnames   = vnames{1};
-        ncoldata = numel(tmp);
+        vnames = textscan(prevline, '%s','MultipleDelimsAsOne',true);
+        vnames = vnames{1};
         % Create variable names
         if ncoldata == numel(vnames)+1 && vnames{end}(end) ~= '.'
             vnames = strrep(vnames,'-','Minus');
