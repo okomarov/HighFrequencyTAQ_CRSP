@@ -1,4 +1,4 @@
-function [dsfquery, missingcodes] = importDsfquery(path2zip)
+function dsfquery = importDsfquery(path2zip)
 % IMPORTDSFQUERY Imports the zipped CRSP dsfquery dataset into a table
 %
 %   IMPORTDSFQUERY (PATH2ZIP)
@@ -39,35 +39,21 @@ while ~feof(fid)
     disp(c)
     
     % Note that Returns might have char missing code
-    txt = textscan(fid, '%u32%u32%u8%s%f32%f32%f32%s',N,'Delimiter',',');
-    
-    %     % Keep share type code 10 and 11 only
-    %     ishrcd = txt{3} == 10 | txt{3} == 11;
-    %     txt    = cellfun(@(x) x(ishrcd),txt,'un',0);
+    txt = textscan(fid, '%u32%u32%f32%u64%s%f32%f32',N,'Delimiter',',');
     
     % Import delisting returns and returns
-    %     [txt{4}, missing{1}] = dealWithMissingCodes(txt{4});
-    [txt{8}, missing{2}] = dealWithMissingCodes(txt{8});
-%     imissing             = missing{1}~=0 | missing{2}~=0;
-    
-    %     % Adjust for delisting returns as in Beaver, McNichols, Price 2007
-    %     idx         = ~isnan(txt{4});
-    %     txt{8}(idx) = (1 + txt{4}(idx)) .* (1 + txt{8}(idx)) - 1;
+    [txt{5}, missing{2}] = dealWithMissingCodes(txt{5});
     
     % Expand pre-allocation
     if mod(c,100) == 1
-        dsfquery     = [dsfquery; cell(100,1)];
-        missingcodes = [missingcodes; cell(100,1)];
+        dsfquery = [dsfquery; cell(100,1)];
     end
     % Convert into table
-    dsfquery{c}     = table(txt{[1:3,5:8]}, 'VariableNames',headers([1:3,5:8]));
-%     missingcodes{c} = table(txt{1:2}, missing{:}, 'VariableNames',[headers(1:2),'RetMissing','DlretMissing']);
-%     missingcodes{c} = missingcodes{c}(imissing,:);
+    dsfquery{c} = table(txt{:}, 'VariableNames',headers(:));
 end
 
 % Concatenate
-dsfquery     = cat(1,dsfquery{:});
-missingcodes = cat(1,missingcodes{:});
+dsfquery = cat(1,dsfquery{:});
 
 % Adjust for delisting returns as in Beaver, McNichols, Price 2007
 dsfquery = adjustDelist(dsfquery);
