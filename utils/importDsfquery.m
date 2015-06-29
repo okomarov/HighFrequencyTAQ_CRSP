@@ -94,6 +94,10 @@ repval             = accumarray(subs, delist.Dlret,[],@nanmean);
 inan               = isnan(delist.Dlret);
 delist.Dlret(inan) = repval(subs(inan));
 
+% Drop delisting code with estimated NaN
+inan   = isnan(delist.Dlret);
+delist = delist(~inan,:);
+
 % Adjust returns in dsfquery
 [idx,pos]    = ismembIdDate(dsf.Permno,dsf.Date,delist.Permno,delist.Dlstdt);
 dsf.Ret(idx) = (1 + dsf.Ret(idx)) .* (1 + delist.Dlret(pos(idx))) - 1;
