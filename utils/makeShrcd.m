@@ -11,13 +11,8 @@ idx                  = msenames.Namedt < 19930101;
 msenames.Namedt(idx) = 19930101;
 
 % Time consolidation
-msenames          = sortrows(msenames,{'Permno','Namedt'});
-idx               = isfeatchange(msenames(:,{'Permno','Shrcd','Namedt'}));
-st                = find(idx);
-en                = [st(2:end)-1; size(msenames,1)];
-enddate           = msenames.Nameendt(en);
-msenames          = msenames(st,:);
-msenames.Nameendt = enddate;
+msenames = sortrows(msenames,{'Permno','Namedt'});
+msenames = consolidateFromTo(msenames);
 
 % Pivot ranges 
 msenames = pivotFromTo(msenames);
