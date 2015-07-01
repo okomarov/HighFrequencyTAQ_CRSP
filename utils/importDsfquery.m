@@ -39,10 +39,12 @@ while ~feof(fid)
     disp(c)
     
     % Note that Returns might have char missing code
-    txt = textscan(fid, '%u32%u32%f32%u64%s%f32%f32%f32',N,'Delimiter',',');
+    fmt = '%u32%u32%f32%u64%s%f32%f32%f32';
+    txt = textscan(fid, fmt, N,'Delimiter',',');
     
     % Import delisting returns and returns
-    [txt{5}, missing{2}] = dealWithMissingCodes(txt{5});
+    pos = find(strcmpi(strsplit(fmt,'%'),'s'))-1;
+    [txt{pos}, missing{2}] = dealWithMissingCodes(txt{pos});
     
     % Expand pre-allocation
     if mod(c,100) == 1
