@@ -56,7 +56,7 @@ end
 
 % Sample at reference dates
 if nargin < 2
-    s.Date = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date)));
+    s.Date = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date))-1);
 else
     s.Date = refdates;
 end
