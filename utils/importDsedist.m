@@ -25,10 +25,10 @@ headers = textscan(fid, '%s',1,'Delimiter','');
 headers = upperfirst(regexp(headers{1}{1},',','split'));
 
 % Import
-txt = textscan(fid, '%u32%u16%f%f%*f%u32%u32%*[^\n]','Delimiter',',');
+txt = textscan(fid, '%u32%u16%f%f%*f%u32%u32%*u32%u32%*[^\n]','Delimiter',',');
 
 % Convert to table
-dsedist = table(txt{:}, 'VariableNames', headers([1:4,6,7]));
+dsedist = table(txt{:}, 'VariableNames', headers([1:4,6,7,9]));
 
 % Save
 filename = sprintf('%s_dsedist.mat',datestr(now,'yyyymmdd_HHMM'));
