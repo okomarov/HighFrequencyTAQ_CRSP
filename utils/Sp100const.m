@@ -1,3 +1,5 @@
+% Get sp100 (Gvkeyx == 664) constitutents
+
 % Get LC, LU, LN linktype
 ccm           = loadresults('ccm');
 ccm           = ccm(ismember(ccm.Linktype,[1,2,6]),:);
