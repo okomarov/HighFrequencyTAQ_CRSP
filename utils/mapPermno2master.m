@@ -1,16 +1,16 @@
 function mst = mapPermno2master
 % Import CRSP data
 msenames             = loadresults('msenames');
-msenames             = msenames(msenames.NAMEENDT > 19923112,{'PERMNO','NAMEDT','NAMEENDT','NCUSIP','TICKER','TSYMBOL'});
-idx                  = msenames.NAMEDT <= 19923112;
-msenames.NAMEDT(idx) = 19930101;
+msenames             = msenames(msenames.Nameendt > 19923112,{'Permno','Namedt','Nameendt','Ncusip','Ticker','Tsymbol'});
+idx                  = msenames.Namedt <= 19923112;
+msenames.Namedt(idx) = 19930101;
 
 % Import TAQ data
 taqmaster = loadresults('TAQmaster');
 taqmaster = taqmaster(:,{'SYMBOL','CUSIP','FDATE'});
 
 % Msenames cusip
-msecusip = msenames.NCUSIP;
+msecusip = msenames.Ncusip;
 
 % Extract TAQ 8-cusip
 taqcusip = char(taqmaster.CUSIP);
@@ -37,38 +37,38 @@ taqcusip        = taqcusip(ib);
 taqmaster.CUSIP = taqcusip(pos(idx));
 
 % % Check multiple ncusips for a permno (OK - no repeated dates)
-% [unNcusip,~,msenames.NCUSIP] = unique(msenames.NCUSIP);
-% pivotFromTo(msenames(:,{'PERMNO','NAMEDT','NAMEENDT','NCUSIP'}));
+% [unNcusip,~,msenames.Ncusip] = unique(msenames.Ncusip);
+% pivotFromTo(msenames(:,{'Permno','Namedt','Nameendt','Ncusip'}));
 
 % % Consolidate TAQ (from dates)
-% taqmaster = sortrows(taqmaster(:,{'CUSIP','SYMBOL','FDATE'}),{'CUSIP','FDATE'});
+% taqmaster = sortrows(taqmaster(:,{'Cusip','Symbol','Fdate'}),{'Cusip','Fdate'});
 % idx       = isfeatchange(taqmaster,3);
 % taqmaster = taqmaster(idx,:);
 
 % Consolidate MSE (from dates)
-msenames          = sortrows(msenames,{'PERMNO','NAMEDT'});
-pstart            = find(isfeatchange(msenames(:,{'PERMNO','TSYMBOL','NCUSIP','NAMEDT'}),[1,4]));
+msenames          = sortrows(msenames,{'Permno','Namedt'});
+pstart            = find(isfeatchange(msenames(:,{'Permno','Tsymbol','Ncusip','Namedt'}),[1,4]));
 pend              = [pstart(2:end)-1; size(msenames,1)];
-To                = msenames.NAMEENDT(pend);
+To                = msenames.Nameendt(pend);
 msenames          = msenames(pstart,:);
-msenames.NAMEENDT = To;
+msenames.Nameendt = To;
 
 % Fill in empty symbols with ticker
-idx                   = strcmpi(msenames.TSYMBOL,'');
-msenames.TSYMBOL(idx) = msenames.TICKER(idx);
+idx                   = strcmpi(msenames.Tsymbol,'');
+msenames.Tsymbol(idx) = msenames.Ticker(idx);
 
 % Forward fill intermediate and end of period empty symbols
-msenames     = sortrows(msenames,{'NCUSIP','NAMEDT'});
-iempty       = strcmpi(msenames.TSYMBOL,'');
+msenames     = sortrows(msenames,{'Ncusip','Namedt'});
+iempty       = strcmpi(msenames.Tsymbol,'');
 pos          = NaN(size(iempty));
 pos(~iempty) = find(~iempty);
 pos          = nanfillts(pos);
 
 % Backward fill beginning of period empty symbols
-[~,pstart]       = unique(msenames.PERMNO);
+[~,pstart]       = unique(msenames.Permno);
 pstart           = intersect(pstart,find(iempty));
 pos(pstart)      = pstart + 1;
-msenames.TSYMBOL = msenames.TSYMBOL(pos);
+msenames.Tsymbol = msenames.Tsymbol(pos);
 
 % Load master
 master = load(fullfile('.\data\TAQ','master'),'-mat');
@@ -79,10 +79,10 @@ ids = regexprep(ids,'p','PR');
 ids = regexprep(ids,'\.','');
 
 % Intersect symbols with ismember (beware of duplicates after previous step)
-idx       = ismember(ids, msenames.TSYMBOL);
+idx       = ismember(ids, msenames.Tsymbol);
 ids(~idx) = {''};
-idx       = ismember(msenames.TSYMBOL, ids);
-msenames  = sortrows(msenames(idx,:),{'TSYMBOL','NAMEDT'});
+idx       = ismember(msenames.Tsymbol, ids);
+msenames  = sortrows(msenames(idx,:),{'Tsymbol','Namedt'});
 
 % Cache mst by Id
 mst   = sortrows(master.mst,{'Id','Date'});
@@ -94,22 +94,22 @@ Permno = cell(numel(nrows),1);
 
 for ii = 1:numel(master.ids)
     symbol     = ids{ii};
-    Permno{ii} = zeros(nrows(ii),1,'like',msenames.PERMNO);
+    Permno{ii} = zeros(nrows(ii),1,'like',msenames.Permno);
     if isempty(symbol)
         continue
     end
     
     % CRSP symbol table 
-    isymbol = strcmpi(symbol, msenames.TSYMBOL);
+    isymbol = strcmpi(symbol, msenames.Tsymbol) | strcmpi(symbol, msenames.Ticker);
     tmp     = msenames(isymbol, :);
         
     % Match date bucket
-    [~,ptmp] = histc(mst{ii}.Date, [tmp.NAMEDT; 99999999]);
+    [~,ptmp] = histc(mst{ii}.Date, [tmp.Namedt; 99999999]);
     imatched = ptmp ~= 0;
     ptmp     = ptmp(imatched);
     
     % Assign permno
-    Permno{ii}(imatched) = tmp.PERMNO(ptmp);
+    Permno{ii}(imatched) = tmp.Permno(ptmp);
 end
 mst        = cat(1,mst{:});
 mst.Permno = cat(1,Permno{:});
