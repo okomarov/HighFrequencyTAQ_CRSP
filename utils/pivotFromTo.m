@@ -45,7 +45,7 @@ s.Id     = unique(tb.Id);
 s.Idname = lower(oldnames{1});
 
 % Pivot and spread membership
-s.Panel          = tbextend.unstack(tb, 'Val','Id');
+s.Panel          = unstack(tb, 'Val','Id');
 fun              = @(x) cumsum(nan2zero(x));
 s.Panel(:,2:end) = tbextend.varfun(fun, s.Panel(:,2:end),'RenameVariables', false);
 
@@ -56,7 +56,7 @@ end
 
 % Sample at reference dates
 if nargin < 2
-    s.Date = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date))-1);
+    s.Date = serial2yyyymmdd(yyyymmdd2serial(min(tb.Date)):yyyymmdd2serial(max(tb.Date)));
 else
     s.Date = refdates;
 end
