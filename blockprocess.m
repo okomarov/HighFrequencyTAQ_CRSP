@@ -1,4 +1,4 @@
-function [res, filename] = blockprocess(fun, varnames, cached, path2data, debug, varargin)
+function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, path2data, debug, varargin)
 
 % BLOCKPROCESS Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -22,26 +22,20 @@ function [res, filename] = blockprocess(fun, varnames, cached, path2data, debug,
 %   BLOCKPROCESS(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
 
-if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
-if nargin < 3,                       cached    = [];                    end
-if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
-if nargin < 5 || isempty(debug);     debug     = false;                 end
-
-% Simply call the specific subroutine
-addpath(genpath('.\common'))
-writeto = '.\results\';
-
-% Open matlabpool
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
-
-% Get email credentials if not in debug
+% Setup
+addpath(genpath('common'))
+poolStartup(4, 'AttachedFiles',{'poolStartup.m'},'debug',debug)
+path2data = fullfile(fileparts(mfilename('fullpath')),path2data);
+writeto   = fullfile(projectpath, 'results');
 if ~debug; setupemail; end
-
-fhandle = str2func(fun);
+fun = func2str(fhandle);
 
 try
     tic
     dd  = dir(fullfile(path2data,'*.mat'));
+    if isempty(dd)
+        error('No data found in "%s".', path2data)
+    end
     N   = numel(dd);
     res = deal(cell(N,1));
     
