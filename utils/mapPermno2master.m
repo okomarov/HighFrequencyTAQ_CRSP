@@ -1,115 +1,103 @@
-function mst = mapPermno2master
-% Import CRSP data
+% Map CUSIP table with dates
+
+%% 1. Import mst-cusip (TAQmaster)
+
+mstcusip = loadresults('TAQmaster');
+mstcusip = mstcusip(:,{'SYMBOL','CUSIP','FDATE'});
+
+% 8-CUSIP
+taqcusip = char(mstcusip.CUSIP);
+taqcusip = taqcusip(:,1:8);
+
+% Drop empty or null cusips
+empty          = all(bsxfun(@eq, taqcusip, repmat(' ',1,8)),2);
+null           = all(bsxfun(@eq, taqcusip, repmat('0',1,8)),2);
+ikeep          = ~(empty | null);
+mstcusip       = mstcusip(ikeep,:);
+mstcusip.CUSIP = cellstr(taqcusip(ikeep,:));
+
+% Unique records for mst-cusip
+mstcusip = sortrows(mstcusip,{'CUSIP','FDATE'});
+ikeep    = isfeatchange(mstcusip(:,{'CUSIP','SYMBOL','FDATE'}),3);
+mstcusip = mstcusip(ikeep,:);
+
+%% 2. Import CRSP data
 msenames             = loadresults('msenames');
-msenames             = msenames(msenames.Nameendt > 19923112,{'Permno','Namedt','Nameendt','Ncusip','Ticker','Tsymbol'});
+msenames             = msenames(msenames.Nameendt > 19923112,{'Permno','Namedt','Nameendt','Ncusip'});
 idx                  = msenames.Namedt <= 19923112;
 msenames.Namedt(idx) = 19930101;
 
-% Import TAQ data
-taqmaster = loadresults('TAQmaster');
-taqmaster = taqmaster(:,{'SYMBOL','CUSIP','FDATE'});
+% Drop empty
+ikeep    = ~cellfun('isempty',msenames.Ncusip);
+msenames = msenames(ikeep,:);
 
-% Msenames cusip
-msecusip = msenames.Ncusip;
+%% 3. Pre-filter CRSP and TAQ by cusip
+idx      = ismember(msenames.Ncusip, mstcusip.CUSIP);
+msenames = msenames(idx,:);
+idx      = ismember(mstcusip.CUSIP, msenames.Ncusip);
+mstcusip = mstcusip(idx,:);
 
-% Extract TAQ 8-cusip
-taqcusip = char(taqmaster.CUSIP);
-taqcusip = taqcusip(:,1:8);
-
-% Find null and empty cusips
-emptytaq = find(all(bsxfun(@eq, taqcusip, repmat(' ',1,8)),2));
-emptymse = find(cellfun('isempty',msecusip));
-null     = find(all(bsxfun(@eq, taqcusip, repmat('0',1,8)),2));
-taqcusip = cellstr(taqcusip);
-
-% Match cusips
-[~,ia,ib] = intersect(msecusip, taqcusip);
-
-% Exclude empty and null
-ia = setdiff(ia, emptymse);
-ib = setdiff(ib, union(emptytaq,null));
-
-% Filter out
-msenames        = msenames(ismember(msecusip, msecusip(ia)),:);
-[idx,pos]       = ismember(taqcusip, taqcusip(ib));
-taqmaster       = taqmaster(idx,:);
-taqcusip        = taqcusip(ib);
-taqmaster.CUSIP = taqcusip(pos(idx));
-
-% % Check multiple ncusips for a permno (OK - no repeated dates)
-% [unNcusip,~,msenames.Ncusip] = unique(msenames.Ncusip);
-% pivotFromTo(msenames(:,{'Permno','Namedt','Nameendt','Ncusip'}));
-
-% % Consolidate TAQ (from dates)
-% taqmaster = sortrows(taqmaster(:,{'Cusip','Symbol','Fdate'}),{'Cusip','Fdate'});
-% idx       = isfeatchange(taqmaster,3);
-% taqmaster = taqmaster(idx,:);
-
-% Consolidate MSE (from dates)
-msenames          = sortrows(msenames,{'Permno','Namedt'});
-pstart            = find(isfeatchange(msenames(:,{'Permno','Tsymbol','Ncusip','Namedt'}),[1,4]));
-pend              = [pstart(2:end)-1; size(msenames,1)];
-To                = msenames.Nameendt(pend);
-msenames          = msenames(pstart,:);
-msenames.Nameendt = To;
-
-% Fill in empty symbols with ticker
-idx                   = strcmpi(msenames.Tsymbol,'');
-msenames.Tsymbol(idx) = msenames.Ticker(idx);
-
-% Forward fill intermediate and end of period empty symbols
-msenames     = sortrows(msenames,{'Ncusip','Namedt'});
-iempty       = strcmpi(msenames.Tsymbol,'');
-pos          = NaN(size(iempty));
-pos(~iempty) = find(~iempty);
-pos          = nanfillts(pos);
-
-% Backward fill beginning of period empty symbols
-[~,pstart]       = unique(msenames.Permno);
-pstart           = intersect(pstart,find(iempty));
-pos(pstart)      = pstart + 1;
-msenames.Tsymbol = msenames.Tsymbol(pos);
-
-% Load master
+%% 4. Import mst-symbol (mst)
 master = load(fullfile('.\data\TAQ','master'),'-mat');
-
 % Replace p with PR and remove . from TAQ symbols
-ids = master.ids;
-ids = regexprep(ids,'p','PR');
-ids = regexprep(ids,'\.','');
-
-% Intersect symbols with ismember (beware of duplicates after previous step)
-idx       = ismember(ids, msenames.Tsymbol);
+ids    = master.ids;
+ids    = regexprep(ids,'p','PR');
+ids    = regexprep(ids,'\.','');
+%% 5. Pre-filter mst-symbol and mst-cusip by symbol
+idx       = ismember(ids, mstcusip.SYMBOL);
 ids(~idx) = {''};
-idx       = ismember(msenames.Tsymbol, ids);
-msenames  = sortrows(msenames(idx,:),{'Tsymbol','Namedt'});
+idx       = ismember(mstcusip.SYMBOL, ids);
+mstcusip  = mstcusip(idx,:);
+
+% Propagate symbol pre-filtering to CRSP
+idx      = ismember(msenames.Ncusip, mstcusip.CUSIP);
+msenames = msenames(idx,:);
+%% 6. Map cusip to one set of numbers
+msenames            = sortrows(msenames,{'Ncusip','Namedt'});
+cusips              = intersect(msenames.Ncusip, mstcusip.CUSIP);
+[~,msenames.Ncusip] = ismember(msenames.Ncusip, cusips);
+[~,mstcusip.CUSIP]  = ismember(mstcusip.CUSIP, cusips);
+
+%% 6. Cache (order matters)
+% Cache mst-cusip in same order as ids
+mstcusip               = sortrows(mstcusip,{'SYMBOL','FDATE'});
+[unMstSymbol, ~, subs] = unique(mstcusip.SYMBOL);
+nrows                  = accumarray(subs,1);
+tmp                    = mat2cell(mstcusip, nrows);
+[idx,pos]              = ismember(ids,unMstSymbol);
+mstcusip               = cell(size(ids));
+mstcusip(idx)          = tmp(pos(idx));
+
+% Cache msenames by cusip
+msenames = sortrows(msenames,{'Ncusip','Namedt'});
+nrows    = accumarray(msenames.Ncusip,1);
+msenames = mat2cell(msenames, nrows);
 
 % Cache mst by Id
 mst   = sortrows(master.mst,{'Id','Date'});
 nrows = accumarray(mst.Id,1);
 mst   = mat2cell(mst, nrows);
 
-% Preallocate 
-Permno = cell(numel(nrows),1);
-
-for ii = 1:numel(master.ids)
-    symbol     = ids{ii};
-    Permno{ii} = zeros(nrows(ii),1,'like',msenames.Permno);
+%% Map
+cl     = class(msenames{1}.Permno);
+Permno = arrayfun(@(x) zeros(x,1,cl),nrows,'un',0);
+for ii = 1:numel(ids)
+    symbol = ids{ii};
     if isempty(symbol)
         continue
     end
     
-    % CRSP symbol table 
-    isymbol = strcmpi(symbol, msenames.Tsymbol) | strcmpi(symbol, msenames.Ticker);
-    tmp     = msenames(isymbol, :);
-        
+    % Fetch by cusip
+    % NOTE: mst CUSIP is mapped into a progressive id and msenames is
+    % already cached according to that number
+    pos = unique(mstcusip{ii}.CUSIP,'stable');
+    tmp = cat(1,msenames{pos});
+            
     % Match date bucket
-    [~,ptmp] = histc(mst{ii}.Date, [tmp.Namedt; 99999999]);
-    imatched = ptmp ~= 0;
-    ptmp     = ptmp(imatched);
-    
-    % Assign permno
-    Permno{ii}(imatched) = tmp.Permno(ptmp);
+    for r = 1:size(tmp,1);
+        idx             = in(mst{ii}.Date, [tmp.Namedt(r), tmp.Nameendt(r)]);
+        Permno{ii}(idx) = tmp.Permno(r);
+    end
 end
 mst        = cat(1,mst{:});
 mst.Permno = cat(1,Permno{:});
