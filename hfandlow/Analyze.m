@@ -1,5 +1,4 @@
 function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
-
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
 %   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of
@@ -21,71 +20,32 @@ function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, vara
 %                        needed CACHED results.
 %   ANALYZE(..., DEBUG) Run execution sequentially, i.e. not in parallel, to be
 %                       able to step through the code in debug mode.
-
 if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
 if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
-% Simply call the specific subroutine
-addpath(genpath('.\utils'))
-writeto = '.\results\';
-
-% Open matlabpool
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
-
-% Get email credentials if not in debug
-if ~debug; setupemail; end
-
-fhandle = str2func(fun);
-
-try
-    tic
-    dd  = dir(fullfile(path2data,'*.mat'));
-    N   = numel(dd);
-    res = deal(cell(N,1));
+fhandles = {@maxtradepsec
+        @medianprice
+        @badprices
+        @ibadprices
+        @consolidationcounts
+        @NumTimeBuckets
+        @sample
+        @sampleSpy
+        @betacomponents
+        @selrulecounts
+        @return_intraday
+        @rv
+        @countnullrets};
     
-    % Slice cached
-    if isempty(cached)
-        cached = cell(N,1);
-    elseif ~iscell(cached)
-        vnames = setdiff(getVariableNames(cached),'File','stable');
-        cached = accumarray(cached.File,(1:size(cached))',[],@(x) {cached(x,vnames)});
-    end
-    
-    % LOOP in parallel
-    parfor f = 1:N
-        disp(f)
-        % Load data
-        s     = load(fullfile(path2data,dd(f).name), varnames{:});
-        cache = [cached(f,:), f];
-        % Convert to tables
-        if isfield(s,'data') && isa(s.data,'dataset'), s.data = dataset2table(s.data); end
-        if isfield(s,'mst')  && isa(s.mst ,'dataset'), s.mst  = dataset2table(s.mst ); end
-        % Apply function
-        res{f} = fhandle(s, cache, varargin{:});
-    end
-    % Collect all results and convert to dataset
-    res = cat(1,res{:});
-    
-    % Export results and notify
-    filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun);
-    save(fullfile(writeto,filename), 'res')
-    message  = sprintf('Task ''%s'' terminated in %s',fun,sec2time(toc));
-    disp(message)
-    if ~debug, sendmail('o.komarov11@imperial.ac.uk', message,''); end
-catch err
-    filename = fullfile(writeto, sprintf('%s_err.mat',datestr(now,'yyyymmdd_HHMM')));
-    save(filename,'err')
-    if ~debug
-        sendmail('o.komarov11@imperial.ac.uk',sprintf('ERROR in task ''%s''',fun), err.message, {filename})
-    end
-    rethrow(err)
+[hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
+if ~hasFunc
+    error('Unrecognized function "%s".', fun)
 end
-if ~debug
-    delete(gcp('nocreate'))
-%     rmpref('Internet','SMTP_Password')
-end
+fun             = fhandles{pos};
+projectpath     = fileparts(mfilename('fullpath'));
+[res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug, varargin{:});
 end
 %% Subfunctions 
 
@@ -415,10 +375,10 @@ subs  = subs(ikeep);
 ret   = ret(ikeep);
 
 % RV, sum and count
-res     = s.mst(:,{'Permno','Date'});
-res.RV  = accumarray(subs, ret.^2,[],[],NaN);
-res.Sx  = accumarray(subs, ret   ,[],[],NaN);
-res.N   = uint8(accumarray(subs,      1,[],[],NaN));
+res    = s.mst(:,{'Permno','Date'});
+res.RV = accumarray(subs, ret.^2,[],[],NaN);
+res.Sx = accumarray(subs, ret   ,[],[],NaN);
+res.N  = uint8(accumarray(subs,      1,[],[],NaN));
 end
 
 function res = countnullrets(s,cached)
