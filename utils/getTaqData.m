@@ -1,4 +1,4 @@
-function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data)
+function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data, master)
 
 % GETTAQDATA Retrieve TAQ data from a given directory
 % 
@@ -19,11 +19,13 @@ if nargin < 3 || isempty(from),         from      = 0;              end
 if nargin < 4 || isempty(to),           to        = inf;            end
 if nargin < 5,                          varnames  = [];             end
 if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ';   end
- 
+if nargin < 7
+    master = load(fullfile(path2data, 'master'), '-mat');
+end
+
 if isstring(id),  id  = {id}; end
 if isstring(varnames), varnames = {varnames}; end
 
-master = load(fullfile(path2data, 'master'), '-mat');
 
 if isempty(id)
     imst = true(size(master.mst,1),1); 
@@ -160,4 +162,14 @@ out = cat(1,out{:});
 if updatebar
     delete(h)
 end
+end
+
+function idx = mcolon(from, to)
+nobs     = to-from+1;
+idx      = ones(sum(nobs),1);
+pos      = cumsum(nobs(1:end-1))+1;
+df       = from(2:end) - to(1:end-1);
+idx(pos) = df;
+idx(1)   = from(1);
+idx      = cumsum(idx);
 end
