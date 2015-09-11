@@ -24,11 +24,12 @@ function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, 
 
 % Setup
 addpath(genpath('common'))
-poolStartup(4, 'AttachedFiles',{'poolStartup.m'},'debug',debug)
+poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 path2data = fullfile(fileparts(mfilename('fullpath')),path2data);
 writeto   = fullfile(projectpath, 'results');
 if ~debug; setupemail; end
 fun = func2str(fhandle);
+if isstring(varnames), varnames = {varnames}; end
 
 try
     tic
