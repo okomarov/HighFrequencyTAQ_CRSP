@@ -1,4 +1,4 @@
-function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data, master)
+function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data, master, updatebar)
 
 % GETTAQDATA Retrieve TAQ data from a given directory
 % 
@@ -10,8 +10,6 @@ function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data, ma
 %   path2data = '.\data\TAQ\sampled\5min';
 %   data      = getTaqData('symbol', {'A','AA'}, 19961231, 20080122, 'Price', path2data);
 
-addpath .\utils\mcolon
-
 % Checks and defaults
 if nargin < 1,                          idtype    = 'symbol';       end
 if nargin < 2,                          id        = [];             end
@@ -19,16 +17,20 @@ if nargin < 3 || isempty(from),         from      = 0;              end
 if nargin < 4 || isempty(to),           to        = inf;            end
 if nargin < 5,                          varnames  = [];             end
 if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ';   end
-if nargin < 7
+if nargin < 7 || isempty(master)
     master = load(fullfile(path2data, 'master'), '-mat');
 end
-
+if nargin < 8,                          updatebar = true;           end
 if isstring(id),  id  = {id}; end
 if isstring(varnames), varnames = {varnames}; end
 
 
+% Filter by ID
 if isempty(id)
-    imst = true(size(master.mst,1),1); 
+    try
+        master = master.mst;
+    catch
+    end
 else
     
     % Find tickers in the master file
@@ -62,13 +64,15 @@ else
     elseif any(~ifound)
         warning('The following IDs were not matched:%s%s.',sprintf(' ''%s'',',id{~ifound}),char(8))
     end
+    
+    % Filter based on IDs
+    master = master.mst(imst,:);
 end
 
-% Filter based on IDs
-master = master.mst(imst,:);
-
 % Filter based on dates
-master = master(in(master.Date,[from, to]),:);
+if from ~= 0 || isfinite(to)
+    master = master(in(master.Date,[from, to]),:);
+end
 
 % List files
 dd       = dir(fullfile(path2data,'*.mat'));
@@ -96,7 +100,7 @@ hasPermno = any(strcmpi(getVariableNames(master), 'permno'));
 % Data files to load
 files     = unique(master.File);
 nfiles    = numel(files);
-updatebar = nfiles > 1;
+updatebar = updatebar && nfiles > 1;
 out       = cell(nfiles,1);
 elapsed   = zeros(nfiles+1,1);
 
