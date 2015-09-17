@@ -1,11 +1,21 @@
 %% Options
-OPT_HASWEIGHTS = true;
-OPT_LAGDAY     = 1;
-OPT_PTFNUM     = 10;
-OPT_NOMICRO    = true;
+OPT_HASWEIGHTS       = false;
+OPT_LAGDAY           = 1;
+OPT_PTFNUM           = 10;
+OPT_NOMICRO          = false;
+OPT_EDGES_BAD_PRICES = [.5,1.5]; 
 
 %% Data
 datapath = '..\data\TAQ\sampled\5min\new';
+
+% Sample first and last price
+mst = selectAndFilterTrades(OPT_EDGES_BAD_PRICES);
+if isempty(OPT_EDGES_BAD_PRICES)
+    mst = mst(:, {'File','Id','Permno','Date','Isbadday','Isfewobs'});
+else
+    mst = mst(:, {'File','Id','Permno','Date','MedPrice', 'Isbadday','Isfewobs'});
+end
+Analyze('sampleFirstLast',[],mst,[],1, struct('edges',OPT_EDGES_BAD_PRICES))
 
 % Index data
 master     = load(fullfile(datapath,'master'),'-mat');
@@ -54,7 +64,7 @@ else
 end
 %%
 
-ptf  = NaN(N,OPT_PTFNUM);
+ptf = NaN(N,OPT_PTFNUM);
 
 poolStartup(8,'AttachedFiles',{'poolStartup.m'})
 tic
@@ -62,7 +72,7 @@ parfor ii = 2:N
     disp(ii)
     
     % Get data
-    tmp           = getTaqData([],[],[],[],[],datapath,mst{ii});
+    tmp           = getTaqData([],[],[],[],[],datapath,mst{ii},false);
     % unstack
     slice         = NaN(79, nseries);
     [~,col]       = ismember(tmp.Permno, permnos);
