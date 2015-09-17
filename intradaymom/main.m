@@ -25,7 +25,14 @@ if OPT_HASWEIGHTS
         'Data', cap{:,2:end});
 end
 
-% 
+% NYSE breakpoints
+if OPT_NOMICRO
+    try
+        bpoints = loadresults('ME_breakpoints','..\results');
+    catch
+        bpoints = importFrenchData('ME_Breakpoints_TXT.zip','..\results');
+    end
+end
 %% Lag 1 day
 if OPT_HASWEIGHTS
     w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
