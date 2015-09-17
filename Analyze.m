@@ -64,7 +64,9 @@ res = cachedmst;
 end
 
 % Identify bad prices
-function res = badprices(s, cached, dailycut)
+function res = badprices(s, cached, dailycut, edges)
+if nargin < 4, edges = []; end
+
 cached = cached{1};
 
 % Number of observations per day
@@ -74,7 +76,11 @@ nobs = double(s.mst.To - s.mst.From + 1);
 inan = selecttrades(s.data);
 
 % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
-[~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.5, 1.5]);
+if ~isempty(edges)
+    [~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
+else
+    igoodprice = true(size(inan));
+end
 
 % STEP 3) Bad days
 res          = cached(:,{'Id','Date'});
@@ -84,8 +90,20 @@ res.Nbadtot  = uint32(accumarray(subs,  inan | igoodprice ~= 1));
 res.Isbadday = res.Nbadtot > ceil(dailycut*nobs);
 end
 
-% Service function to flag bad prices
-function ibad = ibadprices(s,cached)
+function ibad = ibadprices(s, cached, edges)
+% Service function to flag bad prices in Analyze
+% 
+% Inputs:
+%   s.data - data table
+%   s.mst  - master records table to data
+%   s.idx  - cell array of tickers
+%  
+%   cached - table aligned to s.mst with 'MedPrice' and 'Isbadday' fields
+%
+%   edges  - double with [lb, ub]
+
+if nargin < 3, edges = []; end
+
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
@@ -93,23 +111,25 @@ nobs = double(s.mst.To - s.mst.From + 1);
 ibad = selecttrades(s.data);
 
 % STEP 2) Select bad prices (far from daily median)
-[~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), [.5, 1.5]);
-iprice     = iprice ~= 1;
-ibad       = ibad | iprice;
+if ~isempty(edges)
+    [~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
+    iprice     = iprice ~= 1;
+    ibad       = ibad | iprice;
+end
 
 % STEP 3) Select bad days and whole bad series
 ibad = ibad | RunLength(cached.Isbadday, nobs);
 end
 
 % Count how many observations we loose in consolidation step
-function res = consolidationcounts(s,cached)
+function res = consolidationcounts(s,cached,edges)
 cached = cached{1};
 
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s,cached);
+ibad = ibadprices(s,cached,edges);
 
 % STEP 4) Count how many observations we loose from median consolidation
 nmst              = size(s.mst,1);
@@ -122,7 +142,7 @@ res               = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
-function res = NumTimeBuckets(s,cached)
+function res = NumTimeBuckets(s,cached,edges)
 cached = cached{1};
 % Note: last bin is lb <= x <= ub since data ends at 16:00
 grid   = ([9.5:0.5:15.5, 16.5])/24;
@@ -132,7 +152,7 @@ fun    = @(x) nnz(histc(x, grid));
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s, cached);
+ibad = ibadprices(s, cached,edges);
 
 % STEP 4) Number of time buckets that have a trade
 nmst                  = size(s.mst,1);
@@ -142,35 +162,18 @@ cached.NumTimeBuckets = uint8(accumarray(mstrow(~ibad),Time,[nmst,1], fun));
 
 res = cached(:,{'Id','Date','NumTimeBuckets'});
 end
-    
 
 % Sampling
 function res = sample(s,cached,opt)
 nfile  = cached{end};
 cached = cached{1};
-% Number of observations per day
-nobs   = double(s.mst.To - s.mst.From + 1);
 
-% STEP 1-3) Bad prices
-ibad = ibadprices(s, cached);
+[price, times] = samplePrepare_(s,cached,opt);
 
-% STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
-ibad = ibad | RunLength(cached.Isfewobs,nobs);
-
-% STEP 5) Clean prices - carried out in the median consolidation
-% s.data.Price(inan) = NaN;
-
-if ~all(ibad)
-    
-    % STEP 6) Median prices for same timestamps
-    nmst             = size(s.mst,1);
-    mstrow           = RunLength((1:nmst)',nobs);
-    [unTimes,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
-    price            = accumarray(subs, s.data.Price(~ibad),[],@fast_median);
-    
+if ~isempty(price)
     % STEP 7) Sample on fixed grid (easier to match sp500)
     ngrid          = numel(opt.grid);
-    [price, dates] = fixedsampling(unTimes, price, opt.grid(:));
+    [price, dates] = fixedsampling(times, price, opt.grid(:));
     idx            = fix(dates);
     dates          = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(dates,1);
     
