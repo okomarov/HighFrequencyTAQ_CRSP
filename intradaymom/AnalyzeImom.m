@@ -24,7 +24,7 @@ if nargin < 3,                       cached    = [];                    end
 if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
 
-fhandles = {@getDays};
+fhandles = {@getPrices};
     
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -36,7 +36,3 @@ projectpath     = fileparts(mfilename('fullpath'));
 end
 
 %% Subfunctions
-function out = getDays(s,cache)
-days = unique(s.mst.Date);
-out = table(days, repmat(cache{end},size(days)),'VariableNames',{'Days','File'});
-end
