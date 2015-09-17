@@ -1,39 +1,46 @@
-function mst = selectAndFilterTrades()
-
+function mst = selectAndFilterTrades(edgesBadPrices)
+if nargin < 1, edgesBadPrices = []; end
+commonroot = fullfile(fileparts(mfilename('fullpath')),'..'); 
+commonres  = fullfile(commonroot, 'results');
 % Load big master file
-path2data = '.\data\TAQ';
+path2data = fullfile(commonroot, 'data\TAQ');
 load(fullfile(path2data,'master'),'-mat')
 
 % Map unique ID to mst
 testname = 'masterPermno';
 try
-    res = loadresults(testname);
+    res = loadresults(testname,commonres);
 catch
     res = mapPermno2master;
 end
 [~,pos]    = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Permno = res.Permno(pos);
 
-% Median price
-testname = 'medianprice';
-try
-    res = loadresults(testname);
-catch
-    res = Analyze(testname,[],mst(:, {'File','Id','Date'}));
-end
-[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.MedPrice = res.MedPrice(pos);
-
 % Nobs
 mst.Nobs = mst.To - mst.From +1;
+
+if ~isempty(edgesBadPrices)
+    % Median price
+    testname = 'medianprice';
+    try
+        res = loadresults(testname, commonres);
+    catch
+        res = Analyze(testname,[],mst(:, {'File','Id','Date'}));
+    end
+    [~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+    mst.MedPrice = res.MedPrice(pos);
+    keepflds = {'File','Id','Date','MedPrice'};
+else
+    keepflds = {'File','Id','Date'};
+end
 
 % Bad prices days
 testname = 'badprices';
 try
-    res = loadresults(testname);
+    res = loadresults(testname, commonres);
 catch
     dailycut = 0.5;
-    res      = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice'}),[],[],dailycut);
+    res      = Analyze(testname,[],mst(:, keepflds),[],[], dailycut, edgesBadPrices);
 end
 [~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Nbadsel  = res.Nbadsel(pos);
@@ -49,12 +56,18 @@ threshold    = 0.1;
 badseries    = totbad./totobs > threshold;
 mst.Isbadday = mst.Isbadday | badseries(subs);
 
+if ~isempty(edgesBadPrices)
+    keepflds = {'File','Id','Date','MedPrice','Isbadday'};
+else
+    keepflds = {'File','Id','Date','Isbadday'};
+end
+
 % Count losing obs with timestamp consolidation
 testname = 'consolidationcounts';
 try
-    res = loadresults(testname);
+    res = loadresults(testname, commonres);
 catch
-    res = Analyze(testname,[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}));
+    res = Analyze(testname,[],mst(:, keepflds),[],[],edgesBadPrices);
 end
 [~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.Nconsolidated = res.Nconsolidated(pos);
@@ -62,9 +75,9 @@ mst.Nconsolidated = res.Nconsolidated(pos);
 % Count number of time buckets in a day that have a trade
 testname = 'NumTimeBuckets';
 try
-    res = loadresults(testname);
+    res = loadresults(testname, commonres);
 catch
-    res = Analyze('NumTimeBuckets',[],mst(:, {'File','Id','Date','MedPrice','Isbadday'}));
+    res = Analyze('NumTimeBuckets',[],mst(:, keepflds),[],[],edgesBadPrices);
 end
 [~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.NumTimeBuckets = res.NumTimeBuckets(pos);
