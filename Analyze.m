@@ -31,6 +31,7 @@ fhandles = {@medianprice
         @consolidationcounts
         @NumTimeBuckets
         @sample
+        @sampleFirstLast
         @sampleSpy};
     
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
@@ -188,6 +189,50 @@ if ~isempty(price)
     % Save
     fname = fullfile(opt.writeto,sprintf(opt.fmtname,nfile));
     save(fname, '-struct','s')
+end
+end
+
+% Sampling
+function res = sampleFirstLast(s,cached,opt)
+cached = cached{1};
+res = [];
+[price, times] = samplePrepare_(s,cached,opt);
+if ~isempty(price)
+    res = cached(:,{'Date','Permno'});
+    posdata = fix(times);
+    % First
+    idx = [true; logical(diff(fix(times)))];
+    res.FirstPrice(posdata(idx),1) = price(idx); 
+    res.FirstTime(posdata(idx),1) = serial2hhmmss(times(idx)); 
+    % Last
+    idx = [idx(2:end); true];
+    res.LastPrice(posdata(idx),1) = price(idx); 
+    res.LastTime(posdata(idx),1) = serial2hhmmss(times(idx)); 
+end
+end
+
+function [prices,times] = samplePrepare_(s,cached,opt)
+% Number of observations per day
+nobs = double(s.mst.To - s.mst.From + 1);
+
+% STEP 1-3) Bad prices
+ibad = ibadprices(s, cached, opt.edges);
+
+% STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
+ibad = ibad | RunLength(cached.Isfewobs,nobs);
+
+% STEP 5) Clean prices - carried out in the median consolidation
+% s.data.Price(inan) = NaN;
+
+% STEP 6) Median prices for same timestamps
+if ~all(ibad)
+    nmst           = size(s.mst,1);
+    mstrow         = RunLength((1:nmst)',nobs);
+    [times,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
+    prices         = accumarray(subs, s.data.Price(~ibad),[],@fast_median);
+else
+    prices = [];
+    times  = [];
 end
 end
 
