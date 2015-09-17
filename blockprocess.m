@@ -24,8 +24,9 @@ function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, 
 
 % Setup
 addpath(genpath('common'))
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
-path2data = fullfile(fileparts(mfilename('fullpath')),path2data);
+rootfolder = fileparts(mfilename('fullpath'));
+poolStartup(4, 'AttachedFiles',{fullfile(rootfolder, 'utils\poolStartup.m')},'debug',debug)
+path2data = fullfile(rootfolder,path2data);
 writeto   = fullfile(projectpath, 'results');
 if ~debug; setupemail; end
 fun = func2str(fhandle);
