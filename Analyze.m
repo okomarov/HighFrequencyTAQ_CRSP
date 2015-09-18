@@ -224,12 +224,14 @@ ibad = ibad | RunLength(cached.Isfewobs,nobs);
 % STEP 5) Clean prices - carried out in the median consolidation
 % s.data.Price(inan) = NaN;
 
-% STEP 6) Median prices for same timestamps
+% STEP 6) Volume-weighted average price for same timestamps
 if ~all(ibad)
     nmst           = size(s.mst,1);
     mstrow         = RunLength((1:nmst)',nobs);
     [times,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
-    prices         = accumarray(subs, s.data.Price(~ibad),[],@fast_median);
+    vol            = double(s.data.Volume)/100;
+    prices         = accumarray(subs, s.data.Price(~ibad).*vol(~ibad)) ./ ...
+                     accumarray(subs, vol(~ibad));
 else
     prices = [];
     times  = [];
