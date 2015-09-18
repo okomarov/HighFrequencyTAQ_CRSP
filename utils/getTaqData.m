@@ -18,12 +18,16 @@ if nargin < 4 || isempty(to),           to        = inf;            end
 if nargin < 5,                          varnames  = [];             end
 if nargin < 6 || isempty(path2data),    path2data = '.\data\TAQ';   end
 if nargin < 7 || isempty(master)
-    master = load(fullfile(path2data, 'master'), '-mat');
+    try
+        master = load(fullfile(path2data, 'master'), '-mat');
+    catch
+        master    = load(fullfile('..',path2data, 'master'), '-mat');
+        path2data = fullfile('..',path2data);
+    end
 end
 if nargin < 8,                          updatebar = true;           end
 if isstring(id),  id  = {id}; end
 if isstring(varnames), varnames = {varnames}; end
-
 
 % Filter by ID
 if isempty(id)
@@ -40,7 +44,11 @@ else
             imst          = ismember(master.mst.Id,ids);
             
         case 'permno'
-            id2permno = loadresults('masterPermno');
+            try 
+                id2permno = loadresults('masterPermno');
+            catch 
+                id2permno = loadresults('masterPermno','..\results');
+            end
             idx       = ismember(id2permno.Permno,id);
             id2permno = id2permno(idx,:);
             ifound    = ismember(id, id2permno.Permno);
