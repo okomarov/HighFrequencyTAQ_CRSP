@@ -194,20 +194,27 @@ end
 
 % Sampling
 function res = sampleFirstLast(s,cached,opt)
+nfile  = cached{end};
 cached = cached{1};
-res = [];
+res    = [];
+
 [price, times] = samplePrepare_(s,cached,opt);
+
 if ~isempty(price)
-    res = cached(:,{'Date','Permno'});
+
+    res     = cached(:,{'Date','Permno'});
     posdata = fix(times);
+    
     % First
-    idx = [true; logical(diff(fix(times)))];
+    idx                            = [true; logical(diff(fix(times)))];
     res.FirstPrice(posdata(idx),1) = price(idx); 
-    res.FirstTime(posdata(idx),1) = serial2hhmmss(times(idx)); 
+    res.FirstTime(posdata(idx),1)  = uint32(serial2hhmmss(times(idx))); 
     % Last
-    idx = [idx(2:end); true];
-    res.LastPrice(posdata(idx),1) = price(idx); 
-    res.LastTime(posdata(idx),1) = serial2hhmmss(times(idx)); 
+    idx                            = [idx(2:end); true];
+    res.LastPrice(posdata(idx),1)  = price(idx); 
+    res.LastTime(posdata(idx),1)   = uint32(serial2hhmmss(times(idx))); 
+    
+    res.File = repmat(uint16(nfile), size(res,1),1);
 end
 end
 
