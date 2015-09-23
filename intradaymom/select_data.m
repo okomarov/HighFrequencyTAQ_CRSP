@@ -33,10 +33,21 @@ save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
 
 % Capitalizations
-cap = getMktCap(master.mst.Permno, master.mst.Date,false,false,1);
-cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
+cap         = getMktCap(master.mst.Permno,[],false,false,1);
+cap         = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
     'Dates', cap{:,1},...
     'Data', cap{:,2:end});
+% Date intersection
+idx         = ismember(cap.Dates, unique(master.mst.Date));
+cap.Dates   = cap.Dates(idx);
+cap.Data    = cap.Data(idx,:);
+% Permno expansion
+xpermnos    = matlab.internal.table.numberedNames('x',unique(master.mst.Permno),false);
+[~,pos]     = ismember(cap.Permnos, xpermnos);
+data        = NaN(numel(cap.Dates), numel(xpermnos));
+data(:,pos) = cap.Data;
+cap.Data    = data;
+cap.Permnos = xpermnos;
 
 save('results\cap.mat','cap')
 
