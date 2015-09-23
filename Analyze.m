@@ -58,6 +58,7 @@ subs = uint32(RunLength((1:nmst)',nobs));
 
 % Daily median price
 cachedmst.MedPrice      = accumarray(subs(~inan), s.data.Price(~inan),[nmst,1], @fast_median);
+cachedmst.Nbadsel       = uint32(accumarray(subs,  inan,[nmst,1]));
 idx                     = cachedmst.MedPrice == 0;
 cachedmst.MedPrice(idx) = NaN;
 
