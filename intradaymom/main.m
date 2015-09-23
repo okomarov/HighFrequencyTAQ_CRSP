@@ -1,12 +1,13 @@
 %% Options
-OPT_HASWEIGHTS       = false;
-OPT_LAGDAY           = 1;
-OPT_PTFNUM           = 10;
-OPT_NOMICRO          = false;
-OPT_EDGES_BAD_PRICES = [.5,1.5];
+OPT_HASWEIGHTS    = true;
+OPT_LAGDAY        = 1;
+OPT_PTFNUM        = 10;
+OPT_PTFNUM_DOUBLE = [5,5];
+OPT_INDEP_SORT    = false;
+OPT_NOMICRO       = true;
 
 %% Data
-datapath = '..\data\TAQ\sampled\5min\new';
+datapath = '..\data\TAQ\sampled\5min\nobad';
 
 % Index data
 master = loadresults('master');
@@ -19,10 +20,7 @@ permnos = unique(master.mst.Permno);
 nseries = numel(permnos);
 
 % Capitalizations
-if OPT_HASWEIGHTS
-    % First and last price
-    cap = loadresults('cap');
-end
+cap = loadresults('cap');
 
 % NYSE breakpoints
 if OPT_NOMICRO
@@ -31,9 +29,8 @@ if OPT_NOMICRO
     bpoints = bpoints(idx,{'Date','Var3'});
 end
 %% Lag 1 period
-if OPT_HASWEIGHTS
-    w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
-end
+w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
+
 if OPT_NOMICRO
     bpoints.Var3 = [NaN(OPT_LAGDAY,1); bpoints.Var3(1:end-OPT_LAGDAY)];
 end
@@ -47,14 +44,13 @@ nrows          = accumarray(subs,1);
 mst            = mat2cell(master.mst,nrows,6);
 
 % price first last
-price_fl = mat2cell(price_fl,nrows,6);
+price_fl       = sortrows(price_fl,'Date','ascend');
+[dates,~,subs] = unique(price_fl.Date);
+nrows          = accumarray(subs,1);
+price_fl       = mat2cell(price_fl,nrows,size(price_fl,2));
 
 % cap
-if OPT_HASWEIGHTS
-    w = num2cell(w,2);
-else
-    w = cell(N,1);
-end
+w = num2cell(w,2);
 %%
 
 ptf = NaN(N,OPT_PTFNUM);
@@ -72,16 +68,46 @@ parfor ii = 2:N
     [un,irow,row] = unique(serial2hhmmss(tmp.Datetime));
     pos           = (col-1)*79+row;
     price(pos)    = tmp.Price;
+        
+    price_first      = NaN(1,nseries);
+    [idx,col]        = ismember(price_fl{ii}.Permno, permnos);
+    price_first(col) = price_fl{ii}.FirstPrice(idx);
+    
+    price_last      = NaN(1,nseries);
+    price_last(col) = price_fl{ii}.LastPrice(idx);
     
     % Signal: Filled back half-day ret
-    past_ret = flipud(nanfillts(price(37:-1:1,:)));
-    past_ret = past_ret(end,:)./past_ret(1,:)-1;
-    
-    % Filter out microcaps
-    
+    past_ret = price(FORMATION,:)./price_first-1;
+
     % hpr with 5 min skip
-    ret       = price(end,:)./price(38,:)-1;
-    ptf(ii,:) = portfolio_sort(past_ret,ret, 'PortfolioNumber',10,'Weights',w{ii});
+    hpr = price_last./price(FORMATION+2,:)-1;
+    
+    % Filter microcaps
+    if OPT_NOMICRO
+        nyseCap  = bpoints.Var3(ismember(bpoints.Date, price_fl{ii}.Date/100));
+        idx      = price_first < 5 | w{ii} < nyseCap;
+        hpr(idx) = NaN;
+    end
+    
+    if OPT_HASWEIGHTS
+        weight = w{ii};
+    else
+        weight = [];
+    end
+    % PTF ret
+    ptf(ii,:) = portfolio_sort(hpr,past_ret, 'PortfolioNumber',OPT_PTFNUM,...
+        'Weights',weight);
+%     
+%     % PTF ret
+%     [ptf2(ii,:), bin2(ii,:)] = portfolio_sort(hpr,{w{ii},past_ret}, 'PortfolioNumber',OPT_PTFNUM_DOUBLE,...
+%         'Weights',weight,'IndipendentSort',OPT_INDEP_SORT);
 end
 toc
-stratstats(ptf)
+OPT_HASWEIGHTS
+FORMATION
+t = stratstats(dates, ptf2 ,'d',0);
+% t = stratstats(dates, [ptf, ptf(:,1)-ptf(:,end)] ,'d',0);
+t{:,[1:5, 7:end-1]}'
+% t.Properties.VariableNames([1:5, 7:end-1])
+
+% reshape(nanmean(ptf2), OPT_PTFNUM_DOUBLE)'
