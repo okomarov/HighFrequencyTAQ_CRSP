@@ -66,7 +66,7 @@ res = cachedmst;
 end
 
 % Identify bad prices
-function res = badprices(s, cached, dailycut, edges)
+function res = badprices(s, cached, edges)
 if nargin < 4, edges = []; end
 
 cached = cached{1};
@@ -79,7 +79,7 @@ inan = selecttrades(s.data);
 
 % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
 if ~isempty(edges)
-    [~,igoodprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
+    igoodprice = in(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
 else
     igoodprice = true(size(inan));
 end
@@ -88,8 +88,7 @@ end
 res          = cached(:,{'Id','Date'});
 subs         = uint32(RunLength((1:size(cached,1))',nobs));
 res.Nbadsel  = uint32(accumarray(subs,  inan));
-res.Nbadtot  = uint32(accumarray(subs,  inan | igoodprice ~= 1));
-res.Isbadday = res.Nbadtot > ceil(dailycut*nobs);
+res.Nbadtot  = uint32(accumarray(subs,  inan | ~igoodprice));
 end
 
 function ibad = ibadprices(s, cached, edges)
@@ -148,7 +147,7 @@ function res = NumTimeBuckets(s,cached,edges)
 cached = cached{1};
 % Note: last bin is lb <= x <= ub since data ends at 16:00
 grid   = ([9.5:0.5:15.5, 16.5])/24;
-fun    = @(x) nnz(histc(x, grid));
+fun    = @(x) nnz(histcounts(x, grid));
 
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
