@@ -3,7 +3,7 @@ if nargin < 1, edgesBadPrices = []; end
 commonroot = fullfile(fileparts(mfilename('fullpath')),'..'); 
 commonres  = fullfile(commonroot, 'results');
 % Load big master file
-path2data = fullfile(commonroot, 'data\TAQ');
+path2data  = fullfile(commonroot, 'data\TAQ');
 load(fullfile(path2data,'master'),'-mat')
 
 % Map unique ID to mst
@@ -29,7 +29,7 @@ if ~isempty(edgesBadPrices)
     end
     [~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
     mst.MedPrice = res.MedPrice(pos);
-    keepflds = {'File','Id','Date','MedPrice'};
+    keepflds     = {'File','Id','Date','MedPrice'};
 else
     keepflds = {'File','Id','Date'};
 end
@@ -39,13 +39,17 @@ testname = 'badprices';
 try
     res = loadresults(testname, commonres);
 catch
-    dailycut = 0.5;
-    res      = Analyze(testname,[],mst(:, keepflds),[],[], dailycut, edgesBadPrices);
+    res = Analyze(testname,[],mst(:, keepflds),[],[], edgesBadPrices);
 end
-[~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.Nbadsel  = res.Nbadsel(pos);
-mst.Nbadtot  = res.Nbadtot(pos);
-mst.Isbadday = res.Isbadday(pos);
+[~,pos]     = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+mst.Nbadsel = res.Nbadsel(pos);
+if ~isempty(edgesBadPrices)
+    mst.Nbadtot = res.Nbadtot(pos);
+else
+    mst.Nbadtot = res.Nbadsel;
+end
+dailycut     = 0.5;
+mst.Isbadday = mst.Nbadtot./mst.Nobs > dailycut;
 
 % Bad series
 subs         = mst.Permno + 1; % Shift by one to avoid 0 permno problems
