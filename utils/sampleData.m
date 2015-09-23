@@ -1,5 +1,5 @@
 function sampleData(grid, writeto, fmtname, edgesBadPrices)
-% sampleData(grid, writeto, fmtname)
+% sampleData(grid, writeto, fmtname, edgesBadPrices)
 
 % Sampling params
 if nargin < 1 || isempty(grid),    grid    = (9.5/24:5/(60*24):16/24)'; end
