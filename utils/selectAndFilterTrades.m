@@ -86,6 +86,12 @@ end
 [~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.NumTimeBuckets = res.NumTimeBuckets(pos);
 
+% Drop half-trading days
+[unD,~,subs] = unique(res.Date);
+tmp          = accumarray([subs,uint16(res.NumTimeBuckets+1)],1);
+halfDays     = unD(tmp(:,14) == 0);
+mst.Isbadday = mst.Isbadday | ismember(mst.Date, halfDays);
+
 % Select with minimum number of observations
 subs            = mst.Permno + 1;
 mst.Ngoodtrades = mst.Nobs - mst.Nbadtot - mst.Nconsolidated;
