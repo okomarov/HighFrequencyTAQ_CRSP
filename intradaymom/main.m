@@ -98,9 +98,9 @@ parfor ii = 2:N
     ptf(ii,:) = portfolio_sort(hpr,past_ret, 'PortfolioNumber',OPT_PTFNUM,...
         'Weights',weight);
 %     
-%     % PTF ret
-%     [ptf2(ii,:), bin2(ii,:)] = portfolio_sort(hpr,{w{ii},past_ret}, 'PortfolioNumber',OPT_PTFNUM_DOUBLE,...
-%         'Weights',weight,'IndipendentSort',OPT_INDEP_SORT);
+    % PTF ret
+    [ptf2(ii,:), bin2(ii,:)] = portfolio_sort(hpr,{w{ii},past_ret}, 'PortfolioNumber',OPT_PTFNUM_DOUBLE,...
+        'Weights',weight,'IndependentSort',OPT_INDEP_SORT);
 end
 toc
 OPT_HASWEIGHTS
