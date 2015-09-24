@@ -95,19 +95,20 @@ parfor ii = 2:N
         weight = [];
     end
     % PTF ret
-    ptf(ii,:) = portfolio_sort(hpr,past_ret, 'PortfolioNumber',OPT_PTFNUM,...
-        'Weights',weight);
-%     
+    ptf(ii,:) = portfolio_sort(hpr,past_ret, 'PortfolioNumber',OPT_PTFNUM, 'Weights',weight);
+    
     % PTF ret
     [ptf2(ii,:), bin2(ii,:)] = portfolio_sort(hpr,{w{ii},past_ret}, 'PortfolioNumber',OPT_PTFNUM_DOUBLE,...
         'Weights',weight,'IndependentSort',OPT_INDEP_SORT);
 end
 toc
-OPT_HASWEIGHTS
-FORMATION
-t = stratstats(dates, ptf2 ,'d',0);
-% t = stratstats(dates, [ptf, ptf(:,1)-ptf(:,end)] ,'d',0);
-t{:,[1:5, 7:end-1]}'
-% t.Properties.VariableNames([1:5, 7:end-1])
 
-% reshape(nanmean(ptf2), OPT_PTFNUM_DOUBLE)'
+t = stratstats(dates, [ptf, ptf(:,1)-ptf(:,end)] ,'d',0);
+t{:,:}'
+
+t2 = stratstats(dates, ptf2 ,'d',0);
+t2{:,:}'
+reshape(t2.Annret, OPT_PTFNUM_DOUBLE)'
+% t.Properties.VariableNames'
+
+OPT_HASWEIGHTS
