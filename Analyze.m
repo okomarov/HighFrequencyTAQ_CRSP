@@ -32,6 +32,7 @@ fhandles = {@medianprice
         @NumTimeBuckets
         @sample
         @sampleFirstLast
+        @VWAP
         @sampleSpy};
     
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
@@ -85,10 +86,10 @@ else
 end
 
 % STEP 3) Bad days
-res          = cached(:,{'Id','Date'});
-subs         = uint32(RunLength((1:size(cached,1))',nobs));
-res.Nbadsel  = uint32(accumarray(subs,  inan));
-res.Nbadtot  = uint32(accumarray(subs,  inan | ~igoodprice));
+res         = cached(:,{'Id','Date'});
+subs        = uint32(RunLength((1:size(cached,1))',nobs));
+res.Nbadsel = uint32(accumarray(subs,  inan));
+res.Nbadtot = uint32(accumarray(subs,  inan | ~igoodprice));
 end
 
 function ibad = ibadprices(s, cached, edges)
@@ -214,6 +215,46 @@ if ~isempty(price)
     res.LastPrice(posdata(idx),1)  = price(idx); 
     res.LastTime(posdata(idx),1)   = uint32(serial2hhmmss(times(idx))); 
     
+    res.File = repmat(uint16(nfile), size(res,1),1);
+end
+end
+% Sampling
+function res = VWAP(s,cached,opt)
+% Volume weighted average price
+nfile  = cached{end};
+cached = cached{1};
+res    = [];
+
+[price, times, vol] = samplePrepare_(s,cached,opt);
+
+if ~isempty(price)
+    res = cached(:,{'Date','Permno'});
+   
+    % Accumulation subs 
+    row    = fix(times);
+    hhmmss = serial2hhmmss(times);
+    col    = zeros(size(row));
+    nedges = size(opt.edgesVWAP,1);
+    for r = 1:nedges
+        idx      = in(hhmmss, opt.edgesVWAP(r,:));
+        col(idx) = r;
+    end
+    subs = [row, col];
+    
+    sz = [size(res,1), nedges];
+    
+    % Drop uncategorized
+    ikeep = col ~= 0;
+    VWAP  = accumarray(subs(ikeep,:), price(ikeep).*vol(ikeep), sz) ./...
+            accumarray(subs(ikeep,:), vol(ikeep), sz);
+    
+    % Keep only record for which we have prices
+    row      = unique(row);
+    res      = res(row,:);
+    dates    = repmat(res.Date,   1, nedges)';
+    permnos  = repmat(res.Permno, 1, nedges)';
+    VWAP     = VWAP(row,:);
+    res      = table(dates(:), permnos(:),VWAP(:),'VariableNames',{'Date','Permno','Price'});
     res.File = repmat(uint16(nfile), size(res,1),1);
 end
 end
