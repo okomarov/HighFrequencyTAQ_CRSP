@@ -218,12 +218,18 @@ if ~isempty(price)
 end
 end
 
-function [prices,times] = samplePrepare_(s,cached,opt)
+function [prices,times, voltot] = samplePrepare_(s,cached,opt)
+if isfield(opt,'edges')
+    edges = opt.edges;
+else
+    edges = [];
+end
+
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s, cached, opt.edges);
+ibad = ibadprices(s, cached, edges);
 
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
 ibad = ibad | RunLength(cached.Isfewobs,nobs);
@@ -237,11 +243,12 @@ if ~all(ibad)
     mstrow         = RunLength((1:nmst)',nobs);
     [times,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
     vol            = double(s.data.Volume)/100;
-    prices         = accumarray(subs, s.data.Price(~ibad).*vol(~ibad)) ./ ...
-                     accumarray(subs, vol(~ibad));
+    voltot         = accumarray(subs, vol(~ibad));
+    prices         = accumarray(subs, s.data.Price(~ibad).*vol(~ibad)) ./ voltot;
 else
     prices = [];
     times  = [];
+    voltot = [];
 end
 end
 
