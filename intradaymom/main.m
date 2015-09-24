@@ -53,39 +53,34 @@ price_fl       = mat2cell(price_fl,nrows,size(price_fl,2));
 w = num2cell(w,2);
 %%
 
-ptf = NaN(N,OPT_PTFNUM);
+ptf  = NaN(N,OPT_PTFNUM);
+ptf2 = NaN(N,prod(OPT_PTFNUM_DOUBLE));
+bin2 = NaN(N, nseries);
+
+% 12:00, 12:30 and 13:00
+END_TIME_SIGNAL = 120000;
+START_TIME_HPR = 121000;
 
 poolStartup(8,'AttachedFiles',{'poolStartup.m'})
 tic
 parfor ii = 2:N
     disp(ii)
     
-    % Get sampled data
-    tmp           = getTaqData([],[],[],[],[],datapath,mst{ii},false);
-    % unstack
-    price         = NaN(79, nseries);
-    [~,col]       = ismember(tmp.Permno, permnos);
-    [un,irow,row] = unique(serial2hhmmss(tmp.Datetime));
-    pos           = (col-1)*79+row;
-    price(pos)    = tmp.Price;
-        
-    price_first      = NaN(1,nseries);
-    [idx,col]        = ismember(price_fl{ii}.Permno, permnos);
-    price_first(col) = price_fl{ii}.FirstPrice(idx);
-    
-    price_last      = NaN(1,nseries);
-    price_last(col) = price_fl{ii}.LastPrice(idx);
-    
+    % TAQ_EXACT
+    s = struct('permnos',permnos,'datapath',datapath, 'mst', mst{ii},'price_fl',price_fl{ii},...
+        'END_TIME_SIGNAL', END_TIME_SIGNAL, 'START_TIME_HPR',START_TIME_HPR)
+    [st_signal, en_signal, st_hpr, end_hpr] = getPrices('taq_exact',s);
+
     % Signal: Filled back half-day ret
-    past_ret = price(FORMATION,:)./price_first-1;
+    past_ret = en_signal./st_signal-1;
 
     % hpr with 5 min skip
-    hpr = price_last./price(FORMATION+2,:)-1;
+    hpr = end_hpr./st_hpr-1;
     
     % Filter microcaps
     if OPT_NOMICRO
         nyseCap  = bpoints.Var3(ismember(bpoints.Date, price_fl{ii}.Date/100));
-        idx      = price_first < 5 | w{ii} < nyseCap;
+        idx      = st_signal < 5 | w{ii} < nyseCap;
         hpr(idx) = NaN;
     end
     
