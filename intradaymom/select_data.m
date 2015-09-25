@@ -74,3 +74,7 @@ save('results\cap.mat','cap')
 
 % NYSE breakpoints
 bpoints = importFrenchData('ME_Breakpoints_TXT.zip','..\results');
+
+% FF 49 industry codes
+industry = getFF49IndustryCodes(master.mst);
+save('results\FF49.mat','industry')
