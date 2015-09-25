@@ -1,11 +1,18 @@
 %% Options
-OPT_HASWEIGHTS    = true;
-OPT_LAGDAY        = 1;
+OPT_LAGDAY  = 1;
+OPT_NOMICRO = true;
+
+OPT_HASWEIGHTS = true;
+OPT_INDEP_SORT = false;
+
 OPT_PTFNUM        = 10;
 OPT_PTFNUM_DOUBLE = [5,5];
-OPT_INDEP_SORT    = false;
-OPT_NOMICRO       = true;
 
+% Choose one from the dictionary
+OPT_PRICE_TYPE = 1;
+
+OPT_TYPE_DICT  = {1,'taq_exact'; 2, 'taq_vwap'; 3, 'taq_exact/vwap'};
+OPT_PRICE_TYPE = OPT_TYPE_DICT{ismember([OPT_TYPE_DICT{:,1}], OPT_PRICE_TYPE),2};
 %% Data
 datapath = '..\data\TAQ\sampled\5min\nobad';
 
@@ -59,7 +66,7 @@ bin2 = NaN(N, nseries);
 
 % 12:00, 12:30 and 13:00
 END_TIME_SIGNAL = 120000;
-START_TIME_HPR = 121000;
+START_TIME_HPR  = 121000;
 
 poolStartup(8,'AttachedFiles',{'poolStartup.m'})
 tic
@@ -69,7 +76,8 @@ parfor ii = 2:N
     % TAQ_EXACT
     s = struct('permnos',permnos,'datapath',datapath, 'mst', mst{ii},'price_fl',price_fl{ii},...
         'END_TIME_SIGNAL', END_TIME_SIGNAL, 'START_TIME_HPR',START_TIME_HPR)
-    [st_signal, en_signal, st_hpr, end_hpr] = getPrices('taq_exact',s);
+    
+    [st_signal, en_signal, st_hpr, end_hpr] = getPrices(OPT_PRICE_TYPE,s);
 
     % Signal: Filled back half-day ret
     past_ret = en_signal./st_signal-1;
@@ -89,6 +97,7 @@ parfor ii = 2:N
     else
         weight = [];
     end
+    
     % PTF ret
     ptf(ii,:) = portfolio_sort(hpr,past_ret, 'PortfolioNumber',OPT_PTFNUM, 'Weights',weight);
     
