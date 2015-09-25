@@ -253,8 +253,9 @@ if ~isempty(price)
     res      = res(row,:);
     dates    = repmat(res.Date,   1, nedges)';
     permnos  = repmat(res.Permno, 1, nedges)';
+    hhmmss   = repmat(uint32(opt.edgesVWAP(:,1))', numel(row), 1)'; 
     VWAP     = VWAP(row,:);
-    res      = table(dates(:), permnos(:),VWAP(:),'VariableNames',{'Date','Permno','Price'});
+    res      = table(dates(:), hhmmss(:),permnos(:),VWAP(:),'VariableNames',{'Date','Time','Permno','Price'});
     res.File = repmat(uint16(nfile), size(res,1),1);
 end
 end
