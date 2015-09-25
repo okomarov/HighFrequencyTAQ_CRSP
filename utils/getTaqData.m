@@ -144,7 +144,7 @@ for ii = 1:nfiles
             
     % Records within the loaded data file
     mstfile = master(master.File == files(ii),:);
-    idata   = mcolon(mstfile.From,mstfile.To);
+    idata   = mcolonint(mstfile.From,mstfile.To);
     blocks  = double(mstfile.To - mstfile.From + 1);
     Id      = RunLength(mstfile.Id, blocks);
     out{ii} = table(Id(:),'VariableNames',{'Id'}); 
@@ -174,14 +174,4 @@ out = cat(1,out{:});
 if updatebar
     delete(h)
 end
-end
-
-function idx = mcolon(from, to)
-nobs     = to-from+1;
-idx      = ones(sum(nobs),1);
-pos      = cumsum(nobs(1:end-1))+1;
-df       = from(2:end) - to(1:end-1);
-idx(pos) = df;
-idx(1)   = from(1);
-idx      = cumsum(idx);
 end
