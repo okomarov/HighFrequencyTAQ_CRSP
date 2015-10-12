@@ -32,7 +32,7 @@ cap = loadresults('cap');
 % NYSE breakpoints
 if OPT_NOMICRO
     bpoints = loadresults('ME_breakpoints_TXT','..\results');
-    idx     = ismember(bpoints.Date, unique(master.mst.Date/100));
+    idx     = ismember(bpoints.Date, cap.Dates/100);
     bpoints = bpoints(idx,{'Date','Var3'});
 end
 %% Lag 1 period
@@ -87,8 +87,7 @@ parfor ii = 2:N
     
     % Filter microcaps
     if OPT_NOMICRO
-        nyseCap  = bpoints.Var3(ismember(bpoints.Date, price_fl{ii}.Date/100));
-        idx      = st_signal < 5 | w{ii} < nyseCap;
+        idx      = st_signal < 5 | w{ii} < bpoints.Var3;
         hpr(idx) = NaN;
     end
     
