@@ -249,14 +249,12 @@ if ~isempty(price)
             accumarray(subs(ikeep,:), vol(ikeep), sz);
     
     % Keep only record for which we have prices
-    row      = unique(row);
-    res      = res(row,:);
-    dates    = repmat(res.Date,   1, nedges);
-    permnos  = repmat(res.Permno, 1, nedges);
-    hhmmss   = repmat(uint32(opt.edgesVWAP(:,1))', numel(row), 1); 
-    VWAP     = VWAP(row,:);
-    res      = table(dates(:), hhmmss(:),permnos(:),VWAP(:),'VariableNames',{'Date','Time','Permno','Price'});
-    res.File = repmat(uint16(nfile), size(res,1),1);
+    row       = unique(row);
+    res       = res(row,:);
+    VWAP      = VWAP(row,:);
+    VWAPnames = arrayfun(@(x) sprintf('T%d',x),opt.edgesVWAP(:,1),'un',0);
+    res       = [res, array2table(VWAP,'VariableNames',VWAPnames)];
+    res.File  = repmat(uint16(nfile), size(res,1),1);
 end
 end
 
