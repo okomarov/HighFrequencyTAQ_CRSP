@@ -1,5 +1,8 @@
 function res = estimateMktCap()
-
+% Estimates the market cap as no. of shares times price
+%
+% NOTES:
+%   - SHROUT is thousands of outstanding shares
 from = 19930101;
 
 % Load prices
