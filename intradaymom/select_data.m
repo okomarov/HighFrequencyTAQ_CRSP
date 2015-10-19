@@ -1,10 +1,20 @@
-OPT_EDGES_BAD_PRICES = [];
 
+OPT_EDGES_BAD_PRICES = [];
+OPT_LAGDAY           = 1;
 %% Import data
 
 % Index data
 datapath = '..\data\TAQ\sampled\5min\nobad';
 master   = load(fullfile(datapath,'master'),'-mat');
+
+% Common shares
+idx        = iscommonshare(master.mst);
+master.mst = master.mst(idx,:);
+
+% Has mkt cap
+cap        = loadresults('mktcap','..\results');
+idx        = ismembIdDate(master.mst.Permno, master.mst.Date, cap.Permno, cap.Date);
+master.mst = master.mst(idx,:);
 
 % Sample first and last price
 try
@@ -37,25 +47,19 @@ end
 [idx,pos] = ismembIdDate(master.mst.Permno, master.mst.Date, vwap.Permno, vwap.Date);
 vwap      = vwap(pos(idx),:);
 
-% Common shares
-shrcd = loadresults('shrcd','../results');
-
-idx        = iscommonshare(master.mst, shrcd);
-master.mst = master.mst(idx,:);
-
-idx      = iscommonshare(price_fl, shrcd);
-price_fl = price_fl(idx,:);
-
-idx  = iscommonshare(vwap, shrcd);
-vwap = vwap(idx,:);
+% CRSP 
+crsp      = loadresults('dsfquery','../results');
+[idx,pos] = ismembIdDate(master.mst.Permno, master.mst.Date, crsp.Permno, crsp.Date);
+crsp      = crsp(pos(idx),:);
 
 save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
 save('results\vwap.mat','vwap')
+save('results\dsfquery.mat','crsp')
 
 % Capitalizations
-cap         = getMktCap(master.mst.Permno,[],false,false,1);
-cap         = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
+cap = sortrows(unstack(cap,'Cap','Permno'),'Date');
+cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
     'Dates', cap{:,1},...
     'Data', cap{:,2:end});
 % Date intersection
@@ -64,9 +68,9 @@ cap.Dates   = cap.Dates(idx);
 cap.Data    = cap.Data(idx,:);
 % Permno expansion
 xpermnos    = matlab.internal.table.numberedNames('x',unique(master.mst.Permno),false);
-[~,pos]     = ismember(cap.Permnos, xpermnos);
+[idx,pos]   = ismember(cap.Permnos, xpermnos);
 data        = NaN(numel(cap.Dates), numel(xpermnos));
-data(:,pos) = cap.Data;
+data(:,pos(idx)) = cap.Data(:,idx);
 cap.Data    = data;
 cap.Permnos = xpermnos;
 
