@@ -6,10 +6,10 @@ OPT_HASWEIGHTS         = false;
 
 EDGES = serial2hhmmss((9.5:0.5:16)/24);
 %% Intraday-average
-taq  = loadresults('price_fl');
-crsp = loadresults('dsfquery');
+taq      = loadresults('price_fl');
+crsp     = loadresults('dsfquery');
 crsp.Prc = abs(crsp.Prc);
-cap  = loadresults('cap');
+cap      = loadresults('cap');
 
 if OPT_NOMICRO
     idx  = isMicrocap(crsp,1);
@@ -53,40 +53,39 @@ disp(nanmean(avg)*252*100)
 datapath = '..\data\TAQ\sampled\5min\nobad';
 
 % Index data
-master = loadresults('master');
+s   = loadresults('master');
+mst = s.mst;
+
+if OPT_NOMICRO
+    idx = isMicrocap(mst,1);
+    mst = mst(~idx,:);
+end
+
+% Taq open price
+taq            = loadresults('price_fl');
+[~,pos]        = ismembIdDate(mst.Permno, mst.Date,taq.Permno,taq.Date);
+mst.FirstPrice = taq.FirstPrice(pos);
+
+if OPT_HASWEIGHTS
+    cap          = getMktCap(mst.Permno,mst.Date,[],[],[],1);
+    [idx,pos]    = ismembIdDate(mst.Permno, mst.Date, cap.Permno,cap.Date);
+    mst.Cap(idx,1) = cap.Cap(pos(idx));
+    mst.Cap(~idx) = NaN;
+end
 
 % Permnos
-permnos = unique(master.mst.Permno);
+permnos = unique(mst.Permno);
 nseries = numel(permnos);
 
-% Capitalizations
-cap = loadresults('cap');
+% Cached
+[mst, dates] = cache2cell(mst,  mst.Date);
 
-% NYSE breakpoints
-if OPT_NOMICRO
-    idx        = isMicrocap(master.mst,1);
-    master.mst = master.mst(~idx,:);
-end
-%% Lag 1 period
-w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
-%% Cache by dates
-
-% master
-master.mst     = sortrows(master.mst,'Date','ascend');
-[dates,~,subs] = unique(master.mst.Date);
-N              = numel(dates);
-nrows          = accumarray(subs,1);
-mst            = mat2cell(master.mst,nrows,6);
-
-% cap
-w = num2cell(w,2);
 %%
+N   = numel(dates);
+avg = NaN(N, numel(EDGES)-1);
 
-EDGES = serial2hhmmss((9.5:0.5:16)/24);
-avg   = NaN(N, numel(EDGES)-1);
-
-poolStartup(8,'AttachedFiles',{'poolStartup.m'})
 tic
+poolStartup(8,'AttachedFiles',{'poolStartup.m'})
 parfor ii = 2:N
     disp(ii)
     
@@ -111,9 +110,9 @@ parfor ii = 2:N
 
     if OPT_HASWEIGHTS
         % Intersect permnos
-        [~,pos]   = ismember(Permno, permnos);
-        weight    = w{ii}(pos);
-        weight    = weight/sum(weight);
+        [~,pos]   = ismember(Permno, mst{ii}.Permno);
+        weight    = mst{ii}.Cap(pos);
+        weight    = weight(:)'/sum(weight);
         ret       = bsxfun(@times, ret, weight);
         avg(ii,:) = sum(ret,2);
     else
