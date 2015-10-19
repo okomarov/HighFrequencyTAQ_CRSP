@@ -120,3 +120,18 @@ parfor ii = 2:N
     end
 end
 toc
+%% Plot
+avg_vw = loadresults('avg_tx_30min_vw');
+avg_ew = loadresults('avg_tx_30min_ew');
+
+f = 252*100;
+
+ha = subplot(211);
+bar(nanmean(avg_ew)*f)
+title('Average annualized half-hour % returns - EW')
+set(gca,'XtickLabel',EDGES(1:end-1)/100)
+
+subplot(212)
+bar(nanmean(avg_vw)*f)
+title('Average annualized half-hour % returns - VW')
+set(gca,'XtickLabel',EDGES(1:end-1)/100)
