@@ -2,53 +2,73 @@
 OPT_LAGDAY             = 1;
 OPT_NOMICRO            = true;
 OPT_OUTLIERS_THRESHOLD = 5;
-OPT_HASWEIGHTS         = false;
+OPT_HASWEIGHTS         = true;
+
+OPT_CHECK_CRSP = false;
+
+OPT_PTFNUM_UN = 10;
 
 EDGES = serial2hhmmss((9.5:0.5:16)/24);
 %% Intraday-average
-taq      = loadresults('price_fl');
-crsp     = loadresults('dsfquery');
-crsp.Prc = abs(crsp.Prc);
-cap      = loadresults('cap');
+taq = loadresults('price_fl');
 
 if OPT_NOMICRO
-    idx  = isMicrocap(crsp,1);
-    taq  = taq(~idx,:);
-    crsp = crsp(~idx,:);
+    idx = isMicrocap(taq,'FirstPrice',1);
+    taq = taq(~idx,:);
 end
 
-% Intersect
-[~,ia,ib]   = intersectIdDate(crsp.Permno,crsp.Date, taq.Permno, taq.Date);
-crsp        = crsp(ia,:);
-taq         = taq(ib,:);
-idx         = ismember(xstr2num(cap.Permnos), taq.Permno);
-cap.Data    = cap.Data(:,idx);
-cap.Permnos = cap.Permnos(idx);
-% isequal(crsp.Date, taq.Date)
-% isequal(crsp.Permno, taq.Permno)
+if OPT_CHECK_CRSP
+    crsp      = loadresults('dsfquery');
+    crsp.Prc  = abs(crsp.Prc);
+    [~,ia,ib] = intersectIdDate(crsp.Permno,crsp.Date, taq.Permno, taq.Date);
+    crsp      = crsp(ia,:);
+    taq       = taq(ib,:);
+    isequal(crsp.Date, taq.Date)
+    isequal(crsp.Permno, taq.Permno)
+end
 
 % Unstack returns
-taq.Ret  = taq.LastPrice./taq.FirstPrice-1;
-crsp.Ret = crsp.Prc./crsp.Openprc-1;
-ret_taq  = sortrows(unstack(taq (:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
-ret_crsp = sortrows(unstack(crsp(:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
-ret_taq  = ret_taq{:,2:end};
-ret_crsp = ret_crsp{:,2:end};
+taq.Ret = taq.LastPrice./taq.FirstPrice-1;
+ret_taq = sortrows(unstack(taq (:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
+ret_taq = ret_taq{:,2:end};
+if OPT_CHECK_CRSP
+    crsp.Ret = crsp.Prc./crsp.Openprc-1;
+    ret_crsp = sortrows(unstack(crsp(:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
+    ret_crsp = ret_crsp{:,2:end};
+else
+    ret_crsp = NaN(size(ret_taq));
+end
 
 % Filter out outliers
-iout           = ret_taq > OPT_OUTLIERS_THRESHOLD;
+iout           = ret_taq > OPT_OUTLIERS_THRESHOLD |...
+                1./(ret_taq+1)-1 > OPT_OUTLIERS_THRESHOLD;
 ret_taq(iout)  = NaN;
 ret_crsp(iout) = NaN;
 
 if OPT_HASWEIGHTS
-    w        = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
-    ret_crsp = ret_crsp.*w(1:end-OPT_LAGDAY,:);
-    ret_taq  = ret_taq .*w(1:end-OPT_LAGDAY,:);
-    avg      = [nansum(ret_crsp,2), nansum(ret_taq,2)];
+    cap         = loadresults('cap');
+    idx         = ismember(xstr2num(cap.Permnos), taq.Permno);
+    cap.Data    = cap.Data(:,idx);
+    cap.Permnos = cap.Permnos(idx);
+    w           = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
+    w           = w(1:end-OPT_LAGDAY,:);
 else
-    avg = [nanmean(ret_crsp,2), nanmean(ret_taq,2)];
+    w = repmat(1./sum(~isnan(ret_taq),2), 1,size(ret_taq,2));
 end
+ret_taq_w  = ret_taq.*w;
+ret_crsp_w = ret_crsp.*w;
+
+avg = [nansum(ret_crsp_w,2), nansum(ret_taq_w,2)];
 disp(nanmean(avg)*252*100)
+
+save .\results\avg_ts_vw avg
+% save .\results\avg_ts_ew avg
+
+% Sort by size
+ptfret = portfolio_sort(ret_taq, cap.Data(1:end-OPT_LAGDAY,:), struct('PortfolioNumber',OPT_PTFNUM_UN));
+disp(nanmean(ptfret)*252*100)
+
+
 %% Data
 datapath = '..\data\TAQ\sampled\5min\nobad';
 
