@@ -121,17 +121,48 @@ parfor ii = 2:N
 end
 toc
 %% Plot
-avg_vw = loadresults('avg_tx_30min_vw');
-avg_ew = loadresults('avg_tx_30min_ew');
+avg_vw     = loadresults('avg_tx_30min_vw');
+avg_ew     = loadresults('avg_tx_30min_ew');
+avg_vw_all = loadresults('avg_ts_vw');
+avg_ew_all = loadresults('avg_ts_ew');
 
+% Averages
+figure
 f = 252*100;
 
 ha = subplot(211);
 bar(nanmean(avg_ew)*f)
-title('Average annualized half-hour % returns - EW')
+hold on 
+bar(14, mean(avg_ew_all)*f,'r')
+title('Average annualized % returns - EW')
 set(gca,'XtickLabel',EDGES(1:end-1)/100)
 
 subplot(212)
 bar(nanmean(avg_vw)*f)
-title('Average annualized half-hour % returns - VW')
+hold on
+bar(14, mean(avg_vw_all)*f,'r')
+title('Average annualized % returns - VW')
 set(gca,'XtickLabel',EDGES(1:end-1)/100)
+legend('half-hour','open-to-close','Location','NorthWest')
+
+% Cumulated returns
+figure
+dts = yyyymmdd2datetime(dates);
+subplot(221)
+hl  = plot(dts,cumprod(nan2zero(avg_ew)+1));
+title('Cumulative returns - EW')
+
+subplot(222)
+sel = [1,2,size(avg_ew,2)];
+hl2 = plot(dts,cumprod(nan2zero(avg_ew(:,sel))+1));
+set(hl2,{'Color'}, get(hl(sel),'Color'))
+
+subplot(223)
+hl = plot(dts, cumprod(nan2zero(avg_vw)+1));
+title('Cumulative returns - VW')
+
+subplot(224)
+hl2 = plot(dts, cumprod(nan2zero(avg_vw(:,sel))+1));
+set(hl2,{'Color'}, get(hl(sel),'Color'))
+
+legend(num2str(EDGES(sel)),'Location','East')
