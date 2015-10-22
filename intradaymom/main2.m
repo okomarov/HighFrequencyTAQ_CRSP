@@ -67,10 +67,10 @@ taq            = loadresults('price_fl');
 mst.FirstPrice = taq.FirstPrice(pos);
 
 if OPT_HASWEIGHTS
-    cap          = getMktCap(mst.Permno,mst.Date,[],[],[],1);
-    [idx,pos]    = ismembIdDate(mst.Permno, mst.Date, cap.Permno,cap.Date);
+    cap            = getMktCap(mst.Permno,mst.Date,[],[],[],1);
+    [idx,pos]      = ismembIdDate(mst.Permno, mst.Date, cap.Permno,cap.Date);
     mst.Cap(idx,1) = cap.Cap(pos(idx));
-    mst.Cap(~idx) = NaN;
+    mst.Cap(~idx)  = NaN;
 end
 
 % Permnos
@@ -97,6 +97,12 @@ parfor ii = 2:N
     HHMMSS = serial2hhmmss(tmp.Datetime(1:79));
     price  = reshape(tmp.Price,79,[]);
     
+    % Add first price
+    row        = max(sum(isnan(price)),1);
+    [~, col]   = ismember(mst{ii}.Permno, Permno);
+    pos        = sub2ind(size(price), row(:), col(:));
+    price(pos) = mst{ii}.FirstPrice;
+    
     % Filter outliers
     ret      = price(2:end,:)./price(1:end-1,:)-1;
     idx      = abs(ret) > OPT_OUTLIERS_THRESHOLD;
@@ -120,6 +126,9 @@ parfor ii = 2:N
     end
 end
 toc
+
+save .\results\avg_tx_30min_vw avg
+save .\results\avg_tx_30min_ew avg
 %% Plot
 avg_vw     = loadresults('avg_tx_30min_vw');
 avg_ew     = loadresults('avg_tx_30min_ew');
