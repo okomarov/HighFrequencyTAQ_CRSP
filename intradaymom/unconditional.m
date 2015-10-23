@@ -6,14 +6,14 @@ OPT_HASWEIGHTS         = true;
 
 OPT_CHECK_CRSP = false;
 
-OPT_PTFNUM_UN = 10;
+OPT_PTFNUM_UN = 5;
 
 EDGES = serial2hhmmss((9.5:0.5:16)/24);
 %% Intraday-average
 taq = loadresults('price_fl');
 
 if OPT_NOMICRO
-    idx = isMicrocap(taq,'FirstPrice',1);
+    idx = isMicrocap(taq,'LastPrice',OPT_LAGDAY);
     taq = taq(~idx,:);
 end
 
@@ -46,12 +46,11 @@ ret_taq(iout)  = NaN;
 ret_crsp(iout) = NaN;
 
 if OPT_HASWEIGHTS
-    cap         = loadresults('cap');
-    idx         = ismember(xstr2num(cap.Permnos), taq.Permno);
-    cap.Data    = cap.Data(:,idx);
-    cap.Permnos = cap.Permnos(idx);
-    w           = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
-    w           = w(1:end-OPT_LAGDAY,:);
+    cap = getMktCap(taq,OPT_LAGDAY,true);
+    cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
+                 'Dates', cap{:,1},...
+                 'Data', cap{:,2:end});
+    w   = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
 else
     w = repmat(1./sum(~isnan(ret_taq),2), 1,size(ret_taq,2));
 end
@@ -61,36 +60,32 @@ ret_crsp_w = ret_crsp.*w;
 avg = [nansum(ret_crsp_w,2), nansum(ret_taq_w,2)];
 disp(nanmean(avg)*252*100)
 
-save .\results\avg_ts_vw avg
-% save .\results\avg_ts_ew avg
-
-% Sort by size
-ptfret = portfolio_sort(ret_taq, cap.Data(1:end-OPT_LAGDAY,:), struct('PortfolioNumber',OPT_PTFNUM_UN));
+if OPT_HASWEIGHTS
+    save .\results\avg_ts_vw avg
+else
+    save .\results\avg_ts_ew avg
+end
+%% Sort by size
+ptfret = portfolio_sort(ret_taq, cap.Data, struct('PortfolioNumber',OPT_PTFNUM_UN,'Weights',cap.Data));
 disp(nanmean(ptfret)*252*100)
-
-
 %% Data
 datapath = '..\data\TAQ\sampled\5min\nobad';
 
 % Index data
-s   = loadresults('master');
-mst = s.mst;
-
-if OPT_NOMICRO
-    idx = isMicrocap(mst,1);
-    mst = mst(~idx,:);
-end
+mst = loadresults('master');
 
 % Taq open price
 taq            = loadresults('price_fl');
 [~,pos]        = ismembIdDate(mst.Permno, mst.Date,taq.Permno,taq.Date);
 mst.FirstPrice = taq.FirstPrice(pos);
 
+if OPT_NOMICRO
+    idx = isMicrocap(mst,'FirstPrice',OPT_LAGDAY);
+    mst = mst(~idx,:);
+end
+
 if OPT_HASWEIGHTS
-    cap            = getMktCap(mst.Permno,mst.Date,[],[],[],1);
-    [idx,pos]      = ismembIdDate(mst.Permno, mst.Date, cap.Permno,cap.Date);
-    mst.Cap(idx,1) = cap.Cap(pos(idx));
-    mst.Cap(~idx)  = NaN;
+    mst = getMktCap(mst,OPT_LAGDAY,false);
 end
 
 % Permnos
@@ -125,7 +120,8 @@ parfor ii = 2:N
     
     % Filter outliers
     ret      = price(2:end,:)./price(1:end-1,:)-1;
-    idx      = abs(ret) > OPT_OUTLIERS_THRESHOLD;
+    idx      = ret          > OPT_OUTLIERS_THRESHOLD |...
+               1./(ret+1)-1 > OPT_OUTLIERS_THRESHOLD;
     ret(idx) = NaN;
     
     % Take 30 min returns
@@ -147,11 +143,14 @@ parfor ii = 2:N
 end
 toc
 
-save .\results\avg_tx_30min_vw avg
-save .\results\avg_tx_30min_ew avg
+if OPT_HASWEIGHTS
+    save .\results\avg_ts_30min_vw avg
+else
+    save .\results\avg_ts_30min_ew avg
+end
 %% Plot
-avg_vw     = loadresults('avg_tx_30min_vw');
-avg_ew     = loadresults('avg_tx_30min_ew');
+avg_vw     = loadresults('avg_ts_30min_vw');
+avg_ew     = loadresults('avg_ts_30min_ew');
 avg_vw_all = loadresults('avg_ts_vw');
 avg_ew_all = loadresults('avg_ts_ew');
 
@@ -162,14 +161,14 @@ f = 252*100;
 ha = subplot(211);
 bar(nanmean(avg_ew)*f)
 hold on 
-bar(14, mean(avg_ew_all)*f,'r')
+bar(14, mean(avg_ew_all(:,2))*f,'r')
 title('Average annualized % returns - EW')
 set(gca,'XtickLabel',EDGES(1:end-1)/100)
 
 subplot(212)
 bar(nanmean(avg_vw)*f)
 hold on
-bar(14, mean(avg_vw_all)*f,'r')
+bar(14, mean(avg_vw_all(:,2))*f,'r')
 title('Average annualized % returns - VW')
 set(gca,'XtickLabel',EDGES(1:end-1)/100)
 legend('half-hour','open-to-close','Location','NorthWest')
