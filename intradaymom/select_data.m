@@ -12,9 +12,10 @@ master   = sortrows(master.mst,{'Permno','Date'});
 idx    = iscommonshare(master);
 master = master(idx,:);
 
-% Has mkt cap
-cap    = loadresults('mktcap','..\results');
-idx    = ismembIdDate(master.Permno, master.Date, cap.Permno, cap.Date);
+% Has mkt cap on the previous day
+cap    = getMktCap(master, OPT_LAGDAY);
+idx    = cap.Cap ~= 0;
+cap    = cap(idx,:);
 master = master(idx,:);
 
 % Sample first and last price
@@ -57,29 +58,4 @@ save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
 save('results\vwap.mat','vwap')
 save('results\dsfquery.mat','crsp')
-
-% Capitalizations
-cap              = sortrows(unstack(cap,'Cap','Permno'),'Date');
-cap              = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
-    'Dates', cap{:,1},...
-    'Data', cap{:,2:end});
-% Date intersection
-idx              = ismember(cap.Dates, unique(master.Date));
-cap.Dates        = cap.Dates(idx);
-cap.Data         = cap.Data(idx,:);
-% Permno expansion
-xpermnos         = matlab.internal.table.numberedNames('x',unique(master.Permno),false);
-[idx,pos]        = ismember(cap.Permnos, xpermnos);
-data             = NaN(numel(cap.Dates), numel(xpermnos));
-data(:,pos(idx)) = cap.Data(:,idx);
-cap.Data         = data;
-cap.Permnos      = xpermnos;
-
-save('results\cap.mat','cap')
-
-% NYSE breakpoints
-bpoints = importFrenchData('ME_Breakpoints_TXT.zip','..\results');
-
-% FF 49 industry codes
-industry = getFF49IndustryCodes(master);
 save('results\FF49.mat','industry')
