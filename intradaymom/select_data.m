@@ -54,8 +54,17 @@ crsp      = loadresults('dsfquery','../results');
 [idx,pos] = ismembIdDate(master.Permno, master.Date, crsp.Permno, crsp.Date);
 crsp      = crsp(pos(idx),:);
 
+% NYSE breakpoints
+try
+    bpoints = loadresults('ME_breakpoints_TXT','..\results');
+catch
+    bpoints = importFrenchData('ME_Breakpoints_TXT.zip','..\results');
+end
+idx     = ismember(bpoints.Date, unique(cap.Date)/100);
+bpoints = bpoints(idx,{'Date','Var3'});
+
 save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
 save('results\vwap.mat','vwap')
 save('results\dsfquery.mat','crsp')
-save('results\FF49.mat','industry')
+save('results\bpoints.mat','bpoints')
