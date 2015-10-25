@@ -24,17 +24,6 @@ end
 ccm = sortrows(ccm(:,{'Lpermno','Linkdt','Linkenddt','Sic'}),1:2);
 ccm = consolidateFromTo(ccm);
 
-% Intersect date ranges 
-refdates           = unique(tb.Date);
-mindate            = min(refdates);
-maxdate            = max(refdates);
-idx                = ccm.Linkenddt < mindate;
-ccm(idx,:)         = [];
-idx                = ccm.Linkdt < mindate;
-ccm.Linkdt(idx)    = mindate;
-idx                = ccm.Linkenddt == 99999999;
-ccm.Linkenddt(idx) = maxdate;
-
 % Intersect permnos
 unP_tb = unique(tb.Permno);
 idx    = ismember(ccm.Lpermno, unP_tb);
