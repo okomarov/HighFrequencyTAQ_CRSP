@@ -9,7 +9,7 @@ OPT_CHECK_CRSP = false;
 OPT_PTFNUM_UN = 5;
 
 EDGES = serial2hhmmss((9.5:0.5:16)/24);
-%% Intraday-average
+%% Intraday-average: data
 taq = loadresults('price_fl');
 
 if OPT_NOMICRO
@@ -27,6 +27,12 @@ if OPT_CHECK_CRSP
     isequal(crsp.Permno, taq.Permno)
 end
 
+% Get market caps
+cap = getMktCap(taq,OPT_LAGDAY,true);
+cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
+    'Dates', cap{:,1},...
+    'Data', cap{:,2:end});
+
 % Unstack returns
 taq.Ret = taq.LastPrice./taq.FirstPrice-1;
 ret_taq = sortrows(unstack(taq (:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
@@ -39,18 +45,14 @@ else
     ret_crsp = NaN(size(ret_taq));
 end
 
-% Filter out outliers
+% Filter outliers
 iout           = ret_taq > OPT_OUTLIERS_THRESHOLD |...
-                1./(ret_taq+1)-1 > OPT_OUTLIERS_THRESHOLD;
+                 1./(ret_taq+1)-1 > OPT_OUTLIERS_THRESHOLD;
 ret_taq(iout)  = NaN;
 ret_crsp(iout) = NaN;
-
+%% Intraday-average: return
 if OPT_HASWEIGHTS
-    cap = getMktCap(taq,OPT_LAGDAY,true);
-    cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
-                 'Dates', cap{:,1},...
-                 'Data', cap{:,2:end});
-    w   = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
+    w = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
 else
     w = repmat(1./sum(~isnan(ret_taq),2), 1,size(ret_taq,2));
 end
