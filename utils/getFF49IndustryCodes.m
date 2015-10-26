@@ -30,7 +30,7 @@ idx    = ismember(ccm.Lpermno, unP_tb);
 ccm    = ccm(idx,:);
 
 % Import mapping of SIC to the 49 FF industry portfolios
-[sic2ffptf, desc] = getClassificationFF49();
+[sic2ffptf, desc] = getFF49Classification();
 
 % Map
 for ii = 1:size(sic2ffptf,1)
