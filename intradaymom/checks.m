@@ -51,5 +51,43 @@ ff49.Data = ff49.Data(ib,:);
 ff49.Dates = ff49.Dates(ib);
 
 [r,c] = find(ff49.Data ~= industry.Data & ff49.Data ~= 0)
+%% CRSP ind correlations
+OPT_LAGDAY = 1;
+OPT_HASWEIGHTS = true;
 
+crsp     = loadresults('dsfquery');
+crsp.Prc = abs(crsp.Prc);
+idx      = isMicrocap(crsp,'Prc',OPT_LAGDAY);
+crsp     = crsp(~idx,:);
 
+% Get market caps
+cap = getMktCap(crsp,OPT_LAGDAY,true);
+cap = struct('Permnos', {getVariableNames(cap(:,2:end))}, ...
+    'Dates', cap{:,1},...
+    'Data', cap{:,2:end});
+
+% FF49-industries classification
+ff49 = getFF49IndustryCodes(crsp,1);
+ff49 = struct('Permnos', {getVariableNames(ff49(:,2:end))}, ...
+    'Dates', ff49{:,1},...
+    'Data', ff49{:,2:end});
+
+% Unstack returns
+crsp.Ret = crsp.Prc./crsp.Openprc-1;
+ret_crsp = sortrows(unstack(crsp(:,{'Permno','Date','Ret'}), 'Ret','Permno'),'Date');
+ret_crsp = ret_crsp{:,2:end};
+
+if OPT_HASWEIGHTS
+    w = bsxfun(@rdivide, cap.Data, nansum(cap.Data,2));
+else
+    w = repmat(1./sum(~isnan(ret_taq),2), 1,size(ret_taq,2));
+end
+ret_crsp_w = ret_crsp.*w;
+
+nobs    = numel(ff49.Dates);
+nseries = numel(ff49.Permnos);
+row     = repmat((1:nobs)', 1, nseries);
+subs    = [row(:), double(ff49.Data(:)+1)];
+
+ptfret_vw = accumarray(subs, ret_crsp_w(:),[],@nansum);
+c = corr(ptfret_vw); c(logical(eye(50))) = NaN
