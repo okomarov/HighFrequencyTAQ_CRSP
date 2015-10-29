@@ -1,18 +1,19 @@
-function idx = selecttrades(data)
+function idx = isInvalidTrade(data)
 
-% SELECTTRADES Select invalid TAQ trades
+% ISINVALIDTRADE Select invalid TAQ trades
 %
-%   SELCTTRADES(DATA) where DATA should be a dataset with the 
-%                     following varnames (case-sensitive):
-%                       - G127_Correction
-%                       - Condition
-%                       - Price
+%   ISINVALIDTRADE(DATA) 
+%       DATA should be a dataset with the following varnames 
+%       (case-sensitive):
+%           - G127_Correction
+%           - Condition
+%           - Price
 %
 %   NOTE: for the description of the varnames and all possible
 %         refer to the .PDFs "Monthly TAQ User Guide v1.3" and 
 %         "Daily TAQ Client Specification v1.8"
 %
-%   IDX = SELECTTRADES(...) Returns the index IDX with the trades
+%   IDX = ISINVALIDTRADE(...) Returns the index IDX with the trades
 %                           to exclude.
 %
 % See also:

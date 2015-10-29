@@ -50,7 +50,7 @@ function res = medianprice(s,cached)
 cachedmst = cached{1};
 
 % STEP 1) Selection
-inan = selecttrades(s.data);
+inan = isInvalidTrade(s.data);
 
 % Prepare for daily median
 nobs = double(s.mst.To - s.mst.From + 1);
@@ -76,7 +76,7 @@ cached = cached{1};
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1) Selection
-inan = selecttrades(s.data);
+inan = isInvalidTrade(s.data);
 
 % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
 if ~isempty(edges)
@@ -110,7 +110,7 @@ if nargin < 3, edges = []; end
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1) Select irregular trades
-ibad = selecttrades(s.data);
+ibad = isInvalidTrade(s.data);
 
 % STEP 2) Select bad prices (far from daily median)
 if ~isempty(edges)
@@ -314,7 +314,7 @@ for r = 1:size(s.mst,1);
     data = s.data(from:to,:);
     
     % STEP 1) Select regular trades
-    data = data(~selecttrades(data),:);
+    data = data(~isInvalidTrade(data),:);
     
     % STEP 2) Median prices for same timestamps
     [unTimes,~,subs] = unique(hhmmssmat2serial(data.Time));
