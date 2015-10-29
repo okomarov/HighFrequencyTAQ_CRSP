@@ -47,23 +47,22 @@ end
 
 % Median price (net of the first selection step)
 function res = medianprice(s,cached)
-cachedmst = cached{1};
+cached = cached{1};
 
 % STEP 1) Selection
 inan = isInvalidTrade(s.data);
 
 % Prepare for daily median
 nobs = double(s.mst.To - s.mst.From + 1);
-nmst = size(cachedmst,1);
+nmst = size(cached,1);
 subs = uint32(RunLength((1:nmst)',nobs));
 
 % Daily median price
-cachedmst.MedPrice      = accumarray(subs(~inan), s.data.Price(~inan),[nmst,1], @fast_median);
-cachedmst.Nbadsel       = uint32(accumarray(subs,  inan,[nmst,1]));
-idx                     = cachedmst.MedPrice == 0;
-cachedmst.MedPrice(idx) = NaN;
+cached.MedPrice      = accumarray(subs(~inan), s.data.Price(~inan),[nmst,1], @fast_median);
+idx                  = cached.MedPrice == 0;
+cached.MedPrice(idx) = NaN;
 
-res = cachedmst;
+res = cached;
 end
 
 % Identify bad prices
