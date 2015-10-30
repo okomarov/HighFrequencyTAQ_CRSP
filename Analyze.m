@@ -66,8 +66,8 @@ res = cached;
 end
 
 % Identify bad prices
-function res = badprices(s, cached, edges)
-if nargin < 4, edges = []; end
+function res = badprices(s, cached, multiplier)
+if nargin < 3, multiplier = []; end
 
 cached = cached{1};
 
@@ -77,9 +77,13 @@ nobs = double(s.mst.To - s.mst.From + 1);
 % STEP 1) Selection
 inan = isInvalidTrade(s.data);
 
-% STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
-if ~isempty(edges)
-    igoodprice = in(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
+% STEP 2) Bad prices are x times bigger or smaller than daily median
+% NOTE: this is a lookahead filter which in real time should be substituted
+% with e.g. previous day close adjusted for company events
+if ~isempty(multiplier)
+    medprice   = RunLength(cached.MedPrice,nobs);
+    igoodprice = s.data.Price./medprice < multiplier &...
+                 medprice./s.data.Price < multiplier;
 else
     igoodprice = true(size(inan));
 end
@@ -91,7 +95,7 @@ res.Nbadsel = uint32(accumarray(subs,  inan));
 res.Nbadtot = uint32(accumarray(subs,  inan | ~igoodprice));
 end
 
-function ibad = ibadprices(s, cached, edges)
+function ibad = ibadprices(s, cached, multiplier)
 % Service function to flag bad prices in Analyze
 % 
 % Inputs:
@@ -103,7 +107,7 @@ function ibad = ibadprices(s, cached, edges)
 %
 %   edges  - double with [lb, ub]
 
-if nargin < 3, edges = []; end
+if nargin < 3, multiplier = []; end
 
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
@@ -112,14 +116,12 @@ nobs = double(s.mst.To - s.mst.From + 1);
 ibad = isInvalidTrade(s.data);
 
 % STEP 2) Select bad prices (far from daily median)
-if ~isempty(edges)
-    [~,iprice] = histc(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
-    iprice     = iprice ~= 1;
-    ibad       = ibad | iprice;
+if ~isempty(multiplier)
+    medprice   = RunLength(cached.MedPrice,nobs);
+    igoodprice = s.data.Price./medprice < multiplier &...
+                 medprice./s.data.Price < multiplier;
+    ibad       = ibad | ~igoodprice;
 end
-
-% STEP 3) Select bad days and whole bad series
-ibad = ibad | RunLength(cached.Isbadday, nobs);
 end
 
 % Count how many observations we loose in consolidation step
@@ -258,6 +260,12 @@ end
 end
 
 function [prices,times, voltot] = samplePrepare_(s,cached,opt)
+if isfield(opt,'BadPriceMultiplier')
+    multiplier = opt.BadPriceMultiplier;
+else
+    multiplier = [];
+end
+
 if isfield(opt,'edges')
     edges = opt.edges;
 else
@@ -327,3 +335,31 @@ for r = 1:size(s.mst,1);
 end
 res = cat(1,res{:});
 end
+
+%% Deprecated
+
+% % Identify bad prices
+% function res = badprices(s, cached, edges)
+% if nargin < 4, edges = []; end
+% 
+% cached = cached{1};
+% 
+% % Number of observations per day
+% nobs = double(s.mst.To - s.mst.From + 1);
+% 
+% % STEP 1) Selection
+% inan = isInvalidTrade(s.data);
+% 
+% % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
+% if ~isempty(edges)
+%     igoodprice = in(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
+% else
+%     igoodprice = true(size(inan));
+% end
+% 
+% % STEP 3) Bad days
+% res         = cached(:,{'Id','Date'});
+% subs        = uint32(RunLength((1:size(cached,1))',nobs));
+% res.Nbadsel = uint32(accumarray(subs,  inan));
+% res.Nbadtot = uint32(accumarray(subs,  inan | ~igoodprice));
+% end
