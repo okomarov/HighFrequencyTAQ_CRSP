@@ -74,38 +74,26 @@ cached = cached{1};
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
-% STEP 1) Selection
-inan = isInvalidTrade(s.data);
+[ibad, invalid] = ibadprices(s, cached, multiplier);
 
-% STEP 2) Bad prices are x times bigger or smaller than daily median
-% NOTE: this is a lookahead filter which in real time should be substituted
-% with e.g. previous day close adjusted for company events
-if ~isempty(multiplier)
-    medprice   = RunLength(cached.MedPrice,nobs);
-    igoodprice = s.data.Price./medprice < multiplier &...
-                 medprice./s.data.Price < multiplier;
-else
-    igoodprice = true(size(inan));
-end
-
-% STEP 3) Bad days
+% Counts
 res         = cached(:,{'Id','Date'});
 subs        = uint32(RunLength((1:size(cached,1))',nobs));
-res.Nbadsel = uint32(accumarray(subs,  inan));
-res.Nbadtot = uint32(accumarray(subs,  inan | ~igoodprice));
+res.Nbadsel = uint32(accumarray(subs,  invalid));
+res.Nbadtot = uint32(accumarray(subs,  ibad));
 end
 
-function ibad = ibadprices(s, cached, multiplier)
+function [ibad, invalid] = ibadprices(s, cached, multiplier)
 % Service function to flag bad prices in Analyze
-% 
+%
 % Inputs:
 %   s.data - data table
 %   s.mst  - master records table to data
 %   s.idx  - cell array of tickers
-%  
-%   cached - table aligned to s.mst with 'MedPrice' and 'Isbadday' fields
 %
-%   edges  - double with [lb, ub]
+%   cached - table aligned to s.mst with 'MedPrice'
+%
+%   multiplier - prices are bad if x times the median
 
 if nargin < 3, multiplier = []; end
 
@@ -113,14 +101,16 @@ if nargin < 3, multiplier = []; end
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1) Select irregular trades
-ibad = isInvalidTrade(s.data);
+invalid = isInvalidTrade(s.data);
 
 % STEP 2) Select bad prices (far from daily median)
 if ~isempty(multiplier)
-    medprice   = RunLength(cached.MedPrice,nobs);
-    igoodprice = s.data.Price./medprice < multiplier &...
-                 medprice./s.data.Price < multiplier;
-    ibad       = ibad | ~igoodprice;
+    medprice = RunLength(cached.MedPrice,nobs);
+    ibad     = s.data.Price./medprice >= multiplier |...
+               medprice./s.data.Price >= multiplier;
+    ibad     = ibad | invalid;
+else
+    ibad = invalid;
 end
 end
 
