@@ -266,17 +266,17 @@ else
     multiplier = [];
 end
 
-if isfield(opt,'edges')
-    edges = opt.edges;
+if isfield(opt,'TimestampConsolidation')
+    consolidationType = opt.TimestampConsolidation;
 else
-    edges = [];
+    consolidationType = 'first';
 end
 
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s, cached, edges);
+ibad = ibadprices(s, cached, multiplier);
 
 % STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
 ibad = ibad | RunLength(cached.Isfewobs,nobs);
@@ -289,9 +289,18 @@ if ~all(ibad)
     nmst           = size(s.mst,1);
     mstrow         = RunLength((1:nmst)',nobs);
     [times,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));
-    vol            = double(s.data.Volume)/100;
-    voltot         = accumarray(subs, vol(~ibad));
-    prices         = accumarray(subs, s.data.Price(~ibad).*vol(~ibad)) ./ voltot;
+    prices         = s.data.Price(~ibad);
+    vol            = double(s.data.Volume(~ibad))/100;
+    voltot         = accumarray(subs, vol);
+    switch consolidationType
+        case 'first'
+            idx    = [true; logical(diff(subs))];
+            prices = prices(idx);
+        case 'median'
+            prices = accumarray(subs, prices,[],@fast_median);
+        case 'volumeWeighted'
+            prices = accumarray(subs, prices.*vol) ./ voltot;
+    end
 else
     prices = [];
     times  = [];
