@@ -1,9 +1,735 @@
 function [dict, desc] = getFF49Classification()
-% Hardcoded classification of the 49 Fama and French industry portfolios
-C    = {1,100,199,'Agric production - crops';1,200,299,'Agric production - livestock';1,700,799,'Agricultural services';1,910,919,'Commercial fishing';1,2048,2048,'Prepared feeds for animals';2,2000,2009,'Food and kindred products';2,2010,2019,'Meat products';2,2020,2029,'Dairy products';2,2030,2039,'Canned-preserved fruits-vegs';2,2040,2046,'Flour and other grain mill products';2,2050,2059,'Bakery products';2,2060,2063,'Sugar and confectionery products';2,2070,2079,'Fats and oils';2,2090,2092,'Misc food preps';2,2095,2095,'Roasted coffee';2,2098,2099,'Misc food preparations';3,2064,2068,'Candy and other confectionery';3,2086,2086,'Bottled-canned soft drinks';3,2087,2087,'Flavoring syrup';3,2096,2096,'Potato chips';3,2097,2097,'Manufactured ice';4,2080,2080,'Beverages';4,2082,2082,'Malt beverages';4,2083,2083,'Malt';4,2084,2084,'Wine';4,2085,2085,'Distilled and blended liquors';5,2100,2199,'Tobacco products';6,920,999,'Fishing, hunting & trapping';6,3650,3651,'Household audio visual equip';6,3652,3652,'Phonographic records';6,3732,3732,'Boat building and repair';6,3930,3931,'Musical instruments';6,3940,3949,'Toys';7,7800,7829,'Services - motion picture production and distribution';7,7830,7833,'Services - motion picture theatres';7,7840,7841,'Services - video rental';7,7900,7900,'Services - amusement and recreation';7,7910,7911,'Services - dance studios';7,7920,7929,'Services - bands, entertainers';7,7930,7933,'Services - bowling centers';7,7940,7949,'Services - professional sports';7,7980,7980,'Amusement and recreation services (?)';7,7990,7999,'Services - misc entertainment';8,2700,2709,'Printing publishing and allied';8,2710,2719,'Newspapers: publishing-printing';8,2720,2729,'Periodicals: publishing-printing';8,2730,2739,'Books: publishing-printing';8,2740,2749,'Misc publishing';8,2770,2771,'Greeting card publishing';8,2780,2789,'Book binding';8,2790,2799,'Service industries for print trade';9,2047,2047,'Dog and cat food';9,2391,2392,'Curtains, home furnishings';9,2510,2519,'Household furniture';9,2590,2599,'Misc furniture and fixtures';9,2840,2843,'Soap & other detergents';9,2844,2844,'Perfumes cosmetics';9,3160,3161,'Luggage';9,3170,3171,'Handbags and purses';9,3172,3172,'Personal leather goods, except handbags';9,3190,3199,'Leather goods';9,3229,3229,'Pressed and blown glass';9,3260,3260,'Pottery and related products';9,3262,3263,'China and earthenware table articles';9,3269,3269,'Pottery products';9,3230,3231,'Glass products';9,3630,3639,'Household appliances';9,3750,3751,'Motorcycles, bicycles and parts  (Harley & Huffy)';9,3800,3800,'Misc inst, photo goods, watches';9,3860,3861,'Photographic equip  (Kodak etc, but also Xerox)';9,3870,3873,'Watches clocks and parts';9,3910,3911,'Jewelry-precious metals';9,3914,3914,'Silverware';9,3915,3915,'Jewelers'' findings, materials';9,3960,3962,'Costume jewelry and notions';9,3991,3991,'Brooms and brushes';9,3995,3995,'Burial caskets';10,2300,2390,'Apparel and other finished products';10,3020,3021,'Rubber and plastics footwear';10,3100,3111,'Leather tanning and finishing';10,3130,3131,'Boot, shoe cut stock, findings';10,3140,3149,'Footware except rubber';10,3150,3151,'Leather gloves and mittens';10,3963,3965,'Fasteners, buttons, needles, pins';11,8000,8099,'Services - health';12,3693,3693,'X-ray, electromedical app';12,3840,3849,'Surg & med instru';12,3850,3851,'Ophthalmic goods';13,2830,2830,'Drugs';13,2831,2831,'Biological products';13,2833,2833,'Medicinal chemicals';13,2834,2834,'Pharmaceutical preparations';13,2835,2835,'In vitro, in vivo diagnostics';13,2836,2836,'Biological products, except diagnostics';14,2800,2809,'Chemicals and allied products';14,2810,2819,'Industrial inorganical chems';14,2820,2829,'Plastic material & synthetic resin';14,2850,2859,'Paints';14,2860,2869,'Industrial organic chems';14,2870,2879,'Agriculture chemicals';14,2890,2899,'Misc chemical products';15,3031,3031,'Reclaimed rubber';15,3041,3041,'Rubber & plastic hose and belting';15,3050,3053,'Gaskets, hoses, etc';15,3060,3069,'Fabricated rubber products';15,3070,3079,'Misc rubber products (?)';15,3080,3089,'Misc plastic products';15,3090,3099,'Misc rubber and plastic products (?)';16,2200,2269,'Textile mill products';16,2270,2279,'Floor covering mills';16,2280,2284,'Yarn and thread mills';16,2290,2295,'Misc textile goods';16,2297,2297,'Nonwoven fabrics';16,2298,2298,'Cordage and twine';16,2299,2299,'Misc textile products';16,2393,2395,'Textile bags, canvas products';16,2397,2399,'Misc textile products';17,800,899,'Forestry';17,2400,2439,'Lumber and wood products';17,2450,2459,'Wood buildings-mobile homes';17,2490,2499,'Misc wood products';17,2660,2661,'Building paper and board mills';17,2950,2952,'Paving & roofing materials';17,3200,3200,'Stone, clay, glass, concrete etc';17,3210,3211,'Flat glass';17,3240,3241,'Cement hydraulic';17,3250,3259,'Structural clay prods';17,3261,3261,'Vitreous china plumbing fixtures';17,3264,3264,'Porcelain electrical supply';17,3270,3275,'Concrete gypsum & plaster';17,3280,3281,'Cut stone and stone products';17,3290,3293,'Abrasive and asbestos products';17,3295,3299,'Non-metalic mineral products';17,3420,3429,'Handtools and hardware';17,3430,3433,'Heating equip & plumbing fix';17,3440,3441,'Fabicated struct metal products';17,3442,3442,'Metal doors, frames';17,3446,3446,'Architectual or ornamental metal work';17,3448,3448,'Pre-fab metal buildings';17,3449,3449,'Misc structural metal work';17,3450,3451,'Screw machine products';17,3452,3452,'Bolts, nuts screws';17,3490,3499,'Misc fabricated metal products';17,3996,3996,'Hard surface floor cover';18,1500,1511,'Build construction - general contractors';18,1520,1529,'Gen building contractors - residential';18,1530,1539,'Operative builders';18,1540,1549,'Gen building contractors - non-residential';18,1600,1699,'Heavy Construction - not building contractors';18,1700,1799,'Construction - special contractors';19,3300,3300,'Primary metal industries';19,3310,3317,'Blast furnaces & steel works';19,3320,3325,'Iron & steel foundries';19,3330,3339,'Prim smelt-refin nonfer metals';19,3340,3341,'Secondary smelt-refin nonfer metals';19,3350,3357,'Rolling & drawing nonferous metals';19,3360,3369,'Non-ferrous foundries and casting';19,3370,3379,'Steel works etc';19,3390,3399,'Misc primary metal products';20,3400,3400,'Fabricated metal, except machinery and trans eq';20,3443,3443,'Fabricated plate work';20,3444,3444,'Sheet metal work';20,3460,3469,'Metal forgings and stampings';20,3470,3479,'Coating and engraving';21,3510,3519,'Engines & turbines';21,3520,3529,'Farm and garden machinery';21,3530,3530,'Constr, mining material handling machinery';21,3531,3531,'Construction machinery';21,3532,3532,'Mining machinery, except oil field';21,3533,3533,'Oil field machinery';21,3534,3534,'Elevators';21,3535,3535,'Conveyors';21,3536,3536,'Cranes, hoists';21,3538,3538,'Machinery';21,3540,3549,'Metalworking machinery';21,3550,3559,'Special industry machinery';21,3560,3569,'General industrial machinery';21,3580,3580,'Refrig & service ind machines';21,3581,3581,'Automatic vending machines';21,3582,3582,'Commercial laundry and drycleaning machines';21,3585,3585,'Air conditioning, heating, refrid eq';21,3586,3586,'Measuring and dispensing pumps';21,3589,3589,'Service industry machinery';21,3590,3599,'Misc industrial and commercial equipment and mach';22,3600,3600,'Elec mach eq & supply';22,3610,3613,'Elec transmission';22,3620,3621,'Electrical industrial appar';22,3623,3629,'Electrical industrial appar';22,3640,3644,'Electric lighting, wiring';22,3645,3645,'Residential lighting fixtures';22,3646,3646,'Commercial lighting';22,3648,3649,'Lighting equipment';22,3660,3660,'Communication equip';22,3690,3690,'Miscellaneous electrical machinery and equip';22,3691,3692,'Storage batteries';22,3699,3699,'Electrical machinery and equip';23,2296,2296,'Tire cord and fabric';23,2396,2396,'Auto trim';23,3010,3011,'Tires and inner tubes';23,3537,3537,'Trucks, tractors, trailers';23,3647,3647,'Vehicular lighting';23,3694,3694,'Elec eq, internal combustion engines';23,3700,3700,'Transportation equipment';23,3710,3710,'Motor vehicles and motor vehicle equip';23,3711,3711,'Motor vehicles & car bodies';23,3713,3713,'Truck & bus bodies';23,3714,3714,'Motor vehicle parts';23,3715,3715,'Truck trailers';23,3716,3716,'Motor homes';23,3792,3792,'Travel trailers and campers';23,3790,3791,'Misc trans equip';23,3799,3799,'Misc trans equip';24,3720,3720,'Aircraft & parts';24,3721,3721,'Aircraft';24,3723,3724,'Aircraft engines, engine parts';24,3725,3725,'Aircraft parts';24,3728,3729,'Aircraft parts';25,3730,3731,'Ship building and repair';25,3740,3743,'Railroad Equipment';26,3760,3769,'Guided missiles and space vehicles';26,3795,3795,'Tanks and tank components';26,3480,3489,'Ordnance & accessories';27,1040,1049,'Gold & silver ores';28,1000,1009,'Metal mining';28,1010,1019,'Iron ores';28,1020,1029,'Copper ores';28,1030,1039,'Lead and zinc ores';28,1050,1059,'Bauxite and other aluminum ores';28,1060,1069,'Ferroalloy ores';28,1070,1079,'Mining';28,1080,1089,'Mining services';28,1090,1099,'Misc metal ores';28,1100,1119,'Anthracite mining';28,1400,1499,'Mining and quarrying non-metalic minerals';29,1200,1299,'Bituminous coal';30,1300,1300,'Oil and gas extraction';30,1310,1319,'Crude petroleum & natural gas';30,1320,1329,'Natural gas liquids';30,1330,1339,'Petroleum and natural gas';30,1370,1379,'Petroleum and natural gas';30,1380,1380,'Oil and gas field services';30,1381,1381,'Drilling oil & gas wells';30,1382,1382,'Oil-gas field exploration';30,1389,1389,'Oil and gas field services';30,2900,2912,'Petroleum refining';30,2990,2999,'Misc petroleum products';31,4900,4900,'Electric, gas, sanitary services';31,4910,4911,'Electric services';31,4920,4922,'Natural gas transmission';31,4923,4923,'Natural gas transmission-distr';31,4924,4925,'Natural gas distribution';31,4930,4931,'Electric and other services combined';31,4932,4932,'Gas and other services combined';31,4939,4939,'Combination utilities';31,4940,4942,'Water supply';32,4800,4800,'Communications';32,4810,4813,'Telephone communications';32,4820,4822,'Telegraph and other message communication';32,4830,4839,'Radio-TV Broadcasters';32,4840,4841,'Cable and other pay TV services';32,4880,4889,'Communications';32,4890,4890,'Communication services (Comsat)';32,4891,4891,'Cable TV operators';32,4892,4892,'Telephone interconnect';32,4899,4899,'Communication services';33,7020,7021,'Rooming and boarding houses';33,7030,7033,'Camps and recreational vehicle parks';33,7200,7200,'Services - personal';33,7210,7212,'Services - laundry, cleaners';33,7214,7214,'Services - diaper service';33,7215,7216,'Services - coin-op cleaners, dry cleaners';33,7217,7217,'Services - carpet, upholstery cleaning';33,7219,7219,'Services - laundry, cleaners';33,7220,7221,'Services - photo studios, portrait';33,7230,7231,'Services - beauty shops';33,7240,7241,'Services - barber shops';33,7250,7251,'Services - shoe repair';33,7260,7269,'Services - funeral';33,7270,7290,'Services - misc';33,7291,7291,'Services - tax return';33,7292,7299,'Services - misc';33,7395,7395,'Services - photofinishing labs (School pictures)';33,7500,7500,'Services - auto repair, services';33,7520,7529,'Services - automobile parking';33,7530,7539,'Services - auto repair shops';33,7540,7549,'Services - auto services, except repair (car washes)';33,7600,7600,'Services - Misc repair services';33,7620,7620,'Services - Electrical repair shops';33,7622,7622,'Services - Radio and TV repair shops';33,7623,7623,'Services - Refridg and air conditioner repair';33,7629,7629,'Services - Electrical repair shops';33,7630,7631,'Services - Watch, clock and jewelry repair';33,7640,7641,'Services - Reupholster, furniture repair';33,7690,7699,'Services - Misc repair shops';33,8100,8199,'Services - legal';33,8200,8299,'Services - educational';33,8300,8399,'Services - social services';33,8400,8499,'Services - museums, galleries, botanic gardens';33,8600,8699,'Services - membership organizations';33,8800,8899,'Services - private households';33,7510,7515,'Services - truck, auto rental and leasing';34,2750,2759,'Commercial printing';34,3993,3993,'Signs, advertising specialty';34,7218,7218,'Services - industrial launderers';34,7300,7300,'Services - business services';34,7310,7319,'Services - advertising';34,7320,7329,'Services - credit reporting agencies, collection services';34,7330,7339,'Services - mailing, reproduction, commercial art';34,7340,7342,'Services - services to dwellings, other buildings';34,7349,7349,'Services - cleaning and builging maint';34,7350,7351,'Services - misc equip rental and leasing';34,7352,7352,'Services - medical equip rental';34,7353,7353,'Services - heavy construction equip rental';34,7359,7359,'Services - equip rental and leasing';34,7360,7369,'Services - personnel supply services';34,7374,7374,'Services - computer processing, data prep';34,7376,7376,'Services - computer facilities management service';34,7377,7377,'Services - computer rental and leasing';34,7378,7378,'Services - computer maintanence and repair';34,7379,7379,'Services - computer related services';34,7380,7380,'Services - misc business services';34,7381,7382,'Services - security';34,7383,7383,'Services - news syndicates';34,7384,7384,'Services - photofinishing labs';34,7385,7385,'Services - telephone interconnections';34,7389,7390,'Services - misc business services';34,7391,7391,'Services - R&D labs';34,7392,7392,'Services - management consulting & P.R.';34,7393,7393,'Services - detective and protective (ADT)';34,7394,7394,'Services - equipment rental & leasing';34,7396,7396,'Services - trading stamp services';34,7397,7397,'Services - commercial testing labs';34,7399,7399,'Services - business services';34,7519,7519,'Services - trailer rental and leasing';34,8700,8700,'Services - engineering, accounting, research, management';34,8710,8713,'Services - engineering, accounting, surveying';34,8720,8721,'Services - accounting, auditing, bookkeeping';34,8730,8734,'Services - research, development, testing labs';34,8740,8748,'Services - management, public relations, consulting';34,8900,8910,'Services - misc';34,8911,8911,'Services - engineering & architect';34,8920,8999,'Services - misc';34,4220,4229,'Warehousing and storage';35,3570,3579,'Office computers';35,3680,3680,'Computers';35,3681,3681,'Computers - mini';35,3682,3682,'Computers - mainframe';35,3683,3683,'Computers - terminals';35,3684,3684,'Computers - disk & tape drives';35,3685,3685,'Computers - optical scanners';35,3686,3686,'Computers - graphics';35,3687,3687,'Computers - office automation systems';35,3688,3688,'Computers - peripherals';35,3689,3689,'Computers - equipment';35,3695,3695,'Magnetic and optical recording media';36,7370,7372,['Services - computer programming and data processing' char(9) ''];36,7375,7375,'Services - information retrieval services';36,7373,7373,'Computer integrated systems design';37,3622,3622,'Industrial controls';37,3661,3661,'Telephone and telegraph apparatus';37,3662,3662,'Communications equipment';37,3663,3663,'Radio TV comm equip & apparatus';37,3664,3664,'Search, navigation, guidance systems';37,3665,3665,'Training equipment & simulators';37,3666,3666,'Alarm & signaling products';37,3669,3669,'Communication equipment';37,3670,3679,'Electronic components';37,3810,3810,'Search, detection, navigation, guidance';37,3812,3812,'Search, detection, navigation, guidance';38,3811,3811,'Engr lab and research equipment';38,3820,3820,'Measuring and controlling equipment';38,3821,3821,'Lab apparatus and furniture';38,3822,3822,'Automatic controls - Envir and applic';38,3823,3823,'Industrial measurement instru';38,3824,3824,'Totalizing fluid meters';38,3825,3825,'Elec meas & test instr';38,3826,3826,'Lab analytical instruments';38,3827,3827,'Optical instr and lenses';38,3829,3829,'Meas and control devices';38,3830,3839,'Optical instr and lenses';39,2520,2549,'Office furniture and fixtures';39,2600,2639,'Paper and allied products';39,2670,2699,'Paper and allied products';39,2760,2761,'Manifold business forms';39,3950,3955,'Pens pencils and office supplies';40,2440,2449,'Wood containers';40,2640,2659,'Paperboard containers, boxes, drums, tubs';40,3220,3221,'Glass containers';40,3410,3412,'Metal cans and shipping containers';41,4000,4013,'Railroads-line haul';41,4040,4049,'Railway express service';41,4100,4100,'Transit and passenger trans';41,4110,4119,'Local passenger trans';41,4120,4121,'Taxicabs';41,4130,4131,'Intercity bus trans (Greyhound)';41,4140,4142,'Bus charter';41,4150,4151,'School buses';41,4170,4173,'Motor vehicle terminals, service facilities';41,4190,4199,'Misc transit and passenger transportation';41,4200,4200,'Motor freight trans, warehousing';41,4210,4219,'Trucking';41,4230,4231,'Terminal facilities - motor freight';41,4240,4249,'Transportation';41,4400,4499,'Water transport';41,4500,4599,'Air transportation';41,4600,4699,'Pipelines, except natural gas';41,4700,4700,'Transportation services';41,4710,4712,'Freight forwarding';41,4720,4729,'Travel agencies, etc';41,4730,4739,'Arrange trans - freight and cargo';41,4740,4749,'Rental of railroad cars';41,4780,4780,'Misc services incidental to trans';41,4782,4782,'Inspection and weighing services';41,4783,4783,'Packing and crating';41,4784,4784,'Fixed facilities for vehicles, not elsewhere classified';41,4785,4785,'Motor vehicle inspection';41,4789,4789,'Transportation services';42,5000,5000,'Wholesale - durable goods';42,5010,5015,'Wholesale - autos and parts';42,5020,5023,'Wholesale - furniture and home furnishings';42,5030,5039,'Wholesale - lumber and construction materials';42,5040,5042,'Wholesale - professional and commercial equipment and supplies';42,5043,5043,'Wholesale - photographic equipment';42,5044,5044,'Wholesale - office equipment';42,5045,5045,'Wholesale - computers';42,5046,5046,'Wholesale - commerical equip';42,5047,5047,'Wholesale - medical, dental equip';42,5048,5048,'Wholesale - ophthalmic goods';42,5049,5049,'Wholesale - professional equip and supplies';42,5050,5059,'Wholesale - metals and minerals';42,5060,5060,'Wholesale - electrical goods';42,5063,5063,'Wholesale - electrical apparatus and equipment';42,5064,5064,'Wholesale - electrical appliance TV and radio';42,5065,5065,'Wholesale - electronic parts';42,5070,5078,'Wholesale - hardware, plumbing, heating equip';42,5080,5080,'Wholesale - machinery and equipment';42,5081,5081,'Wholesale - machinery and equipment (?)';42,5082,5082,'Wholesale - construction and mining equipment';42,5083,5083,'Wholesale - farm and garden machinery';42,5084,5084,'Wholesale - industrial machinery and equipment';42,5085,5085,'Wholesale - industrial supplies';42,5086,5087,'Wholesale - machinery and equipment (?)';42,5088,5088,'Wholesale - trans eq except motor vehicles';42,5090,5090,'Wholesale - misc durable goods';42,5091,5092,'Wholesale - sporting goods, toys';42,5093,5093,'Wholesale - scrap and waste materials';42,5094,5094,'Wholesale - jewelry and watches';42,5099,5099,'Wholesale - durable goods';42,5100,5100,'Wholesale - nondurable goods';42,5110,5113,'Wholesale - paper and paper products';42,5120,5122,'Wholesale - drugs & propietary';42,5130,5139,'Wholesale - apparel';42,5140,5149,'Wholesale - groceries & related prods';42,5150,5159,'Wholesale - farm products';42,5160,5169,'Wholesale - chemicals & allied prods';42,5170,5172,'Wholesale - petroleum and petro prods';42,5180,5182,'Wholesale - beer, wine';42,5190,5199,'Wholesale - non-durable goods';43,5200,5200,'Retail - bldg material, hardware, garden';43,5210,5219,'Retail - lumber & other building mat';43,5220,5229,'Retail';43,5230,5231,'Retail - paint, glass, wallpaper';43,5250,5251,'Retail - hardward stores';43,5260,5261,'Retail - nurseries, lawn, garden stores';43,5270,5271,'Retail - mobile home dealers';43,5300,5300,'Retail - general merchandise stores';43,5310,5311,'Retail - department stores';43,5320,5320,'Retail - general merchandise stores (?)';43,5330,5331,'Retail - variety stores';43,5334,5334,'Retail - catalog showroom';43,5340,5349,'Retail';43,5390,5399,'Retail - Misc general merchandise stores';43,5400,5400,'Retail - food stores';43,5410,5411,'Retail - grocery stores';43,5412,5412,'Retail - convenience stores';43,5420,5429,'Retail - meat, fish mkt';43,5430,5439,'Retail - fruite and vegatable markets';43,5440,5449,'Retail - candy, nut, confectionary stores';43,5450,5459,'Retail - dairy product stores';43,5460,5469,'Retail - bakeries';43,5490,5499,'Retail - miscellaneous food stores';43,5500,5500,'Retail - auto dealers and gas stations';43,5510,5529,'Retail - auto dealers';43,5530,5539,'Retail - auto and home supply stores';43,5540,5549,'Retail - gasoline service stations';43,5550,5559,'Retail - boat dealers';43,5560,5569,'Retail - recreational vehicle dealers';43,5570,5579,'Retail - motorcycle dealers';43,5590,5599,'Retail - automotive dealers';43,5600,5699,'Retail - apparel & acces';43,5700,5700,'Retail - home furniture and equipment stores';43,5710,5719,'Retail - home furnishings stores';43,5720,5722,'Retail - household appliance stores';43,5730,5733,'Retail - radio, TV and consumer electronic stores';43,5734,5734,'Retail - computer and computer software stores';43,5735,5735,'Retail - record and tape stores';43,5736,5736,'Retail - musical instrument stores';43,5750,5799,'Retail';43,5900,5900,'Retail - misc';43,5910,5912,'Retail - drug & proprietary stores';43,5920,5929,'Retail - liquor stores';43,5930,5932,'Retail - used merchandise stores';43,5940,5940,'Retail - misc';43,5941,5941,'Retail - sporting goods stores, bike shops';43,5942,5942,'Retail - book stores';43,5943,5943,'Retail - stationery stores';43,5944,5944,'Retail - jewelry stores';43,5945,5945,'Retail - hobby, toy and game shops';43,5946,5946,'Retail - camera and photo shop';43,5947,5947,'Retail - gift, novelty';43,5948,5948,'Retail - luggage';43,5949,5949,'Retail - sewing & needlework stores';43,5950,5959,'Retail';43,5960,5969,'Retail - non-store retailers (catalogs, etc)';43,5970,5979,'Retail';43,5980,5989,'Retail - fuel & ice stores (Penn Central Co)';43,5990,5990,'Retail - retail stores';43,5992,5992,'Retail - florists';43,5993,5993,'Retail - tobacco stores';43,5994,5994,'Retail - newsdealers';43,5995,5995,'Retail - computer stores';43,5999,5999,'Retail stores';44,5800,5819,'Retail - eating places';44,5820,5829,'Restaraunts, hotels, motels';44,5890,5899,'Eating and drinking places';44,7000,7000,'Hotels, other lodging places';44,7010,7019,'Hotels motels';44,7040,7049,'Membership hotels and lodging';44,7213,7213,'Services - linen';45,6000,6000,'Depository institutions';45,6010,6019,'Federal reserve banks';45,6020,6020,'Commercial banks';45,6021,6021,'National commercial banks';45,6022,6022,'State banks - Fed Res System';45,6023,6024,'State banks - not Fed Res System';45,6025,6025,'National banks - Fed Res System';45,6026,6026,'National banks - not Fed Res System';45,6027,6027,'National banks, not FDIC';45,6028,6029,'Banks';45,6030,6036,'Savings institutions';45,6040,6059,'Banks (?)';45,6060,6062,'Credit unions';45,6080,6082,'Foreign banks';45,6090,6099,'Functions related to deposit banking';45,6100,6100,'Nondepository credit institutions';45,6110,6111,'Federal credit agencies';45,6112,6113,'FNMA';45,6120,6129,'S&Ls';45,6130,6139,'Agricultural credit institutions';45,6140,6149,'Personal credit institutions (Beneficial)';45,6150,6159,'Business credit institutions';45,6160,6169,'Mortgage bankers';45,6170,6179,'Finance lessors';45,6190,6199,'Financial services';46,6300,6300,'Insurance';46,6310,6319,'Life insurance';46,6320,6329,'Accident and health insurance';46,6330,6331,'Fire, marine, property-casualty ins';46,6350,6351,'Surety insurance';46,6360,6361,'Title insurance';46,6370,6379,'Pension, health, welfare funds';46,6390,6399,'Insurance carriers';46,6400,6411,'Insurance agents';47,6500,6500,'Real estate';47,6510,6510,'Real estate operators';47,6512,6512,'Operators - non-resident buildings';47,6513,6513,'Operators - apartment buildings';47,6514,6514,'Operators - other than apartment';47,6515,6515,'Operators - residential mobile home';47,6517,6519,'Lessors of real property';47,6520,6529,'Real estate';47,6530,6531,'Real estate agents and managers';47,6532,6532,'Real estate dealers';47,6540,6541,'Title abstract offices';47,6550,6553,'Real estate developers';47,6590,6599,'Real estate';47,6610,6611,'Combined real estate, insurance, etc';48,6200,6299,'Security and commodity brokers';48,6700,6700,'Holding, other investment offices';48,6710,6719,'Holding offices';48,6720,6722,'Investment offices';48,6723,6723,'Management investment, closed-end';48,6724,6724,'Unit investment trusts';48,6725,6725,'Face-amount certificate offices';48,6726,6726,'Unit inv trusts, closed-end';48,6730,6733,'Trusts';48,6740,6779,'Investment offices';48,6790,6791,'Miscellaneous investing';48,6792,6792,'Oil royalty traders';48,6793,6793,'Commodity traders';48,6794,6794,'Patent owners & lessors';48,6795,6795,'Mineral royalty traders';48,6798,6798,'REIT';48,6799,6799,'Investors, NEC';49,4950,4959,'Sanitary services';49,4960,4961,'Steam, air conditioning supplies';49,4970,4971,'Irrigation systems';49,4990,4991,'Cogeneration - SM power producer'};
-dict = cell2table(C, 'VariableNames',{'Id_FF49','Sic_from','Sic_to','SIC_Ind_Name'});
+% DO NOT EDIT THIS TEXT
+%
+%  1 Agric  Agriculture
+%           0100-0199 Agric production - crops
+%           0200-0299 Agric production - livestock
+%           0700-0799 Agricultural services
+%           0910-0919 Commercial fishing
+%           2048-2048 Prepared feeds for animals
+% 
+%  2 Food   Food Products
+%           2000-2009 Food and kindred products
+%           2010-2019 Meat products
+%           2020-2029 Dairy products
+%           2030-2039 Canned-preserved fruits-vegs
+%           2040-2046 Flour and other grain mill products
+%           2050-2059 Bakery products
+%           2060-2063 Sugar and confectionery products
+%           2070-2079 Fats and oils
+%           2090-2092 Misc food preps
+%           2095-2095 Roasted coffee
+%           2098-2099 Misc food preparations
+% 
+%  3 Soda   Candy & Soda
+%           2064-2068 Candy and other confectionery
+%           2086-2086 Bottled-canned soft drinks
+%           2087-2087 Flavoring syrup
+%           2096-2096 Potato chips
+%           2097-2097 Manufactured ice
+% 
+%  4 Beer   Beer & Liquor
+%           2080-2080 Beverages
+%           2082-2082 Malt beverages
+%           2083-2083 Malt
+%           2084-2084 Wine
+%           2085-2085 Distilled and blended liquors
+% 
+%  5 Smoke  Tobacco Products
+%           2100-2199 Tobacco products
+% 
+%  6 Toys   Recreation
+%           0920-0999 Fishing, hunting & trapping
+%           3650-3651 Household audio visual equip
+%           3652-3652 Phonographic records
+%           3732-3732 Boat building and repair
+%           3930-3931 Musical instruments
+%           3940-3949 Toys
+% 
+%  7 Fun    Entertainment
+%           7800-7829 Services - motion picture production and distribution
+%           7830-7833 Services - motion picture theatres
+%           7840-7841 Services - video rental
+%           7900-7900 Services - amusement and recreation
+%           7910-7911 Services - dance studios
+%           7920-7929 Services - bands, entertainers
+%           7930-7933 Services - bowling centers
+%           7940-7949 Services - professional sports
+%           7980-7980 Amusement and recreation services (?)
+%           7990-7999 Services - misc entertainment
+% 
+%  8 Books  Printing and Publishing
+%           2700-2709 Printing publishing and allied
+%           2710-2719 Newspapers: publishing-printing
+%           2720-2729 Periodicals: publishing-printing
+%           2730-2739 Books: publishing-printing
+%           2740-2749 Misc publishing
+%           2770-2771 Greeting card publishing
+%           2780-2789 Book binding
+%           2790-2799 Service industries for print trade
+% 
+%  9 Hshld  Consumer Goods
+%           2047-2047 Dog and cat food
+%           2391-2392 Curtains, home furnishings
+%           2510-2519 Household furniture
+%           2590-2599 Misc furniture and fixtures
+%           2840-2843 Soap & other detergents
+%           2844-2844 Perfumes cosmetics
+%           3160-3161 Luggage
+%           3170-3171 Handbags and purses
+%           3172-3172 Personal leather goods, except handbags
+%           3190-3199 Leather goods
+%           3229-3229 Pressed and blown glass
+%           3260-3260 Pottery and related products
+%           3262-3263 China and earthenware table articles
+%           3269-3269 Pottery products
+%           3230-3231 Glass products
+%           3630-3639 Household appliances
+%           3750-3751 Motorcycles, bicycles and parts  (Harley & Huffy)
+%           3800-3800 Misc inst, photo goods, watches
+%           3860-3861 Photographic equip  (Kodak etc, but also Xerox)
+%           3870-3873 Watches clocks and parts
+%           3910-3911 Jewelry-precious metals
+%           3914-3914 Silverware
+%           3915-3915 Jewelers' findings, materials
+%           3960-3962 Costume jewelry and notions
+%           3991-3991 Brooms and brushes
+%           3995-3995 Burial caskets
+% 
+% 10 Clths  Apparel
+%           2300-2390 Apparel and other finished products
+%           3020-3021 Rubber and plastics footwear
+%           3100-3111 Leather tanning and finishing
+%           3130-3131 Boot, shoe cut stock, findings
+%           3140-3149 Footware except rubber
+%           3150-3151 Leather gloves and mittens
+%           3963-3965 Fasteners, buttons, needles, pins
+% 
+% 11 Hlth   Healthcare
+%           8000-8099 Services - health
+% 
+% 12 MedEq  Medical Equipment
+%           3693-3693 X-ray, electromedical app
+%           3840-3849 Surg & med instru
+%           3850-3851 Ophthalmic goods
+% 
+% 13 Drugs  Pharmaceutical Products
+%           2830-2830 Drugs
+%           2831-2831 Biological products
+%           2833-2833 Medicinal chemicals
+%           2834-2834 Pharmaceutical preparations
+%           2835-2835 In vitro, in vivo diagnostics
+%           2836-2836 Biological products, except diagnostics
+% 
+% 14 Chems  Chemicals
+%           2800-2809 Chemicals and allied products
+%           2810-2819 Industrial inorganical chems
+%           2820-2829 Plastic material & synthetic resin
+%           2850-2859 Paints
+%           2860-2869 Industrial organic chems
+%           2870-2879 Agriculture chemicals
+%           2890-2899 Misc chemical products
+% 
+% 15 Rubbr  Rubber and Plastic Products
+%           3031-3031 Reclaimed rubber
+%           3041-3041 Rubber & plastic hose and belting
+%           3050-3053 Gaskets, hoses, etc
+%           3060-3069 Fabricated rubber products
+%           3070-3079 Misc rubber products (?)
+%           3080-3089 Misc plastic products
+%           3090-3099 Misc rubber and plastic products (?)
+% 
+% 16 Txtls  Textiles
+%           2200-2269 Textile mill products
+%           2270-2279 Floor covering mills
+%           2280-2284 Yarn and thread mills
+%           2290-2295 Misc textile goods
+%           2297-2297 Nonwoven fabrics
+%           2298-2298 Cordage and twine
+%           2299-2299 Misc textile products
+%           2393-2395 Textile bags, canvas products
+%           2397-2399 Misc textile products
+% 
+% 17 BldMt  Construction Materials
+%           0800-0899 Forestry
+%           2400-2439 Lumber and wood products
+%           2450-2459 Wood buildings-mobile homes
+%           2490-2499 Misc wood products
+%           2660-2661 Building paper and board mills
+%           2950-2952 Paving & roofing materials
+%           3200-3200 Stone, clay, glass, concrete etc
+%           3210-3211 Flat glass
+%           3240-3241 Cement hydraulic
+%           3250-3259 Structural clay prods
+%           3261-3261 Vitreous china plumbing fixtures
+%           3264-3264 Porcelain electrical supply
+%           3270-3275 Concrete gypsum & plaster
+%           3280-3281 Cut stone and stone products
+%           3290-3293 Abrasive and asbestos products
+%           3295-3299 Non-metalic mineral products
+%           3420-3429 Handtools and hardware
+%           3430-3433 Heating equip & plumbing fix
+%           3440-3441 Fabicated struct metal products
+%           3442-3442 Metal doors, frames
+%           3446-3446 Architectual or ornamental metal work
+%           3448-3448 Pre-fab metal buildings
+%           3449-3449 Misc structural metal work
+%           3450-3451 Screw machine products
+%           3452-3452 Bolts, nuts screws
+%           3490-3499 Misc fabricated metal products
+%           3996-3996 Hard surface floor cover
+% 
+% 18 Cnstr  Construction
+%           1500-1511 Build construction - general contractors
+%           1520-1529 Gen building contractors - residential
+%           1530-1539 Operative builders
+%           1540-1549 Gen building contractors - non-residential
+%           1600-1699 Heavy Construction - not building contractors
+%           1700-1799 Construction - special contractors
+% 
+% 19 Steel  Steel Works Etc
+%           3300-3300 Primary metal industries
+%           3310-3317 Blast furnaces & steel works
+%           3320-3325 Iron & steel foundries
+%           3330-3339 Prim smelt-refin nonfer metals
+%           3340-3341 Secondary smelt-refin nonfer metals
+%           3350-3357 Rolling & drawing nonferous metals
+%           3360-3369 Non-ferrous foundries and casting
+%           3370-3379 Steel works etc
+%           3390-3399 Misc primary metal products
+% 
+% 20 FabPr  Fabricated Products
+%           3400-3400 Fabricated metal, except machinery and trans eq
+%           3443-3443 Fabricated plate work
+%           3444-3444 Sheet metal work
+%           3460-3469 Metal forgings and stampings
+%           3470-3479 Coating and engraving
+% 
+% 21 Mach   Machinery
+%           3510-3519 Engines & turbines
+%           3520-3529 Farm and garden machinery
+%           3530-3530 Constr, mining material handling machinery
+%           3531-3531 Construction machinery
+%           3532-3532 Mining machinery, except oil field
+%           3533-3533 Oil field machinery
+%           3534-3534 Elevators
+%           3535-3535 Conveyors
+%           3536-3536 Cranes, hoists
+%           3538-3538 Machinery
+%           3540-3549 Metalworking machinery 
+%           3550-3559 Special industry machinery
+%           3560-3569 General industrial machinery
+%           3580-3580 Refrig & service ind machines
+%           3581-3581 Automatic vending machines
+%           3582-3582 Commercial laundry and drycleaning machines
+%           3585-3585 Air conditioning, heating, refrid eq
+%           3586-3586 Measuring and dispensing pumps
+%           3589-3589 Service industry machinery
+%           3590-3599 Misc industrial and commercial equipment and mach
+% 
+% 22 ElcEq  Electrical Equipment
+%           3600-3600 Elec mach eq & supply
+%           3610-3613 Elec transmission
+%           3620-3621 Electrical industrial appar
+%           3623-3629 Electrical industrial appar
+%           3640-3644 Electric lighting, wiring
+%           3645-3645 Residential lighting fixtures
+%           3646-3646 Commercial lighting 
+%           3648-3649 Lighting equipment
+%           3660-3660 Communication equip
+%           3690-3690 Miscellaneous electrical machinery and equip
+%           3691-3692 Storage batteries
+%           3699-3699 Electrical machinery and equip
+% 
+% 23 Autos  Automobiles and Trucks
+%           2296-2296 Tire cord and fabric
+%           2396-2396 Auto trim
+%           3010-3011 Tires and inner tubes
+%           3537-3537 Trucks, tractors, trailers
+%           3647-3647 Vehicular lighting
+%           3694-3694 Elec eq, internal combustion engines
+%           3700-3700 Transportation equipment
+%           3710-3710 Motor vehicles and motor vehicle equip
+%           3711-3711 Motor vehicles & car bodies
+%           3713-3713 Truck & bus bodies
+%           3714-3714 Motor vehicle parts
+%           3715-3715 Truck trailers
+%           3716-3716 Motor homes
+%           3792-3792 Travel trailers and campers
+%           3790-3791 Misc trans equip
+%           3799-3799 Misc trans equip
+% 
+% 24 Aero   Aircraft
+%           3720-3720 Aircraft & parts
+%           3721-3721 Aircraft
+%           3723-3724 Aircraft engines, engine parts
+%           3725-3725 Aircraft parts
+%           3728-3729 Aircraft parts
+% 
+% 25 Ships  Shipbuilding, Railroad Equipment
+%           3730-3731 Ship building and repair
+%           3740-3743 Railroad Equipment
+% 
+% 26 Guns   Defense
+%           3760-3769 Guided missiles and space vehicles
+%           3795-3795 Tanks and tank components
+%           3480-3489 Ordnance & accessories
+% 
+% 27 Gold   Precious Metals
+%           1040-1049 Gold & silver ores
+% 
+% 28 Mines  Non-Metallic and Industrial Metal Mining
+%           1000-1009 Metal mining
+%           1010-1019 Iron ores
+%           1020-1029 Copper ores
+%           1030-1039 Lead and zinc ores
+%           1050-1059 Bauxite and other aluminum ores                 
+%           1060-1069 Ferroalloy ores
+%           1070-1079 Mining
+%           1080-1089 Mining services
+%           1090-1099 Misc metal ores
+%           1100-1119 Anthracite mining                               
+%           1400-1499 Mining and quarrying non-metalic minerals
+% 
+% 29 Coal   Coal
+%           1200-1299 Bituminous coal
+% 
+% 30 Oil    Petroleum and Natural Gas
+%           1300-1300 Oil and gas extraction
+%           1310-1319 Crude petroleum & natural gas
+%           1320-1329 Natural gas liquids
+%           1330-1339 Petroleum and natural gas
+%           1370-1379 Petroleum and natural gas
+%           1380-1380 Oil and gas field services
+%           1381-1381 Drilling oil & gas wells
+%           1382-1382 Oil-gas field exploration
+%           1389-1389 Oil and gas field services
+%           2900-2912 Petroleum refining
+%           2990-2999 Misc petroleum products
+% 
+% 31 Util   Utilities
+%           4900-4900 Electric, gas, sanitary services
+%           4910-4911 Electric services
+%           4920-4922 Natural gas transmission
+%           4923-4923 Natural gas transmission-distr
+%           4924-4925 Natural gas distribution
+%           4930-4931 Electric and other services combined
+%           4932-4932 Gas and other services combined
+%           4939-4939 Combination utilities
+%           4940-4942 Water supply
+% 
+% 32 Telcm  Communication
+%           4800-4800 Communications
+%           4810-4813 Telephone communications
+%           4820-4822 Telegraph and other message communication
+%           4830-4839 Radio-TV Broadcasters
+%           4840-4841 Cable and other pay TV services
+%           4880-4889 Communications
+%           4890-4890 Communication services (Comsat)
+%           4891-4891 Cable TV operators
+%           4892-4892 Telephone interconnect
+%           4899-4899 Communication services
+% 
+% 33 PerSv  Personal Services
+%           7020-7021 Rooming and boarding houses
+%           7030-7033 Camps and recreational vehicle parks
+%           7200-7200 Services - personal
+%           7210-7212 Services - laundry, cleaners
+%           7214-7214 Services - diaper service                                  
+%           7215-7216 Services - coin-op cleaners, dry cleaners
+%           7217-7217 Services - carpet, upholstery cleaning
+%           7219-7219 Services - laundry, cleaners
+%           7220-7221 Services - photo studios, portrait
+%           7230-7231 Services - beauty shops
+%           7240-7241 Services - barber shops
+%           7250-7251 Services - shoe repair
+%           7260-7269 Services - funeral
+%           7270-7290 Services - misc
+%           7291-7291 Services - tax return
+%           7292-7299 Services - misc
+%           7395-7395 Services - photofinishing labs (School pictures)
+%           7500-7500 Services - auto repair, services
+%           7520-7529 Services - automobile parking
+%           7530-7539 Services - auto repair shops
+%           7540-7549 Services - auto services, except repair (car washes)
+%           7600-7600 Services - Misc repair services
+%           7620-7620 Services - Electrical repair shops
+%           7622-7622 Services - Radio and TV repair shops
+%           7623-7623 Services - Refridg and air conditioner repair
+%           7629-7629 Services - Electrical repair shops
+%           7630-7631 Services - Watch, clock and jewelry repair
+%           7640-7641 Services - Reupholster, furniture repair
+%           7690-7699 Services - Misc repair shops
+%           8100-8199 Services - legal
+%           8200-8299 Services - educational
+%           8300-8399 Services - social services
+%           8400-8499 Services - museums, galleries, botanic gardens
+%           8600-8699 Services - membership organizations
+%           8800-8899 Services - private households
+%           7510-7515 Services - truck, auto rental and leasing
+% 
+% 34 BusSv  Business Services
+%           2750-2759 Commercial printing
+%           3993-3993 Signs, advertising specialty
+%           7218-7218 Services - industrial launderers
+%           7300-7300 Services - business services
+%           7310-7319 Services - advertising
+%           7320-7329 Services - credit reporting agencies, collection services
+%           7330-7339 Services - mailing, reproduction, commercial art
+%           7340-7342 Services - services to dwellings, other buildings
+%           7349-7349 Services - cleaning and builging maint
+%           7350-7351 Services - misc equip rental and leasing
+%           7352-7352 Services - medical equip rental
+%           7353-7353 Services - heavy construction equip rental
+%           7359-7359 Services - equip rental and leasing
+%           7360-7369 Services - personnel supply services
+%           7374-7374 Services - computer processing, data prep
+%           7376-7376 Services - computer facilities management service
+%           7377-7377 Services - computer rental and leasing
+%           7378-7378 Services - computer maintanence and repair
+%           7379-7379 Services - computer related services
+%           7380-7380 Services - misc business services
+%           7381-7382 Services - security
+%           7383-7383 Services - news syndicates
+%           7384-7384 Services - photofinishing labs
+%           7385-7385 Services - telephone interconnections
+%           7389-7390 Services - misc business services
+%           7391-7391 Services - R&D labs
+%           7392-7392 Services - management consulting & P.R.
+%           7393-7393 Services - detective and protective (ADT)
+%           7394-7394 Services - equipment rental & leasing
+%           7396-7396 Services - trading stamp services                          
+%           7397-7397 Services - commercial testing labs
+%           7399-7399 Services - business services
+%           7519-7519 Services - trailer rental and leasing
+%           8700-8700 Services - engineering, accounting, research, management
+%           8710-8713 Services - engineering, accounting, surveying
+%           8720-8721 Services - accounting, auditing, bookkeeping
+%           8730-8734 Services - research, development, testing labs
+%           8740-8748 Services - management, public relations, consulting
+%           8900-8910 Services - misc
+%           8911-8911 Services - engineering & architect
+%           8920-8999 Services - misc
+%           4220-4229 Warehousing and storage
+% 
+% 35 Hardw  Computers
+%           3570-3579 Office computers
+%           3680-3680 Computers
+%           3681-3681 Computers - mini
+%           3682-3682 Computers - mainframe
+%           3683-3683 Computers - terminals
+%           3684-3684 Computers - disk & tape drives
+%           3685-3685 Computers - optical scanners
+%           3686-3686 Computers - graphics
+%           3687-3687 Computers - office automation systems
+%           3688-3688 Computers - peripherals
+%           3689-3689 Computers - equipment
+%           3695-3695 Magnetic and optical recording media
+% 
+% 36 Softw  Computer Software 
+%           7370-7372 Services - computer programming and data processing	  
+%           7375-7375 Services - information retrieval services
+%           7373-7373 Computer integrated systems design
+% 
+% 37 Chips  Electronic Equipment
+%           3622-3622 Industrial controls
+%           3661-3661 Telephone and telegraph apparatus
+%           3662-3662 Communications equipment
+%           3663-3663 Radio TV comm equip & apparatus
+%           3664-3664 Search, navigation, guidance systems
+%           3665-3665 Training equipment & simulators
+%           3666-3666 Alarm & signaling products
+%           3669-3669 Communication equipment
+%           3670-3679 Electronic components
+%           3810-3810 Search, detection, navigation, guidance
+%           3812-3812 Search, detection, navigation, guidance
+% 
+% 38 LabEq  Measuring and Control Equipment
+%           3811-3811 Engr lab and research equipment
+%           3820-3820 Measuring and controlling equipment
+%           3821-3821 Lab apparatus and furniture
+%           3822-3822 Automatic controls - Envir and applic
+%           3823-3823 Industrial measurement instru
+%           3824-3824 Totalizing fluid meters
+%           3825-3825 Elec meas & test instr
+%           3826-3826 Lab analytical instruments
+%           3827-3827 Optical instr and lenses
+%           3829-3829 Meas and control devices
+%           3830-3839 Optical instr and lenses
+% 
+% 39 Paper  Business Supplies
+%           2520-2549 Office furniture and fixtures
+%           2600-2639 Paper and allied products
+%           2670-2699 Paper and allied products
+%           2760-2761 Manifold business forms
+%           3950-3955 Pens pencils and office supplies
+% 
+% 40 Boxes  Shipping Containers
+%           2440-2449 Wood containers
+%           2640-2659 Paperboard containers, boxes, drums, tubs
+%           3220-3221 Glass containers
+%           3410-3412 Metal cans and shipping containers
+% 
+% 41 Trans  Transportation
+%           4000-4013 Railroads-line haul
+%           4040-4049 Railway express service                         
+%           4100-4100 Transit and passenger trans
+%           4110-4119 Local passenger trans
+%           4120-4121 Taxicabs
+%           4130-4131 Intercity bus trans (Greyhound)
+%           4140-4142 Bus charter
+%           4150-4151 School buses
+%           4170-4173 Motor vehicle terminals, service facilities
+%           4190-4199 Misc transit and passenger transportation
+%           4200-4200 Motor freight trans, warehousing
+%           4210-4219 Trucking
+%           4230-4231 Terminal facilities - motor freight
+%           4240-4249 Transportation
+%           4400-4499 Water transport
+%           4500-4599 Air transportation
+%           4600-4699 Pipelines, except natural gas
+%           4700-4700 Transportation services
+%           4710-4712 Freight forwarding
+%           4720-4729 Travel agencies, etc
+%           4730-4739 Arrange trans - freight and cargo
+%           4740-4749 Rental of railroad cars
+%           4780-4780 Misc services incidental to trans
+%           4782-4782 Inspection and weighing services                
+%           4783-4783 Packing and crating
+%           4784-4784 Fixed facilities for vehicles, not elsewhere classified
+%           4785-4785 Motor vehicle inspection
+%           4789-4789 Transportation services
+% 
+% 42 Whlsl  Wholesale
+%           5000-5000 Wholesale - durable goods
+%           5010-5015 Wholesale - autos and parts
+%           5020-5023 Wholesale - furniture and home furnishings
+%           5030-5039 Wholesale - lumber and construction materials
+%           5040-5042 Wholesale - professional and commercial equipment and supplies
+%           5043-5043 Wholesale - photographic equipment
+%           5044-5044 Wholesale - office equipment
+%           5045-5045 Wholesale - computers
+%           5046-5046 Wholesale - commerical equip
+%           5047-5047 Wholesale - medical, dental equip
+%           5048-5048 Wholesale - ophthalmic goods
+%           5049-5049 Wholesale - professional equip and supplies
+%           5050-5059 Wholesale - metals and minerals
+%           5060-5060 Wholesale - electrical goods
+%           5063-5063 Wholesale - electrical apparatus and equipment
+%           5064-5064 Wholesale - electrical appliance TV and radio
+%           5065-5065 Wholesale - electronic parts
+%           5070-5078 Wholesale - hardware, plumbing, heating equip
+%           5080-5080 Wholesale - machinery and equipment
+%           5081-5081 Wholesale - machinery and equipment (?)
+%           5082-5082 Wholesale - construction and mining equipment
+%           5083-5083 Wholesale - farm and garden machinery
+%           5084-5084 Wholesale - industrial machinery and equipment
+%           5085-5085 Wholesale - industrial supplies
+%           5086-5087 Wholesale - machinery and equipment (?)
+%           5088-5088 Wholesale - trans eq except motor vehicles
+%           5090-5090 Wholesale - misc durable goods
+%           5091-5092 Wholesale - sporting goods, toys
+%           5093-5093 Wholesale - scrap and waste materials
+%           5094-5094 Wholesale - jewelry and watches
+%           5099-5099 Wholesale - durable goods
+%           5100-5100 Wholesale - nondurable goods
+%           5110-5113 Wholesale - paper and paper products
+%           5120-5122 Wholesale - drugs & propietary
+%           5130-5139 Wholesale - apparel
+%           5140-5149 Wholesale - groceries & related prods
+%           5150-5159 Wholesale - farm products
+%           5160-5169 Wholesale - chemicals & allied prods
+%           5170-5172 Wholesale - petroleum and petro prods
+%           5180-5182 Wholesale - beer, wine
+%           5190-5199 Wholesale - non-durable goods
+% 
+% 43 Rtail  Retail 
+%           5200-5200 Retail - bldg material, hardware, garden
+%           5210-5219 Retail - lumber & other building mat
+%           5220-5229 Retail
+%           5230-5231 Retail - paint, glass, wallpaper
+%           5250-5251 Retail - hardward stores
+%           5260-5261 Retail - nurseries, lawn, garden stores
+%           5270-5271 Retail - mobile home dealers
+%           5300-5300 Retail - general merchandise stores
+%           5310-5311 Retail - department stores
+%           5320-5320 Retail - general merchandise stores (?)
+%           5330-5331 Retail - variety stores
+%           5334-5334 Retail - catalog showroom
+%           5340-5349 Retail
+%           5390-5399 Retail - Misc general merchandise stores
+%           5400-5400 Retail - food stores
+%           5410-5411 Retail - grocery stores
+%           5412-5412 Retail - convenience stores
+%           5420-5429 Retail - meat, fish mkt
+%           5430-5439 Retail - fruite and vegatable markets
+%           5440-5449 Retail - candy, nut, confectionary stores
+%           5450-5459 Retail - dairy product stores
+%           5460-5469 Retail - bakeries
+%           5490-5499 Retail - miscellaneous food stores
+%           5500-5500 Retail - auto dealers and gas stations
+%           5510-5529 Retail - auto dealers
+%           5530-5539 Retail - auto and home supply stores
+%           5540-5549 Retail - gasoline service stations
+%           5550-5559 Retail - boat dealers
+%           5560-5569 Retail - recreational vehicle dealers
+%           5570-5579 Retail - motorcycle dealers
+%           5590-5599 Retail - automotive dealers
+%           5600-5699 Retail - apparel & acces
+%           5700-5700 Retail - home furniture and equipment stores
+%           5710-5719 Retail - home furnishings stores
+%           5720-5722 Retail - household appliance stores
+%           5730-5733 Retail - radio, TV and consumer electronic stores
+%           5734-5734 Retail - computer and computer software stores
+%           5735-5735 Retail - record and tape stores
+%           5736-5736 Retail - musical instrument stores
+%           5750-5799 Retail
+%           5900-5900 Retail - misc
+%           5910-5912 Retail - drug & proprietary stores
+%           5920-5929 Retail - liquor stores
+%           5930-5932 Retail - used merchandise stores
+%           5940-5940 Retail - misc
+%           5941-5941 Retail - sporting goods stores, bike shops
+%           5942-5942 Retail - book stores
+%           5943-5943 Retail - stationery stores
+%           5944-5944 Retail - jewelry stores
+%           5945-5945 Retail - hobby, toy and game shops
+%           5946-5946 Retail - camera and photo shop
+%           5947-5947 Retail - gift, novelty
+%           5948-5948 Retail - luggage
+%           5949-5949 Retail - sewing & needlework stores
+%           5950-5959 Retail
+%           5960-5969 Retail - non-store retailers (catalogs, etc)
+%           5970-5979 Retail
+%           5980-5989 Retail - fuel & ice stores (Penn Central Co)
+%           5990-5990 Retail - retail stores
+%           5992-5992 Retail - florists
+%           5993-5993 Retail - tobacco stores
+%           5994-5994 Retail - newsdealers
+%           5995-5995 Retail - computer stores
+%           5999-5999 Retail stores
+% 
+% 44 Meals  Restaurants, Hotels, Motels
+%           5800-5819 Retail - eating places
+%           5820-5829 Restaurants, hotels, motels
+%           5890-5899 Eating and drinking places
+%           7000-7000 Hotels, other lodging places
+%           7010-7019 Hotels motels
+%           7040-7049 Membership hotels and lodging
+%           7213-7213 Services - linen
+% 
+% 45 Banks  Banking
+%           6000-6000 Depository institutions
+%           6010-6019 Federal reserve banks
+%           6020-6020 Commercial banks
+%           6021-6021 National commercial banks
+%           6022-6022 State banks - Fed Res System
+%           6023-6024 State banks - not Fed Res System
+%           6025-6025 National banks - Fed Res System
+%           6026-6026 National banks - not Fed Res System
+%           6027-6027 National banks, not FDIC                        
+%           6028-6029 Banks
+%           6030-6036 Savings institutions
+%           6040-6059 Banks (?)
+%           6060-6062 Credit unions
+%           6080-6082 Foreign banks
+%           6090-6099 Functions related to deposit banking
+%           6100-6100 Nondepository credit institutions
+%           6110-6111 Federal credit agencies
+%           6112-6113 FNMA
+%           6120-6129 S&Ls
+%           6130-6139 Agricultural credit institutions                
+%           6140-6149 Personal credit institutions (Beneficial)
+%           6150-6159 Business credit institutions
+%           6160-6169 Mortgage bankers
+%           6170-6179 Finance lessors
+%           6190-6199 Financial services
+% 
+% 46 Insur  Insurance
+%           6300-6300 Insurance
+%           6310-6319 Life insurance
+%           6320-6329 Accident and health insurance
+%           6330-6331 Fire, marine, property-casualty ins
+%           6350-6351 Surety insurance
+%           6360-6361 Title insurance
+%           6370-6379 Pension, health, welfare funds
+%           6390-6399 Insurance carriers
+%           6400-6411 Insurance agents
+% 
+% 47 RlEst  Real Estate
+%           6500-6500 Real estate
+%           6510-6510 Real estate operators
+%           6512-6512 Operators - non-resident buildings
+%           6513-6513 Operators - apartment buildings
+%           6514-6514 Operators - other than apartment
+%           6515-6515 Operators - residential mobile home
+%           6517-6519 Lessors of real property
+%           6520-6529 Real estate
+%           6530-6531 Real estate agents and managers
+%           6532-6532 Real estate dealers
+%           6540-6541 Title abstract offices
+%           6550-6553 Real estate developers
+%           6590-6599 Real estate
+%           6610-6611 Combined real estate, insurance, etc
+% 
+% 48 Fin    Trading
+%           6200-6299 Security and commodity brokers
+%           6700-6700 Holding, other investment offices
+%           6710-6719 Holding offices
+%           6720-6722 Investment offices
+%           6723-6723 Management investment, closed-end
+%           6724-6724 Unit investment trusts                          
+%           6725-6725 Face-amount certificate offices 
+%           6726-6726 Unit inv trusts, closed-end                
+%           6730-6733 Trusts
+%           6740-6779 Investment offices
+%           6790-6791 Miscellaneous investing
+%           6792-6792 Oil royalty traders
+%           6793-6793 Commodity traders                               
+%           6794-6794 Patent owners & lessors
+%           6795-6795 Mineral royalty traders
+%           6798-6798 REIT
+%           6799-6799 Investors, NEC
+% 
+% 49 Other  Almost Nothing
+%           4950-4959 Sanitary services
+%           4960-4961 Steam, air conditioning supplies
+%           4970-4971 Irrigation systems
+%           4990-4991 Cogeneration - SM power producer
+
+s           = help(mfilename);
+s           = strsplit(s,'\n');
+isEmptyLine = cellfun(@(x) all(isspace(x)), s);
+
+% Description table
+desc = cell(nnz(isEmptyLine)-1,3);
+dict = cell(numel(s),4);
+c    = 0;
+for ii = 2:numel(s)
+    ln = s{ii};
+    if isEmptyLine(ii)
+        IS_NEW_IND = true;
+        c          = c+1;
+    elseif IS_NEW_IND
+        IS_NEW_IND = false;
+        tmp        = textscan(ln,'%d %5c %[^\n]','Delimiter','');
+        FFid       = tmp{1};
+        desc{c,1}  = FFid;
+        desc{c,2}  = strtrim(tmp{2});
+        desc{c,3}  = strtrim(tmp{3});
+    else
+        tmp        = textscan(ln,'%d-%d %[^\n]','Delimiter','');
+        dict{ii,1} = FFid;  
+        dict{ii,2} = tmp{1};
+        dict{ii,3} = tmp{2};
+        dict{ii,4} = strtrim(tmp{3});
+    end
+end
+
+iKeep = ~cellfun('isempty', dict(:,1));
+dict  = cell2table(dict(iKeep,:), 'VariableNames',{'Id_FF49','Sic_from','Sic_to','SIC_Ind_Name'});
+
 if nargout == 2
-    C    = {1,'Agriculture';2,'Food products';3,'Candy and soda';4,'Beer and liquor';5,'Tobacco products';6,'Recreation';7,'Entertainment';8,'Printing and publishing';9,'Consumer goods';10,'Apparel';11,'Healthcare';12,'Medical equipment';13,'Pharmaceutical products';14,'Chemicals';15,'Rubber and plastic products';16,'Textiles';17,'Construction materials';18,'Construction';19,'Steel works';20,'Fabricated products';21,'Machinery';22,'Electrical equipment';23,'Automobiles and trucks';24,'Aircraft';25,'Shipbuilding and railroad equipment';26,'Defense';27,'Precious metals';28,'Non-metallic and industrial metal mining';29,'Coal';30,'Petroleum and natural gas';31,'Utilities';32,'Communication';33,'Personal services';34,'Business services';35,'Computer hardware';36,'Computer software';37,'Electronic equipment';38,'Measuring and control equipment';39,'Business supplies';40,'Shipping containers';41,'Transportation';42,'Wholesale';43,'Retail';44,'Restaraunts, hotels and motels';45,'Banking';46,'Insurance';47,'Real estate';48,'Trading';49,'Almost nothing'};
-    desc = cell2table(C, 'VariableNames',{'Id_FF49','FF49_Ind_Name'});
+    desc = cell2table(desc, 'VariableNames',{'Id_FF49','FF49_ShortLabel','FF49_Ind_Name'});
 end
 end
