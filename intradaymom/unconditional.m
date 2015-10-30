@@ -80,9 +80,10 @@ mst = loadresults('master');
 taq            = loadresults('price_fl');
 [~,pos]        = ismembIdDate(mst.Permno, mst.Date,taq.Permno,taq.Date);
 mst.FirstPrice = taq.FirstPrice(pos);
+mst.LastPrice  = taq.LastPrice(pos);
 
 if OPT_NOMICRO
-    idx = isMicrocap(mst,'FirstPrice',OPT_LAGDAY);
+    idx = isMicrocap(mst,'LastPrice',OPT_LAGDAY);
     mst = mst(~idx,:);
 end
 
@@ -103,7 +104,7 @@ avg = NaN(N, numel(EDGES)-1);
 
 tic
 poolStartup(8,'AttachedFiles',{'poolStartup.m'})
-parfor ii = 2:N
+parfor ii = 1:N
     disp(ii)
     
     % Get 5 min data
