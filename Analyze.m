@@ -27,15 +27,15 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@medianprice
-        @badprices
-        @ibadprices
-        @consolidationcounts
-        @NumTimeBuckets
-        @sample
-        @sampleFirstLast
-        @VWAP
-        @sampleSpy};
-    
+    @badprices
+    @ibadprices
+    @consolidationcounts
+    @countPerTimeBucket
+    @sample
+    @sampleFirstLast
+    @VWAP
+    @sampleSpy};
+
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
     error('Unrecognized function "%s".', fun)
@@ -136,25 +136,37 @@ res               = cached(:,{'Id','Date'});
 res.Nconsolidated = uint32(accumarray(fix(un),  counts, [nmst,1]));
 end
 
-function res = NumTimeBuckets(s,cached,edges)
+function res = countPerTimeBucket(s,cached,opt)
+% Counts number of trades within a time bucket
+nfile  = cached{end};
 cached = cached{1};
-% Note: last bin is lb <= x <= ub since data ends at 16:00
-grid   = ([9.5:0.5:15.5, 16.5])/24;
-fun    = @(x) nnz(histcounts(x, grid));
 
-% Number of observations per day
-nobs = double(s.mst.To - s.mst.From + 1);
+nobs   = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s, cached,edges);
+ibad = ibadprices(s, cached, opt.BadPriceMultiplier);
 
-% STEP 4) Number of time buckets that have a trade
-nmst                  = size(s.mst,1);
-mstrow                = RunLength((1:nmst)',nobs);
-Time                  = hhmmssmat2serial(s.data.Time(~ibad,:));
-cached.NumTimeBuckets = uint8(accumarray(mstrow(~ibad),Time,[nmst,1], fun));
+% Note: last bin is lb <= x <= ub since data ends at 16:00
+nmst           = (1:size(s.mst,1))';
+[grid, mstrow] = ndgrid(opt.Grid,nmst);
+times          = RunLength(nmst, nobs) + hhmmssmat2serial(s.data.Time);
+times          = times(~ibad);
+times          = times([true; logical(diff(times))]);
+counts         = histcounts(times, mstrow(:)+grid(:));
 
-res = cached(:,{'Id','Date','NumTimeBuckets'});
+% Exclude day-to-day counts
+n               = size(grid,1);
+counts(n:n:end) = [];
+mstrow(n:n:end) = [];
+grid(n:n:end)   = [];           
+
+res        = cached(mstrow,{'Id','Date'});
+res.HHMMSS = uint32(serial2hhmmss(grid));
+res.Counts = uint32(counts(:));
+
+fname = fullfile('.\data\TAQ\count',sprintf('ntrades30m_f%04d.mat',nfile));
+save(fname, 'res')
+res   = [];
 end
 
 % Sampling
