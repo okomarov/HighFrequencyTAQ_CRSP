@@ -35,19 +35,10 @@ cap    = cap(idx,:);
 master = master(idx,:);
 
 % Sample first and last price
-try
-    price_fl = loadresults('sampleFirstLast','..\results');
-catch
-    mst = selectAndFilterTrades(OPT_EDGES_BAD_PRICES);
-    if isempty(OPT_EDGES_BAD_PRICES)
-        mst = mst(:, {'File','Id','Permno','Date','Isbadday','Isfewobs'});
-    else
-        mst = mst(:, {'File','Id','Permno','Date','MedPrice', 'Isbadday','Isfewobs'});
-    end
-    price_fl = Analyze('sampleFirstLast',[],mst,[],[], struct('edges',OPT_EDGES_BAD_PRICES));
-end
-[idx,pos] = ismembIdDate(master.Permno, master.Date, price_fl.Permno, price_fl.Date);
-price_fl  = price_fl(pos(idx),:);
+price_fl = loadresults('sampleFirstLast','..\results');
+price_fl = addPermno(price_fl);
+[~,pos]  = ismembIdDate(master.Permno, master.Date, price_fl.Permno, price_fl.Date);
+price_fl = price_fl(pos,:);
 
 % Sample VWAP
 try
