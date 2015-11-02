@@ -198,30 +198,39 @@ end
 end
 
 % Sampling
-function res = sampleFirstLast(s,cached,opt)
+function res = sampleFirstLast(s,cached,multiplier)
 nfile  = cached{end};
 cached = cached{1};
 res    = [];
 
-[price, times] = samplePrepare_(s,cached,opt);
+nobs = double(s.mst.To - s.mst.From + 1);
 
-if ~isempty(price)
+% STEP 1-3) Bad prices
+ibad = ibadprices(s, cached, multiplier);
 
-    res     = cached(:,{'Date','Permno'});
-    posdata = fix(times);
+if ~all(ibad)
+    res = cached(:,{'Date','Id'});
     
+    % Indexing into mst
+    nmst   = size(s.mst,1);
+    mstrow = RunLength((1:nmst)',nobs);
+    mstrow = mstrow(~ibad);
+    time   = uint32(double(s.data.Time(~ibad,:))*[10000;100;1]);
+    price  = s.data.Price(~ibad);
+
     % First
-    idx                            = [true; logical(diff(fix(times)))];
-    res.FirstPrice(posdata(idx),1) = price(idx); 
-    res.FirstTime(posdata(idx),1)  = uint32(serial2hhmmss(times(idx))); 
+    idx                   = [true; logical(diff(mstrow))];
+    pos                   = mstrow(idx);
+    res.FirstPrice(pos,1) = price(idx);
+    res.FirstTime(pos,1)  = time(idx);
     % Last
-    idx                            = [idx(2:end); true];
-    res.LastPrice(posdata(idx),1)  = price(idx); 
-    res.LastTime(posdata(idx),1)   = uint32(serial2hhmmss(times(idx))); 
-    
-    res.File = repmat(uint16(nfile), size(res,1),1);
+    idx                   = [idx(2:end); true];
+    pos                   = mstrow(idx);
+    res.LastPrice(pos,1)  = price(idx);
+    res.LastTime(pos,1)   = time(idx);
 end
 end
+
 % Sampling
 function res = VWAP(s,cached,opt)
 % Volume weighted average price
