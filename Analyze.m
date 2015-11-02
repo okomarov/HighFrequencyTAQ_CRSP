@@ -290,13 +290,9 @@ nobs = double(s.mst.To - s.mst.From + 1);
 % STEP 1-3) Bad prices
 ibad = ibadprices(s, cached, multiplier);
 
-% STEP 4) Filter out days with < 30min avg timestep or securities with 50% fewtrades days
-ibad = ibad | RunLength(cached.Isfewobs,nobs);
+% Bad days
+ibad = ibad | RunLength(cached.Isbadday, nobs);
 
-% STEP 5) Clean prices - carried out in the median consolidation
-% s.data.Price(inan) = NaN;
-
-% STEP 6) Volume-weighted average price for same timestamps
 if ~all(ibad)
     % Timestamp consolidation of price
     nmst           = size(s.mst,1);
@@ -313,6 +309,8 @@ if ~all(ibad)
             prices = accumarray(subs, prices,[],@fast_median);
         case 'volumeWeighted'
             prices = accumarray(subs, prices.*vol) ./ voltot;
+        case 'skip'
+            % Do not consolidate price
     end
 else
     prices = [];
