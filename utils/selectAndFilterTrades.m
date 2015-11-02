@@ -49,58 +49,39 @@ end
 % else
 %     mst.Nbadtot = res.Nbadsel;
 % end
-dailycut     = 0.5;
-mst.Isbadday = mst.Nbadtot./mst.Nobs > dailycut;
+% 
+% % Count losing obs with timestamp consolidation
+% testname = 'consolidationcounts';
+% try
+%     res = loadresults(testname, commonres);
+% catch
+%     res = Analyze(testname,[],mst(:, keepflds),[],[],[],badPriceMult);
+% end
+% [~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+% mst.Nconsolidated = res.Nconsolidated(pos);
 
-% Bad series
-subs         = mst.Permno + 1; % Shift by one to avoid 0 permno problems
-sz           = [max(mst.Permno)+1,1];
-totbad       = accumarray(subs(mst.Isbadday), mst.Nobs(mst.Isbadday),sz);
-totobs       = accumarray(subs, mst.Nobs, sz);
-threshold    = 0.1;
-badseries    = totbad./totobs > threshold;
-mst.Isbadday = mst.Isbadday | badseries(subs);
+% Drop incomplete days
+mst.Isbadday = isprobdate(mst.Date);
 
-if ~isempty(edgesBadPrices)
-    keepflds = {'File','Id','Date','MedPrice','Isbadday'};
-else
-    keepflds = {'File','Id','Date','Isbadday'};
-end
-
-% Count losing obs with timestamp consolidation
-testname = 'consolidationcounts';
-try
-    res = loadresults(testname, commonres);
-catch
-    res = Analyze(testname,[],mst(:, keepflds),[],[],edgesBadPrices);
-end
-[~,pos]           = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.Nconsolidated = res.Nconsolidated(pos);
-
-% Count number of time buckets in a day that have a trade
-testname = 'NumTimeBuckets';
-try
-    res = loadresults(testname, commonres);
-catch
-    res = Analyze('NumTimeBuckets',[],mst(:, keepflds),[],[],edgesBadPrices);
-end
-[~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.NumTimeBuckets = res.NumTimeBuckets(pos);
-
-% Drop half-trading days
-[unD,~,subs] = unique(res.Date);
-tmp          = accumarray([subs,uint16(res.NumTimeBuckets+1)],1);
-halfDays     = unD(tmp(:,14) == 0);
-mst.Isbadday = mst.Isbadday | ismember(mst.Date, halfDays);
-
-% Select with minimum number of observations
-subs            = mst.Permno + 1;
-mst.Ngoodtrades = mst.Nobs - mst.Nbadtot - mst.Nconsolidated;
-mst.Isfewobsday = mst.NumTimeBuckets < 7 | mst.Ngoodtrades < 40;
-fewobsdays      = accumarray(subs, mst.Isfewobsday);
-totdays         = accumarray(subs, 1);
-threshold       = 0.5;
-badseries       = fewobsdays./totdays > threshold;
-mst.Isfewobs    = mst.Isfewobsday | badseries(subs);
+% % Count number of time buckets in a day that have a trade
+% testname = 'NumTimeBuckets';
+% try
+%     res = loadresults(testname, commonres);
+% catch
+%     opt = struct('BadPriceMultiplier', badPriceMult, 'TimestampConsolidation', 'first');
+%     res = Analyze('NumTimeBuckets',[],mst(:, keepflds),[],[],[],opt);
+% end
+% [~,pos]            = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+% mst.NumTimeBuckets = res.Counts(pos);
+% 
+% % Select with minimum number of observations
+% subs            = mst.Permno + 1;
+% mst.Ngoodtrades = mst.Nobs - mst.Nbadtot - mst.Nconsolidated;
+% mst.Isfewobsday = mst.NumTimeBuckets < 7 | mst.Ngoodtrades < 40;
+% fewobsdays      = accumarray(subs, mst.Isfewobsday);
+% totdays         = accumarray(subs, 1);
+% threshold       = 0.5;
+% badseries       = fewobsdays./totdays > threshold;
+% mst.Isfewobs    = mst.Isfewobsday | badseries(subs);
 
 end
