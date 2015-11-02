@@ -116,14 +116,14 @@ end
 end
 
 % Count how many observations we loose in consolidation step
-function res = consolidationcounts(s,cached,edges)
+function res = consolidationcounts(s,cached,multiplier)
 cached = cached{1};
 
 % Number of observations per day
 nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
-ibad = ibadprices(s,cached,edges);
+ibad = ibadprices(s,cached,multiplier);
 
 % STEP 4) Count how many observations we loose from median consolidation
 nmst              = size(s.mst,1);
@@ -221,8 +221,8 @@ res    = [];
 
 if ~isempty(price)
     res = cached(:,{'Date','Permno'});
-   
-    % Accumulation subs 
+    
+    % Accumulation subs
     row    = fix(times);
     hhmmss = serial2hhmmss(times);
     col    = zeros(size(row));
@@ -260,7 +260,7 @@ end
 if isfield(opt,'TimestampConsolidation')
     consolidationType = opt.TimestampConsolidation;
 else
-    consolidationType = 'first';
+    consolidationType = 'volumeWeighted';
 end
 
 % Number of observations per day
@@ -277,6 +277,7 @@ ibad = ibad | RunLength(cached.Isfewobs,nobs);
 
 % STEP 6) Volume-weighted average price for same timestamps
 if ~all(ibad)
+    % Timestamp consolidation of price
     nmst           = size(s.mst,1);
     mstrow         = RunLength((1:nmst)',nobs);
     [times,~,subs] = unique(mstrow(~ibad) + hhmmssmat2serial(s.data.Time(~ibad,:)));

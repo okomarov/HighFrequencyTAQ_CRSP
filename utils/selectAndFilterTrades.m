@@ -1,8 +1,9 @@
-function mst = selectAndFilterTrades(edgesBadPrices)
-if nargin < 1, edgesBadPrices = []; end
+function mst = selectAndFilterTrades(badPriceMult)
+if nargin < 1, badPriceMult = []; end
+
+% Load big master file
 commonroot = fullfile(fileparts(mfilename('fullpath')),'..'); 
 commonres  = fullfile(commonroot, 'results');
-% Load big master file
 path2data  = fullfile(commonroot, 'data\TAQ');
 load(fullfile(path2data,'master'),'-mat')
 
@@ -19,7 +20,7 @@ mst.Permno = res.Permno(pos);
 % Nobs
 mst.Nobs = mst.To - mst.From +1;
 
-if ~isempty(edgesBadPrices)
+if ~isempty(badPriceMult)
     % Median price
     testname = 'medianprice';
     try
@@ -34,20 +35,20 @@ else
     keepflds = {'File','Id','Date'};
 end
 
-% Bad prices days
-testname = 'badprices';
-try
-    res = loadresults(testname, commonres);
-catch
-    res = Analyze(testname,[],mst(:, keepflds),[],[], edgesBadPrices);
-end
-[~,pos]     = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.Nbadsel = res.Nbadsel(pos);
-if ~isempty(edgesBadPrices)
-    mst.Nbadtot = res.Nbadtot(pos);
-else
-    mst.Nbadtot = res.Nbadsel;
-end
+% % Bad prices days
+% testname = 'badprices';
+% try
+%     res = loadresults(testname, commonres);
+% catch
+%     res = Analyze(testname,[],mst(:, keepflds),[],[],[],badPriceMult);
+% end
+% [~,pos]     = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+% mst.Nbadsel = res.Nbadsel(pos);
+% if ~isempty(badPriceMult)
+%     mst.Nbadtot = res.Nbadtot(pos);
+% else
+%     mst.Nbadtot = res.Nbadsel;
+% end
 dailycut     = 0.5;
 mst.Isbadday = mst.Nbadtot./mst.Nobs > dailycut;
 

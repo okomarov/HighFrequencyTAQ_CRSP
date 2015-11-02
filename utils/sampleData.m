@@ -1,11 +1,12 @@
-function sampleData(grid, writeto, fmtname, edgesBadPrices)
+function sampleData(grid, writeto, fmtname, badPriceMult, consolidateType)
 % sampleData(grid, writeto, fmtname, edgesBadPrices)
 
 % Sampling params
-if nargin < 1 || isempty(grid),    grid    = (9.5/24:5/(60*24):16/24)'; end
-if nargin < 2 || isempty(writeto), writeto = '.\data\TAQ\sampled\5min'; end
-if nargin < 3 || isempty(fmtname), fmtname = 'S5m_%04d.mat'; end
-if nargin < 4,                     edgesBadPrices = []; end
+if nargin < 1 || isempty(grid),    grid            = (9.5/24:5/(60*24):16/24)'; end
+if nargin < 2 || isempty(writeto), writeto         = '.\data\TAQ\sampled\5min'; end
+if nargin < 3 || isempty(fmtname), fmtname         = 'S5m_%04d.mat';            end
+if nargin < 4,                     badPriceMult    = [];                        end
+if nargin < 5,                     consolidateType = 'volumeWeighted';          end
 
 % Write path handling
 [isok, msg, msgid] = mkdir(writeto);
@@ -22,16 +23,17 @@ else
 end
 %% Selection/filtering
 fprintf('%s: selection and filtering.\n', mfilename)
-mst = selectAndFilterTrades(edgesBadPrices);
+mst = selectAndFilterTrades(badPriceMult);
 
 %% Sample at x min
 fprintf('%s: sampling.\n', mfilename)
-if ~isempty(edgesBadPrices)
-    mst = mst(:, {'File','Id','Permno','Date','MedPrice','Isbadday','Isfewobs'});
+if ~isempty(badPriceMult)
+    mst = mst(:, {'File','Id','Permno','Date','MedPrice','Isbadday'});
 else
-    mst = mst(:, {'File','Id','Permno','Date','Isbadday','Isfewobs'});
+    mst = mst(:, {'File','Id','Permno','Date','Isbadday'});
 end
-opt = struct('grid',grid, 'writeto', writeto, 'fmtname', fmtname,'edges',edgesBadPrices);
+opt = struct('grid',grid, 'writeto', writeto, 'fmtname', fmtname,...
+    'BadPriceMultiplier',badPriceMult,'TimestampConsolidation',consolidateType);
 clearvars -except mst opt
 Analyze('sample',[], mst,[],[],opt);
 
