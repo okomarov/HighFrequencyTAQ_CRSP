@@ -188,8 +188,8 @@ if ~isempty(price)
     s.data     = table(dates,price,'VariableNames',{'Datetime','Price'});
     imst       = RunLength(idx);
     s.mst      = [s.mst(imst,'Id'), cached(imst, 'Permno'), s.mst(imst,'Date')];
-    s.mst.From = (1:ngrid:size(s.data,1))';
-    s.mst.To   = (ngrid:ngrid:size(s.data,1))';
+    s.mst.From = uint32((1:ngrid:size(s.data,1))');
+    s.mst.To   = uint32((ngrid:ngrid:size(s.data,1))');
     
     % Save
     fname = fullfile(opt.writeto,sprintf(opt.fmtname,nfile));
