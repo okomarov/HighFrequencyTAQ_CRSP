@@ -1,16 +1,32 @@
 
-OPT_EDGES_BAD_PRICES = [];
-OPT_LAGDAY           = 1;
+OPT_BAD_PRICE_MULT = 10;
+OPT_LAGDAY         = 1;
 %% Import data
 
 % Index data
-datapath = '..\data\TAQ\sampled\5min\nobad';
+datapath = '..\data\TAQ\';
 master   = load(fullfile(datapath,'master'),'-mat');
-master   = sortrows(master.mst,{'Permno','Date'});
+master   = addPermno(master.mst);
+master   = sortrows(master,{'Permno','Date'});
 
 % Common shares
 idx    = iscommonshare(master);
 master = master(idx,:);
+
+% Minobs 
+try 
+    res = loadresults('isEnoughObs');
+catch
+    opt = struct('Time',120000,'Minobs',30);
+    res = AnalyzeImom('isEnoughObs',[],[],'data\TAQ\count\',[],[],opt);
+end
+[~,pos] = ismembIdDate(master.Id, master.Date, res.Id, res.Date);
+idx     = res.HasEnoughObs(pos,:);
+master  = master(idx,:);
+
+% Incomplete days
+idx    = isprobdate(master.Date);
+master = master(~idx,:);
 
 % Has mkt cap on the previous day
 cap    = getMktCap(master, OPT_LAGDAY);
