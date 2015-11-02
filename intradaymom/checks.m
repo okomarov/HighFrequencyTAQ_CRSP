@@ -1,32 +1,49 @@
 %% Check Open/Close in TAQ vs CRSP
-taq = loadresults('price_fl');
+OPT_NOMICRO = true;
+OPT_OUTLIERS_THRESHOLD = 1;
+OPT_LAGDAY = 1;
+taq = loadresults('sampleFirstLast','..\results');
+% taq = load('D:\TAQ\HF\results\20150921_0044_sampleFirstLast.mat');
+% taq = taq.res;
 
 if OPT_NOMICRO
     idx = isMicrocap(taq,'LastPrice',OPT_LAGDAY);
     taq = taq(~idx,:);
 end
 
-crsp      = loadresults('dsfquery');
-crsp.Prc  = abs(crsp.Prc);
+crsp      = loadresults('dsfquery','..\results');
+crsp      = crsp(crsp.Prc > 0,:);
 [~,ia,ib] = intersectIdDate(crsp.Permno,crsp.Date, taq.Permno, taq.Date);
 crsp      = crsp(ia,:);
 taq       = taq(ib,:);
 
-% Filter out outliers
+% Filter outliers
 taq.TAQret   = taq.LastPrice./taq.FirstPrice-1;
 iout         = taq.TAQret          > OPT_OUTLIERS_THRESHOLD |...
-    1./(taq.TAQret+1)-1 > OPT_OUTLIERS_THRESHOLD;
+               1./(taq.TAQret+1)-1 > OPT_OUTLIERS_THRESHOLD;
 taq(iout,:)  = [];
 crsp(iout,:) = [];
 
 % Comparison table
 cmp         = [crsp(:,{'Date','Permno','Openprc'}) taq(:,'FirstPrice'), ...
-    crsp(:,{'Bid','Ask','Prc'}),taq(:,{'LastPrice','TAQret'})];
+               crsp(:,{'Bid','Ask','Prc'}),taq(:,{'LastPrice','TAQret'})];
 cmp.CRSPret = cmp.Prc./cmp.Openprc-1;
+
+% Filter NaNs
+inan = isnan(cmp.TAQret) | isnan(cmp.CRSPret);
+cmp  = cmp(~inan,:);
+
+corr(cmp.TAQret, cmp.CRSPret)
+ir = mean(rets(:,1)-rets(:,2))/std(rets(:,1)-rets(:,2));
+
+[dts,~,subs] = unique(cmp.Date);
+rets = [accumarray(subs,cmp.TAQret,[],@mean), accumarray(subs,cmp.CRSPret,[],@mean)];
+plot(yyyymmdd2datetime(dts), cumprod(rets+1))
 
 retdiff = abs(cmp.CRSPret - cmp.TAQret);
 idx     = retdiff > eps*1e12;
 boxplot(retdiff(idx))
+
 %% Check new/old ff49
 load('D:\TAQ\HF\intradaymom\results\bck\FF49.mat')
 
