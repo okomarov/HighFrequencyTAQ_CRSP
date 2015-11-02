@@ -8,7 +8,8 @@ idsname = 'ids';
 % Read .mat filenames
 d = dir(fullfile(path2matfiles,'*.mat'));
 
-poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',isdebug)
+fpath = fullfile(fileparts(mfilename('fullpath')), 'poolStartup.m');
+poolStartup(4, 'AttachedFiles',{fpath},'debug',isdebug)
 
 % Preallocate
 nfiles    = numel(d);
@@ -48,8 +49,16 @@ mst = cat(1,mst{:});
 idrop = ~ismember(1:numel(ids), mst.Id);
 ids(idrop) = {''};
 
+% Convert From/To to uint32
+mst.From = uint32(mst.From);
+mst.To   = uint32(mst.To);
+
 % Sort according to id-date pair
-mst = sortrows(mst,{'Id','Date'});
+try
+    mst = sortrows(mst,{'Permno','Date'});
+catch
+    mst = sortrows(mst,{'Id','Date'});
+end
 
 % Save
 save(fullfile(path2matfiles,'master'),mstname, idsname,'-v6','-mat')
