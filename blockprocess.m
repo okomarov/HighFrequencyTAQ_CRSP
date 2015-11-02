@@ -1,4 +1,4 @@
-function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, path2data, debug, varargin)
+function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, path2data, debug, poolcores, varargin)
 
 % BLOCKPROCESS Executes specified fun in parallel on the whole database (all .mat files)
 %
@@ -25,7 +25,7 @@ function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, 
 % Setup
 addpath(genpath('common'))
 rootfolder = fileparts(mfilename('fullpath'));
-poolStartup(4, 'AttachedFiles',{fullfile(rootfolder, 'utils\poolStartup.m')},'debug',debug)
+poolStartup(poolcores, 'AttachedFiles',{fullfile(rootfolder, 'utils\poolStartup.m')},'debug',debug)
 path2data = fullfile(rootfolder,path2data);
 writeto   = fullfile(projectpath, 'results');
 if ~debug; setupemail; end

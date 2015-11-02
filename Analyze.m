@@ -1,4 +1,4 @@
-function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
+function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, poolcores, varargin)
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
 %   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of
@@ -24,6 +24,7 @@ if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
 if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
+if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@medianprice
         @badprices
@@ -41,9 +42,9 @@ if ~hasFunc
 end
 fun             = fhandles{pos};
 projectpath     = fileparts(mfilename('fullpath'));
-[res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug, varargin{:});
+[res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug,poolcores, varargin{:});
 end
-%% Subfunctions 
+%% Subfunctions
 
 % Median price (net of the first selection step)
 function res = medianprice(s,cached)
@@ -340,22 +341,22 @@ end
 % % Identify bad prices
 % function res = badprices(s, cached, edges)
 % if nargin < 4, edges = []; end
-% 
+%
 % cached = cached{1};
-% 
+%
 % % Number of observations per day
 % nobs = double(s.mst.To - s.mst.From + 1);
-% 
+%
 % % STEP 1) Selection
 % inan = isInvalidTrade(s.data);
-% 
+%
 % % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
 % if ~isempty(edges)
 %     igoodprice = in(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
 % else
 %     igoodprice = true(size(inan));
 % end
-% 
+%
 % % STEP 3) Bad days
 % res         = cached(:,{'Id','Date'});
 % subs        = uint32(RunLength((1:size(cached,1))',nobs));
