@@ -1,6 +1,13 @@
 function tb = addPermno(tb)
 % Add permno to table with Id and Date pairs
 try
+    tb.Permno(1);
+    warning('addPermno:hasPermno','The table already has a PERMNO.')
+    return
+catch
+end
+
+try
     mst = loadresults('masterPermno');
 catch
     mst = loadresults('masterPermno','..\results');
