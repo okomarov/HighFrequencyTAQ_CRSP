@@ -35,7 +35,7 @@ end
 opt = struct('grid',grid, 'writeto', writeto, 'fmtname', fmtname,...
     'BadPriceMultiplier',badPriceMult,'TimestampConsolidation',consolidateType);
 clearvars -except mst opt
-Analyze('sample',[], mst,[],[],opt);
+Analyze('sample',[], mst,[],[],[],opt);
 
 % Sort mst by from
 fprintf('%s: sorting all mst by ''From''.\n', mfilename)
