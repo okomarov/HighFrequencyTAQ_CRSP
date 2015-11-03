@@ -25,8 +25,8 @@ if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';  end
 if nargin < 5 || isempty(debug);     debug     = false;          end
 if nargin < 6 || isempty(poolcores); poolcores = 8;              end
 
-fhandles = {@getPrices};
-    
+fhandles = {@isEnoughObs};
+
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
     error('Unrecognized function "%s".', fun)
@@ -37,3 +37,21 @@ projectpath     = fileparts(mfilename('fullpath'));
 end
 
 %% Subfunctions
+function res = isEnoughObs(s, cached, opt)
+data  = s.res;
+ikeep = data.HHMMSS < opt.Time;
+data  = data(ikeep,:);
+
+% Group by id - date
+key = int64(data.Id)*1e8 + int64(data.Date);
+
+% Preallocate
+idx = [true; logical(diff(key))];
+res = data(idx,{'Id','Date'});
+
+% Sum counts up to time
+subs       = cumsum(idx);
+res.Counts = accumarray(subs,data.Counts);
+
+res.HasEnoughObs = res.Counts >= opt.Minobs;
+end
