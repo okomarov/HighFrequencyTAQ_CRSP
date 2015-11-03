@@ -4,9 +4,10 @@ OPT_LAGDAY         = 1;
 %% Import data
 
 % Index data
-datapath = '..\data\TAQ\';
+datapath = '..\data\TAQ\sampled\5min\nobad_vw';
 master   = load(fullfile(datapath,'master'),'-mat');
 master   = addPermno(master.mst);
+master   = master(master.Permno ~= 0,:);
 master   = sortrows(master,{'Permno','Date'});
 
 % Common shares
@@ -44,22 +45,22 @@ price_fl = price_fl(pos,:);
 try
     vwap = loadresults('VWAP','..\results');
 catch
-    mst = selectAndFilterTrades(OPT_EDGES_BAD_PRICES);
-    if isempty(OPT_EDGES_BAD_PRICES)
-        mst = mst(:, {'File','Id','Permno','Date','Isbadday','Isfewobs'});
+    mst = selectAndFilterTrades(OPT_BAD_PRICE_MULT);
+    if isempty(OPT_BAD_PRICE_MULT)
+        mst = mst(:, {'File','Id','Permno','Date','Isbadday'});
     else
-        mst = mst(:, {'File','Id','Permno','Date','MedPrice', 'Isbadday','Isfewobs'});
+        mst = mst(:, {'File','Id','Permno','Date','MedPrice', 'Isbadday'});
     end
     edges = [93000,100000; 120000,123000; 123000,130000; 153000,160000];
-    vwap  = Analyze('VWAP',[],mst,[],[], struct('edgesVWAP',edges,'edges',OPT_EDGES_BAD_PRICES));
+    vwap  = Analyze('VWAP',[],mst,[],[], [],struct('edgesVWAP',edges,'BadPriceMultiplier',OPT_BAD_PRICE_MULT));
 end
-[idx,pos] = ismembIdDate(master.Permno, master.Date, vwap.Permno, vwap.Date);
-vwap      = vwap(pos(idx),:);
+[~,pos] = ismembIdDate(master.Permno, master.Date, vwap.Permno, vwap.Date);
+vwap    = vwap(pos,:);
 
-% CRSP 
-crsp      = loadresults('dsfquery','../results');
-[idx,pos] = ismembIdDate(master.Permno, master.Date, crsp.Permno, crsp.Date);
-crsp      = crsp(pos(idx),:);
+% CRSP
+crsp    = loadresults('dsfquery','../results');
+[~,pos] = ismembIdDate(master.Permno, master.Date, crsp.Permno, crsp.Date);
+crsp    = crsp(pos,:);
 
 % NYSE breakpoints
 try
@@ -69,6 +70,9 @@ catch
 end
 idx     = ismember(bpoints.Date, unique(cap.Date)/100);
 bpoints = bpoints(idx,{'Date','Var3'});
+
+% Half hour returns
+
 
 save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
