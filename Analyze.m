@@ -34,7 +34,8 @@ fhandles = {@medianprice
     @sample
     @sampleFirstLast
     @VWAP
-    @sampleSpy};
+    @sampleSpy
+    @testLoadSpeed};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -354,6 +355,11 @@ for r = 1:size(s.mst,1);
     res{r} = table(Datetime,Price);
 end
 res = cat(1,res{:});
+end
+
+%% Utility functions
+function out = testLoadSpeed(varargin)
+out = [];
 end
 
 %% Deprecated
