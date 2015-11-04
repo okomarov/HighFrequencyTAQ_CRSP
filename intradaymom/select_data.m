@@ -71,11 +71,26 @@ end
 idx     = ismember(bpoints.Date, unique(cap.Date)/100);
 bpoints = bpoints(idx,{'Date','Var3'});
 
-% Half hour returns
-
-
 save('results\master.mat', 'master')
 save('results\price_fl.mat','price_fl')
 save('results\vwap.mat','vwap')
 save('results\dsfquery.mat','crsp')
 save('results\bpoints.mat','bpoints')
+
+%% Half hour returns
+
+[~,pos]           = ismembIdDate(master.Permno, master.Date, price_fl.Permno, price_fl.Date);
+master.FirstPrice = price_fl.FirstPrice(pos);
+master.LastPrice  = price_fl.LastPrice(pos);
+master            = cache2cell(master,master.File);
+
+ranges = [930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430,...
+            1500,1530,1600]';
+ranges = [ranges(1:end-1), ranges(2:end)]*100;
+for r = 1:size(ranges,1)
+    opt           = struct('HalfHourRange',ranges(r,:));
+    [~, filename] = AnalyzeImom('halfHourRet',[],master,'data\TAQ\sampled\5min\nobad_vw',[],[],opt);
+    oldName       = fullfile('results',filename);
+    newName       = fullfile('results', regexprep(filename, '.mat', sprintf('%d.mat',ranges(r,1))));
+    movefile(oldName,newName)
+end
