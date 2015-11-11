@@ -26,7 +26,8 @@ if nargin < 5 || isempty(debug);     debug     = false;          end
 if nargin < 6 || isempty(poolcores); poolcores = 8;              end
 
 fhandles = {@isEnoughObs
-    @halfHourRet};
+            @halfHourRet
+            @halfHourVol};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -90,4 +91,39 @@ end
 res         = s.mst(:,{'Date','Permno'});
 fname       = sprintf('T%d', opt.HalfHourRange(1));
 res.(fname) = ret;
+end
+
+function res = halfHourVol(s, cached, opt)
+cached = cached{1};
+
+% Filter permnos of interest
+[idx,pos] = ismembIdDate(s.mst.Permno, s.mst.Date, cached.Permno, cached.Date);
+s.mst     = s.mst(idx,:);
+pdata     = mcolonint(s.mst.From, s.mst.To);
+s.data    = s.data(pdata,:);
+cached    = cached(pos(idx),:);
+
+% Filter half-hour of interest
+hhmmss = serial2hhmmss(s.data.Datetime);
+idx    = in(hhmmss, opt.HalfHourRange);
+s.data = s.data(idx,:);
+
+% Reshape data
+nobs    = 7;
+nseries = size(s.mst,1);
+price   = reshape(s.data.Price,nobs,nseries);
+
+% Replace first or last price
+if opt.HalfHourRange(1) == 93000
+    row        = max(sum(isnan(price)),1);
+    pos        = sub2ind(size(price),row, 1:nseries);
+    price(pos) = cached.FirstPrice;
+elseif opt.HalfHourRange(2) == 160000
+    price(end,:) = cached.LastPrice;
+end
+ret = price(2:end,:)./price(1:end-1,:)-1;
+
+res         = cached(:,{'Date','Permno'});
+fname       = sprintf('RV5_%d', opt.HalfHourRange(1));
+res.(fname) = nansum(ret.*ret)';
 end
