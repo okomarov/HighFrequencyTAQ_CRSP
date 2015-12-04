@@ -6,15 +6,18 @@ function [res, varBhat, Rsq] = clusterreg(y, X, g, model)
 %       with the regressors and g is a matrix (N by M) of group indices. 
 %       In the case of one-way clustering M = 1.
 %
-%   RES = clusterreg(...)
+%   [RES, VARBHAT, RSQ] = clusterreg(...)
 %       RES is a table with:
 %           .Estimate
 %           .SE         clustered standard errors
 %           .tStat      t-statistics
 %           .pValue
-%
-%       NOTE: if table() is not available results are concatenated in the
+%       Note: if table() is not available results are concatenated in the
 %       order presented above into a K+1 by 3 matrix.
+%
+%       VARBHAT is a K by K clustered variance-covariance matrix
+%   
+%       RSQ is the R square of the regression
 %
 %   References:
 %   [1] Cameron, A. C., J. B. Gelbach, and D. L. Miller. "Robust inference
