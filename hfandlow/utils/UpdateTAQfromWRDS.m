@@ -12,5 +12,5 @@ topath = 'E:\TAQ\HFbetas\data\TAQ\raw';
 for ii = 1:numel(list)
     filename = fullfile(topath, [list{ii}, '.zip']);
     libdtname = sprintf('TAQ.%s', list{ii});
-    w.sas2csv(libdtname, filename);
+    w.getDataset(libdtname, filename);
 end
