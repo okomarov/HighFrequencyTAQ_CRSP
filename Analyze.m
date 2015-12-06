@@ -27,7 +27,7 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@medianprice
-    @badprices
+    @countBadPrices
     @ibadprices
     @consolidationcounts
     @countPerTimeBucket
@@ -68,7 +68,7 @@ res = cached;
 end
 
 % Identify bad prices
-function res = badprices(s, cached, multiplier)
+function res = countBadPrices(s, cached, multiplier)
 if nargin < 3, multiplier = []; end
 
 cached = cached{1};
@@ -142,7 +142,7 @@ function res = countPerTimeBucket(s,cached,opt)
 nfile  = cached{end};
 cached = cached{1};
 
-nobs   = double(s.mst.To - s.mst.From + 1);
+nobs = double(s.mst.To - s.mst.From + 1);
 
 % STEP 1-3) Bad prices
 ibad = ibadprices(s, cached, opt.BadPriceMultiplier);
