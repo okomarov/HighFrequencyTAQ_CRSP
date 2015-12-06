@@ -23,7 +23,43 @@ else
 end
 %% Selection/filtering
 fprintf('%s: selection and filtering.\n', mfilename)
-mst = selectAndFilterTrades(badPriceMult);
+
+% Load big master file
+commonroot = fullfile(fileparts(mfilename('fullpath')),'..'); 
+commonres  = fullfile(commonroot, 'results');
+path2data  = fullfile(commonroot, 'data\TAQ');
+load(fullfile(path2data,'master'),'-mat')
+
+% Map unique ID to mst
+testname = 'masterPermno';
+try
+    res = loadresults(testname,commonres);
+catch
+    res = mapPermno2master;
+end
+[~,pos]    = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+mst.Permno = res.Permno(pos);
+
+% Nobs
+mst.Nobs = mst.To - mst.From +1;
+
+if ~isempty(badPriceMult)
+    % Median price
+    testname = 'medianprice';
+    try
+        res = loadresults(testname, commonres);
+    catch
+        res = Analyze(testname,[],mst(:, {'File','Id','Date'}));
+    end
+    [~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
+    mst.MedPrice = res.MedPrice(pos);
+    keepflds     = {'File','Id','Date','MedPrice'};
+else
+    keepflds = {'File','Id','Date'};
+end
+
+% Drop incomplete days
+mst.Isbadday = isprobdate(mst.Date);
 
 %% Sample at x min
 fprintf('%s: sampling.\n', mfilename)
