@@ -25,7 +25,8 @@ if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';  end
 if nargin < 5 || isempty(debug);     debug     = false;          end
 if nargin < 6 || isempty(poolcores); poolcores = 8;              end
 
-fhandles = {@isEnoughObs
+fhandles = {@avgObsPerBucket
+            @isEnoughObs
             @halfHourRet
             @halfHourVol};
 
@@ -39,6 +40,19 @@ projectpath     = fileparts(mfilename('fullpath'));
 end
 
 %% Subfunctions
+function res = avgObsPerBucket(s, cached, opt)
+data  = s.res;
+
+% Group by date - HHMMSS
+key = uint64(data.Date)*1e6 + uint64(data.HHMMSS);
+
+[~,pos, subs] = unique(key);
+res = data(pos,{'Date','HHMMSS'});
+
+res.Sum = accumarray(subs, uint64(data.Counts));
+res.N   = accumarray(subs, data.Counts~=0);
+end
+
 function res = isEnoughObs(s, cached, opt)
 data  = s.res;
 ikeep = data.HHMMSS < opt.Time;
@@ -125,5 +139,7 @@ ret = price(2:end,:)./price(1:end-1,:)-1;
 
 res         = cached(:,{'Date','Permno'});
 fname       = sprintf('RV5_%d', opt.HalfHourRange(1));
+
+% Calculate vol
 res.(fname) = nansum(ret.*ret)';
 end
