@@ -30,7 +30,7 @@ path2data = fullfile(rootfolder,path2data);
 writeto   = fullfile(projectpath, 'results');
 if ~debug; setupemail; end
 fun = func2str(fhandle);
-if isstring(varnames), varnames = {varnames}; end
+if isrowchar(varnames), varnames = {varnames}; end
 
 try
     tic
