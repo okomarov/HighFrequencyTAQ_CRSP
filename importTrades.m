@@ -54,14 +54,25 @@ if ~isdir(matfolder)
 end
 
 % Import manual csv
+% =================
 folder = fullfile(rootfolder, 'manual');
-importTradesCSV(folder,matfolder,1);
+matnum = importTradesCSV(folder,matfolder,true);
 
 % Import dvd 
+% ==========
+% Data spillovers across files does not happen so import as they come and
+% chunk into smaller pieces later
 folder = fullfile(rootfolder, 'dvd');
-importTradesDVD(folder,matfolder);
+% Import into tmp folder
+tmpmat = fullfile(path2main, 'tmp');
+if ~isdir(tmpmat)
+    mkdir(tmpmat);
+end
+matnum = importTradesDVD(folder,tmpmat,matnum);
+% Chunk into smaller .mat files
 
 % Import automated csv
+% ====================
 folder = fullfile(rootfolder, 'automated');
 importTradesCSV(folder,matfolder,false);
 

@@ -1,13 +1,4 @@
-function matnum = importTradesDVD(path2main,outdir, matnum, nrows)
-if nargin < 4 || isempty(nrows)
-    nrows = 5e6;
-end
-
-% Create temp dir for matfiles
-tmpmat = fullfile(path2main, 'tmp');
-if ~isdir(tmpmat)
-    mkdir(tmpmat);
-end
+function matnum = importTradesDVD(path2main,outdir, matnum)
 
 % Get monthly subfolders with zipped data in CDA.zip, CDB.zip, ...
 d          = dir(path2main);
@@ -43,8 +34,8 @@ for ii = 1:numel(subfolders)
             data = importBIN(extracted{~idx});
 
             % 3. Save data and cleanup
-            datafname = fullfile(tmpmat, sprintf('T%04d.mat',matnum));
-            mstfname  = fullfile(tmpmat, sprintf('T%04d.mst',matnum));
+            datafname = fullfile(outdir, sprintf('T%04d.mat',matnum));
+            mstfname  = fullfile(outdir, sprintf('T%04d.mst',matnum));
             save(datafname,'data','-v7.3')
             save(mstfname ,'mst','ids','-v6')
             fprintf('%-40s%s\n',sprintf('T%04d.mat',matnum),datestr(now,'dd HH:MM:SS'))
