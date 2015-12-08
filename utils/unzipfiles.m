@@ -76,7 +76,7 @@ while enumeration.hasMoreElements
     zipEntry   = enumeration.nextElement;
     outputName = fullfile(outputDirectory,files(strcmpi(zipEntry,files)));
     if ~isempty(outputName)
-        file = java.io.File(outputName);
+        file   = java.io.File(outputName);
         parent = File(file.getParent);
         parent.mkdirs;
         try
