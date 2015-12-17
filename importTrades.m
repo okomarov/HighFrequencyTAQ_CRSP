@@ -64,7 +64,7 @@ matnum = importTradesCSV(folder,matfolder,true);
 % chunk into smaller pieces later
 folder = fullfile(rootfolder, 'dvd');
 % Import into tmp folder
-tmpmat = fullfile(path2main, 'tmp');
+tmpmat = fullfile(rootfolder, 'tmp');
 if ~isdir(tmpmat)
     mkdir(tmpmat);
 end
@@ -74,7 +74,7 @@ matnum = importTradesDVD(folder,tmpmat,matnum);
 % Import automated csv
 % ====================
 folder = fullfile(rootfolder, 'automated');
-importTradesCSV(folder,matfolder,false);
+importTradesCSV(folder,matfolder,false, matnum);
 
 diary off
 end

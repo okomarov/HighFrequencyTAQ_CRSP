@@ -1,5 +1,5 @@
 function matnum = importTradesDVD(path2main,outdir, matnum)
-
+if nargin < 3, matnum = 0; end
 % Get monthly subfolders with zipped data in CDA.zip, CDB.zip, ...
 d          = dir(path2main);
 d          = d([d.isdir]);
@@ -107,6 +107,7 @@ tmp = fread(fid,[19,nrows],'*uint8')';
 % Create data dataset
 timefun = @(x) uint8(fix([mod(x,86400)/3600, mod(x,3600)/60, mod(x,60)]));
 fun16   = @(x,pos) typecast(reshape(x(:,pos)',[],1),'uint16');
+fun32   = @(x,pos) typecast(reshape(x(:,pos)',[],1),'uint32');
 data    = dataset({timefun(double(fun32(tmp,1:4))),    'Time'              },...
                   {single(fun32(tmp,5:8))/1e4,         'Price'             },...
                   {fun32(tmp,9:12),                    'Volume'            },...
