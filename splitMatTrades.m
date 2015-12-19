@@ -1,6 +1,6 @@
 function matnum = splitMatTrades(path2data, outdir, nrecords)
 % SPLITMATTRADES Splits mat files by number of records
-%   
+%
 %   SPLITMATTRADES(PATH2DATA, [OUTDIR], [NRECORDS])
 %       - PATH2DATA directory where .mat and .mst files to split are
 %       - OUTDIR defaults to PATH2DATA if unspecified
@@ -23,13 +23,13 @@ list_mst = dir(fullfile(path2data,'*.mst'));
 matnum                   = 0;
 nfiles                   = numel(list_mat);
 for f = 1:nfiles
-    disp(f)
+    disp(list_mat(f).name)
     % Load
     sd = load(fullfile(path2data,list_mat(f).name));
     sm = load(fullfile(path2data,list_mst(f).name),'-mat');
-    
+
     [sd.data,sm.mst,sm.ids] = prependResidualData(sd.data,sm.mst,sm.ids, resdata,resmst,resids);
-    
+
     % Bin chunks of data
     nrows = size(sd.data,1);
     edges = 0:nrecords:nrows;
@@ -37,11 +37,14 @@ for f = 1:nfiles
         edges = [edges, nrows];
     end
     [~,~,bin] = histcounts(sm.mst.To,edges);
-    
+
     % Save each chunk into its own file
     for ii = 1:numel(edges) - 2
         matnum = matnum + 1;
-        
+
+        % In case of crash
+        save(fullfile(outdir,'bck.mat'),'edges','ii','f','matnum')
+
         idx            = bin == ii;
         [data,mst,ids] = getDataMstIds(sd.data, sm.mst(idx,:), sm.ids);
 
@@ -53,6 +56,7 @@ for f = 1:nfiles
     % Carry over residual records
     idx                     = bin == ii+1;
     [resdata,resmst,resids] = getDataMstIds(sd.data, sm.mst(idx,:), sm.ids);
+    save(fullfile(outdir,'rsd.mat'),'resdata','resmst','resids')
 end
 % Last residual records get their own
 if isempty(resdata)
