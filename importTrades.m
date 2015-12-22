@@ -55,11 +55,14 @@ end
 
 % Import manual csv
 % =================
+% Note: 7388 files at ~5e6 records per file
 folder = fullfile(rootfolder, 'manual');
 matnum = importTradesCSV(folder,matfolder,true);
 
 % Import dvd 
 % ==========
+% NOTE: 146 files, and 791 after splitting into 5e6 records per file
+
 % Data spillovers across files does not happen so import as they come and
 % chunk into smaller pieces later
 folder = fullfile(rootfolder, 'dvd');
@@ -68,8 +71,9 @@ tmpmat = fullfile(rootfolder, 'tmp');
 if ~isdir(tmpmat)
     mkdir(tmpmat);
 end
-matnum = importTradesDVD(folder,tmpmat,matnum);
+importTradesDVD(folder,tmpmat,matnum);
 % Chunk into smaller .mat files
+matnum = splitMatTrades(tmpmat,fullfile(tmpmat,'split'),[],matnum);
 
 % Import automated csv
 % ====================
