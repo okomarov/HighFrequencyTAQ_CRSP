@@ -62,8 +62,14 @@ for f = 1:numel(filenames)
                         % Start of last date
                         from = find(diff(data{ii,2}),1,'last')+1;
 
-                        % Day probably has not ended yet (whole bulk import has
-                        % one date only)
+                        % Day might not have ended yet (whole bulk import has
+                        % one date only). Use start of last symbol 
+                        if isempty(from)
+                            [~,~,subs] = unique(data{ii,1});
+                            from = find(diff(subs),1,'last')+1;
+                        end
+                        
+                        % If still empty, import more data
                         if isempty(from)
                             opt.Nblk = opt.Nblk+1;
 
