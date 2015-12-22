@@ -14,6 +14,7 @@ if nargin < 5
     opt.Nrec = 1e5;
     opt.Nblk = 50;
     opt.Scan = {'Delimiter',',','HeaderLines',1};
+    opt.Fmt  = 'T%05d';
 end
 origNblk = opt.Nblk;
 if nargin < 4 || isempty(matnum)
@@ -104,11 +105,11 @@ for f = 1:numel(filenames)
         [ids,mst,data] = consolidateDataset(ids,mst,data);
 
         matnum    = matnum+1;
-        datafname = fullfile(outdir, sprintf('T%04d.mat',matnum));
-        mstfname  = fullfile(outdir, sprintf('T%04d.mst',matnum));
+        datafname = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
+        mstfname  = fullfile(outdir, sprintf([opt.Fmt '.mst'],matnum));
         save(datafname,'data','-v7.3')
         save(mstfname ,'mst','ids','-v6')
-        fprintf('%-40s%s\n',sprintf('T%04d.mat',matnum),datestr(now,'dd HH:MM:SS'))
+        fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
 
         % Reset containers adding deferred chunks
         data = [resdata;  cell(opt.Nblk,11)];
@@ -121,11 +122,11 @@ end
 % LAST iteration exits without saving
 [ids,mst,data] = consolidateDataset(ids,mst,data);
 matnum         = matnum+1;
-datafname      = fullfile(outdir, sprintf('T%04d.mat',matnum));
-mstfname       = fullfile(outdir, sprintf('T%04d.mst',matnum));
+datafname      = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
+mstfname       = fullfile(outdir, sprintf([opt.Fmt '.mst'],matnum));
 save(datafname,'data','-v7.3')
 save(mstfname ,'mst','ids','-v6')
-fprintf('%-40s%s\n',sprintf('T%04d.mat',matnum),datestr(now,'dd HH:MM:SS'))
+fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
 end
 
 % Process parsed blocks from .csv

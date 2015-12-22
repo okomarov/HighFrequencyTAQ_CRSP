@@ -1,17 +1,21 @@
-function matnum = splitMatTrades(path2data, outdir, nrecords)
+function matnum = splitMatTrades(path2data, outdir, nrecords, matnum, opt)
 % SPLITMATTRADES Splits mat files by number of records
 %
-%   SPLITMATTRADES(PATH2DATA, [OUTDIR], [NRECORDS])
+%   SPLITMATTRADES(PATH2DATA, [OUTDIR], [NRECORDS], [MATNUM], [OPT])
 %       - PATH2DATA directory where .mat and .mst files to split are
 %       - OUTDIR defaults to PATH2DATA if unspecified
 %       - NRECORDS defaults to 5e6
-%
+%       - MATNUM saved mat/mst files will be numbered from MATNUM+1 (default: 0)
 
 if nargin < 2 || isempty(outdir)
     outdir = path2data;
 end
 if nargin < 3 || isempty(nrecords)
     nrecords = 5e6;
+end
+if nargin < 4, matnum = 0; end
+if nargin < 5
+    opt.Fmt  = 'T%05d';
 end
 
 % Read .mat filenames
@@ -20,7 +24,6 @@ list_mst = dir(fullfile(path2data,'*.mst'));
 
 % Preallocate
 [resdata, resmst,resids] = deal([]);
-matnum                   = 0;
 nfiles                   = numel(list_mat);
 for f = 1:nfiles
     disp(list_mat(f).name)
@@ -48,8 +51,8 @@ for f = 1:nfiles
         idx            = bin == ii;
         [data,mst,ids] = getDataMstIds(sd.data, sm.mst(idx,:), sm.ids);
 
-        datafname = fullfile(outdir, sprintf('T%04d.mat',matnum));
-        mstfname  = fullfile(outdir, sprintf('T%04d.mst',matnum));
+        datafname = fullfile(outdir, sprintf([opt.Fmt, '.mat'],matnum));
+        mstfname  = fullfile(outdir, sprintf([opt.Fmt, '.mst'],matnum));
         save(datafname,'data','-v7.3')
         save(mstfname ,'mst','ids','-v6')
     end
@@ -66,8 +69,8 @@ matnum    = matnum + 1;
 data      = resdata;
 mst       = resmst;
 ids       = resids;
-datafname = fullfile(outdir, sprintf('T%04d.mat',matnum));
-mstfname  = fullfile(outdir, sprintf('T%04d.mst',matnum));
+datafname = fullfile(outdir, sprintf([opt.Fmt, '.mat'],matnum));
+mstfname  = fullfile(outdir, sprintf([opt.Fmt, '.mst'],matnum));
 save(datafname,'data','-v7.3')
 save(mstfname ,'mst','ids','-v6')
 end
