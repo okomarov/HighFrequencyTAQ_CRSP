@@ -11,7 +11,7 @@ matched        = accumarray(subs(idx),nobs(idx));
 
 mean(matched./tot)
 min(matched./tot)
-%% 
+%% Count sample
 
 OPT_LAGDAY = 1;
 
@@ -55,3 +55,43 @@ tmp   = sortrows(unstack(master(:,{'Date','Permno','Price'}), 'Price','Permno'),
 tmp   = tmp{:,2:end};
 count = sum(~isnan(tmp),2);
 plot(count)
+%% Outlier example
+
+% Bad cases examples
+% [v,I]  = max(abs(fl.LastPrice./fl.FirstPrice - fl_bad.LastPrice./fl_bad.FirstPrice));
+% tmp = getTaqData('permno',68161,19990331,19990331);
+% tmp = getTaqData('permno',77010,20031030,20031031);
+date = 20031031;
+
+% Use open-to-close return example
+fl    = loadresults('sampleFirstLast');
+idate = ismember(fl.Date,[serial2yyyymmdd(yyyymmdd2serial(date)-1)  date]);
+fl    = fl(idate,:);
+fl    = addPermno(fl);
+
+% Common and no microcaps
+fl = fl(iscommonshare(fl),:);
+fl = fl(~isMicrocap(fl,'LastPrice',1),:);
+
+% Find case with bad prices
+fl_bad = loadresults('sampleFirstLast_withBad');
+fl_bad = fl_bad(fl_bad.Date == date,:);
+fl_bad = fl_bad(ismember(fl_bad.Id,fl.Id),:);
+
+% Average intraday return
+mean(fl.LastPrice./fl.FirstPrice-1)
+mean(fl_bad.LastPrice./fl_bad.FirstPrice-1)
+
+% Bad prices for common shares only on 288 dates and count mostly < 50
+bp              = loadresults('countBadPrices');
+bp              = bp(bp.Nbadtot > bp.Nbadsel,:);
+bp              = addPermno(bp);
+bp              = bp(iscommonshare(bp),:);
+bp.Nbad         = bp.Nbadtot - bp.Nbadsel;
+[unDate,~,subs] = unique(bp.Date);
+
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.62],'PaperPositionMode','auto')
+plot(yyyymmdd2datetime(unDate), accumarray(subs,bp.Nbad), 'x')
+set(gca,'TickLabelInterpreter','latex')
+print('countOutliers','-depsc','-r200')
