@@ -95,3 +95,40 @@ set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.62],'PaperPositionMode','auto
 plot(yyyymmdd2datetime(unDate), accumarray(subs,bp.Nbad), 'x')
 set(gca,'TickLabelInterpreter','latex')
 print('countOutliers','-depsc','-r200')
+%% Counts
+bad    = loadresults('countBadPrices');
+con    = loadresults('consolidationcounts');
+master = load('data\taq\master', '-mat');
+
+tot      = master.mst.To - master.mst.From + 1;
+obscount = [bad.Nbadsel, bad.Nbadtot-bad.Nbadsel, con.Nconsolidated, tot-bad.Nbadtot-con.Nconsolidated];
+
+% Monthly
+[unM,~,subs] = unique(con.Date/100);
+tot          = accumarray(subs, tot);
+obscount   = arrayfun(@(x) accumarray(subs, obscount(:,x)),1:4,'un',0);
+obscount = [obscount{:}];
+prop = bsxfun(@rdivide, obscount,tot);
+
+
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.4],'PaperPositionMode','auto')
+plot(yyyymmdd2datetime(unM*100+1),tot)
+set(gca,'YTick',[0,4,8,12]*1e8,'Ylim',[0,12e8],'YTickLabel',{'0','400M','800M','1200M'})
+set(gca,'TickLabelInterpreter','latex')
+print('obscount','-depsc','-r200','-loose')
+
+xtick  = get(gca,'Xtick');
+xtickl = get(gca,'XTickLabel');
+gcapos = get(gca,'Position');
+
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.4],'PaperPositionMode','auto')
+area(yyyymmdd2serial(unM*100+1),prop*100)
+axis tight
+set(gca,'Xtick',xtick,'XTickLabel',xtickl,'Position',gcapos)
+set(gca,'TickLabelInterpreter','latex')
+l = legend('irregular','outliers','consolidated','good');
+set(l,'interpreter','latex','location','northwest')
+
+print('obsprop','-depsc','-r200','-loose')
