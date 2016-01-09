@@ -36,3 +36,5 @@ dsf       = dsf(idx,:);
 
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
+
+importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
