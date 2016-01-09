@@ -35,7 +35,8 @@ fhandles = {@medianprice
     @sampleFirstLast
     @VWAP
     @sampleSpy
-    @testLoadSpeed};
+    @testLoadSpeed
+    @maxRecordsPerSec};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -159,7 +160,7 @@ counts         = histcounts(times, mstrow(:)+grid(:));
 n               = size(grid,1);
 counts(n:n:end) = [];
 mstrow(n:n:end) = [];
-grid(n:n:end)   = [];           
+grid(n:n:end)   = [];
 
 res        = cached(mstrow,{'Id','Date'});
 res.HHMMSS = uint32(serial2hhmmss(grid));
@@ -183,7 +184,7 @@ if ~isempty(price)
     [price, dates] = fixedsampling(times, price, opt.grid(:));
     idx            = fix(dates);
     dates          = yyyymmdd2serial(double(s.mst.Date(idx))) + rem(dates,1);
-    
+
     % Reorganize output
     res        = [];
     s.data     = table(dates,price,'VariableNames',{'Datetime','Price'});
@@ -191,7 +192,7 @@ if ~isempty(price)
     s.mst      = [s.mst(imst,'Id'), cached(imst, 'Permno'), s.mst(imst,'Date')];
     s.mst.From = uint32((1:ngrid:size(s.data,1))');
     s.mst.To   = uint32((ngrid:ngrid:size(s.data,1))');
-    
+
     % Save
     fname = fullfile(opt.writeto,sprintf(opt.fmtname,nfile));
     save(fname, '-struct','s')
@@ -211,7 +212,7 @@ ibad = ibadprices(s, cached, multiplier);
 
 if ~all(ibad)
     res = cached(:,{'Date','Id'});
-    
+
     % Indexing into mst
     nmst   = size(s.mst,1);
     mstrow = RunLength((1:nmst)',nobs);
@@ -243,7 +244,7 @@ res    = [];
 
 if ~isempty(price)
     res = cached(:,{'Date','Permno'});
-    
+
     % Accumulation subs
     row    = fix(times);
     hhmmss = serial2hhmmss(times);
@@ -254,14 +255,14 @@ if ~isempty(price)
         col(idx) = r;
     end
     subs = [row, col];
-    
+
     sz = [size(res,1), nedges];
-    
+
     % Drop uncategorized
     ikeep = col ~= 0;
     VWAP  = accumarray(subs(ikeep,:), price(ikeep).*vol(ikeep), sz) ./...
             accumarray(subs(ikeep,:), vol(ikeep), sz);
-    
+
     % Keep only record for which we have prices
     row       = unique(row);
     res       = res(row,:);
@@ -340,52 +341,34 @@ for r = 1:size(s.mst,1);
     from = s.mst.From(r);
     to   = s.mst.To(r);
     data = s.data(from:to,:);
-    
+
     % STEP 1) Select regular trades
     data = data(~isInvalidTrade(data),:);
-    
+
     % STEP 2) Median prices for same timestamps
     [unTimes,~,subs] = unique(hhmmssmat2serial(data.Time));
     Price            = accumarray(subs, double(data.Price),[],@fast_median);
-    
+
     % STEP 3) Sample on fixed grid
     [Price, dates] = fixedsampling(unTimes, Price, opt.grid(:));
     Datetime       = yyyymmdd2serial(s.mst.Date(r)) + dates;
-    
+
     res{r} = table(Datetime,Price);
 end
 res = cat(1,res{:});
+end
+
+function res = maxRecordsPerSec(s,~,~)
+nobs  = double(s.mst.To - s.mst.From + 1);
+dates = RunLength(yyyymmdd2serial(s.mst.Date),nobs);
+    
+[unDatetimes,~,gDatetime] = unique(dates + hhmmssmat2serial(s.data.Time));
+[unDates,~,gDate]         = unique(fix(unDatetimes));
+Num                       = accumarray(gDate,accumarray(gDatetime, 1),[],@max);
+res                       = table(unDates, Num,'VariableNames',{'Date','Records'});
 end
 
 %% Utility functions
 function out = testLoadSpeed(varargin)
 out = [];
 end
-
-%% Deprecated
-
-% % Identify bad prices
-% function res = badprices(s, cached, edges)
-% if nargin < 4, edges = []; end
-%
-% cached = cached{1};
-%
-% % Number of observations per day
-% nobs = double(s.mst.To - s.mst.From + 1);
-%
-% % STEP 1) Selection
-% inan = isInvalidTrade(s.data);
-%
-% % STEP 2) Bad prices are < than .5x daily median or > than 1.5x daily median
-% if ~isempty(edges)
-%     igoodprice = in(s.data.Price./RunLength(cached.MedPrice,nobs), edges);
-% else
-%     igoodprice = true(size(inan));
-% end
-%
-% % STEP 3) Bad days
-% res         = cached(:,{'Id','Date'});
-% subs        = uint32(RunLength((1:size(cached,1))',nobs));
-% res.Nbadsel = uint32(accumarray(subs,  inan));
-% res.Nbadtot = uint32(accumarray(subs,  inan | ~igoodprice));
-% end
