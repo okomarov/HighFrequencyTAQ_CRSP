@@ -132,3 +132,21 @@ l = legend('irregular','outliers','consolidated','good');
 set(l,'interpreter','latex','location','northwest')
 
 print('obsprop','-depsc','-r200','-loose')
+%% Max num of trades per second
+try
+    res = loadresults('maxRecordsPerSec');
+catch
+    res = Analyze('maxRecordsPerSec');
+end
+
+idx              = isprobdate(res.Date) | ismember(res.Date, yyyymmdd2serial([19940404, 19961030, 19980409]));
+res              = res(~idx,:);
+[unDates,~,subs] = unique(res.Date);
+plotdts          = serial2datetime(unDates);
+maxcount         = accumarray(subs, res.Records, [],@max);
+
+figure
+set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.62],'PaperPositionMode','auto')
+plot(plotdts, maxcount)
+set(gca,'TickLabelInterpreter','latex')
+print('countMaxTradeSec','-depsc','-r200')
