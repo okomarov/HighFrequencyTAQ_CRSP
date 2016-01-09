@@ -34,7 +34,7 @@ master = master(~idx,:);
 res            = loadresults('countBadPrices');
 [~,pos]        = ismembIdDate(master.Id, master.Date, res.Id, res.Date);
 master.Nbadtot = res.Nbadtot(pos,:);
-isEnoughObs    = master.To-master.From+1 - master.Nbadtot >= 7;
+isEnoughObs    = (master.To-master.From+1 - master.Nbadtot) >= 79;
 isEnoughObs    = [false(OPT_LAGDAY,1); isEnoughObs(1:end-OPT_LAGDAY)];
 master         = master(isEnoughObs,:);
 
@@ -106,9 +106,9 @@ obscount = [bad.Nbadsel, bad.Nbadtot-bad.Nbadsel, con.Nconsolidated, tot-bad.Nba
 % Monthly
 [unM,~,subs] = unique(con.Date/100);
 tot          = accumarray(subs, tot);
-obscount   = arrayfun(@(x) accumarray(subs, obscount(:,x)),1:4,'un',0);
-obscount = [obscount{:}];
-prop = bsxfun(@rdivide, obscount,tot);
+obscount     = arrayfun(@(x) accumarray(subs, obscount(:,x)),1:4,'un',0);
+obscount     = [obscount{:}];
+prop         = bsxfun(@rdivide, obscount,tot);
 
 
 figure
