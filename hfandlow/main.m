@@ -1,8 +1,8 @@
 %% Options
 OPT_VW = true;
 
-OPT_LAG       = 1;
-OPT_PTF_UN    = 10;
+OPT_LAG    = 1;
+OPT_PTF_UN = 10;
 
 %% Data 
 dsf = loadresults('dsf');
@@ -13,7 +13,7 @@ myunstack = @(tb,vname) sortrows(unstack(tb(:,{'Permno','Date',vname}),vname,'Pe
 ret    = myunstack(dsf,'Ret');
 date   = ret.Date;
 permno = ret.Properties.VariableNames(2:end);
-ret    = ret{:,2:end};
+ret    = double(ret{:,2:end});
 
 % End-of-Month ismicro
 dsf.IsMicro = isMicrocap(dsf,'Prc');
@@ -31,7 +31,10 @@ cap     = cap{pos,2:end};
 ff = loadresults('F-F_Research_Data_5_Factors_2x3_daily_TXT');
 ff = ff(ismember(ff.Date, unique(dsf.Date)),:);
 %% Signals
-[signals, hpr] = make_signals(ret,date,ff);
+[signals, hpr, rf] = make_signals(ret,date,ff);
+nsig           = size(signals,3);
+snames         = {'alpha','skewh','skewr','betas'};
+correlations   = corrxs(signals,snames);
 
 %% Lag
 % End-of-Month
@@ -41,7 +44,8 @@ cap     = cap(1:end-OPT_LAG,:);
 
 % Lag forward
 hpr = hpr(1+OPT_LAG:end,:);
-%% HPR
+rf  = rf(1+OPT_LAG:end,:);
+%% Filter micro
 hpr(isMicro) = NaN;
 %% PTFRET
 if OPT_VW
@@ -51,10 +55,13 @@ else
 end
 
 % Alpha
-[ptfret,~,counts,avgsig] = portfolio_sort(hpr, signals(:,:,1), opts);
+[ptfret{1},~,counts{1},avgsig{1}] = portfolio_sort(hpr, signals(:,:,1), opts);
 
 % Skewness
-[ptfret,~,counts,avgsig] = portfolio_sort(hpr, signals(:,:,2), opts);
+[ptfret{2},~,counts{2},avgsig{2}] = portfolio_sort(hpr, signals(:,:,2), opts);
 
 % Skewness#2
-[ptfret,~,counts,avgsig] = portfolio_sort(hpr, signals(:,:,3), opts);
+[ptfret{3},~,counts{3},avgsig{3}] = portfolio_sort(hpr, signals(:,:,3), opts);
+
+% Bab
+ptfret{4} = bab(hpr,signals(:,:,4),rf);
