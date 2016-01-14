@@ -34,7 +34,13 @@ dsf       = loadresults('dsfquery','..\results');
 [idx,pos] = ismembIdDate(dsf.Permno, dsf.Date,master.Permno, master.Date);
 dsf       = dsf(idx,:);
 
+% Beta components
+beta      = loadresults('betacomponents5mon');
+[idx,pos] = ismembIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
+beta      = beta(idx,:);
+
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
+save('results\beta5minon.mat','beta')
 
 importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
