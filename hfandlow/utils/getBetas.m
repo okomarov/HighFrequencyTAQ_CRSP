@@ -14,7 +14,7 @@ if nargin < 6 || isempty(iscs),     iscs     = true;    end
 if nargin < 7 || isempty(keeplong), keeplong = false;   end
 
 % Load all betas
-betas = estimateBetas(lookback, freq, useon, useproxy);
+betas = estimateBetaComponents(freq, useon, useproxy);
 
 % Filter for sp500 members
 if issp

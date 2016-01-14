@@ -1,4 +1,4 @@
-function betas = estimateBetas(freq, useon, useproxy)
+function betas = estimateBetaComponents(freq, useon, useproxy)
 if nargin < 1 || isempty(freq),     freq     = 5;     end
 if nargin < 2 || isempty(useon),    useon    = true;  end
 if nargin < 3 || isempty(useproxy), useproxy = false; end
@@ -113,4 +113,3 @@ if useon,    useon    = 'on';   else useon    = ''; end
 if useproxy, useproxy = 'prx';  else useproxy = ''; end
 name = sprintf('%s%dm%s%s', name, freq, useon, useproxy);
 end
-
