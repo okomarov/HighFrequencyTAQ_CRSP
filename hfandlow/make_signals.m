@@ -1,10 +1,12 @@
-function [signals,hpr] = make_signals(ret,date,factors)
+function [signals,hpr,rf] = make_signals(ret,date,factors)
 [unDt,~,midx] = unique(date/100);
 nmonths       = numel(unDt);
 nseries       = size(ret,2);
 
 signals = NaN(nmonths, nseries,4);
 hpr     = NaN(nmonths, nseries);
+rf      = NaN(nmonths, 1);
+
 for ii = 1:nmonths
     imonth = midx == ii;
     nobs   = nnz(imonth);
@@ -56,11 +58,14 @@ end
 
 % Holding period return
 for ii = 1:nmonths
-    imonth            = midx == ii;
+    imonth = midx == ii;
+
     r                 = ret(imonth,:);
     inan              = isnan(r);
     r(inan)           = 0;
     hpr(ii,:)         = prod(1+r)-1;
     hpr(ii,all(inan)) = NaN;
+
+    rf(ii) = prod(1+factors.RF(imonth)/100)-1;
 end
 end
