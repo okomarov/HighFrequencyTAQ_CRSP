@@ -1,4 +1,4 @@
-function [res, filename] = Analyze(fun, varnames, cached, path2data, debug, varargin)
+function [res, filename] = AnalyzeHflow(fun, varnames, cached, path2data, debug, poolcores, varargin)
 % ANALYZE Executes specified fun in parallel on the whole database (all .mat files)
 %
 %   ANALYZE(FUN, VARNAMES) FUN should a string with the name of one of
@@ -24,6 +24,7 @@ if nargin < 2 || isempty(varnames);  varnames  = {'data','mst','ids'};  end
 if nargin < 3,                       cached    = [];                    end
 if nargin < 4 || isempty(path2data); path2data = '.\data\TAQ\';         end
 if nargin < 5 || isempty(debug);     debug     = false;                 end
+if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@maxtradepsec
         @medianprice
@@ -45,7 +46,7 @@ if ~hasFunc
 end
 fun             = fhandles{pos};
 projectpath     = fileparts(mfilename('fullpath'));
-[res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug, varargin{:});
+[res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug,poolcores, varargin{:});
 end
 %% Subfunctions 
 
@@ -278,7 +279,7 @@ subsID  = reshape(repmat(1:size(s.mst,1),ngrid,1),[],1);
 ikeep   = ~isnan(prodret);
 
 % Store results
-res     = s.mst(:,'Permno','Date');
+res     = s.mst(:,{'Permno','Date'});
 res.Num = accumarray(subsID(ikeep), prodret(ikeep),[],[],NaN);
 res.Den = accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
 end
