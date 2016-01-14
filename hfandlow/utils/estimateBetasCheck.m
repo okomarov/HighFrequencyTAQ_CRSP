@@ -3,43 +3,15 @@
 addpath 'D:\TAQ\HF\hfandlow\utils\MFE'
 
 fprintf('Checking one random beta.\n')
-beta   = getBetas(1,5,true,false,true,true,true);
+beta   = getBetas(1,5,true,false,false,true,true);
 record = beta(randsample(size(beta,1),1),:);
 
 date   = record.Date;
 permno = record.Permno;
+% record = beta(beta.Permno == permno & beta.Date == date,:);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Den - variance of spyders
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Unsampled spy
-unsampled         = getSpy(inf,date,date);
-unsampled         = unsampled(~isInvalidTrade(unsampled),:);
-[Datetime,~,subs] = unique(unsampled.Datetime);
-Price             = accumarray(subs, unsampled.Price,[],@fast_median);
-
-% Sample with MFE
-grid  = (9.5/24:5/(60*24):16/24)';
-Price = realized_price_filter(double(Price), Datetime,...
-                                    'unit','fixed', grid+yyyymmdd2serial(date));
-
-% Inherit same NaNs
-spy         = getSpy(5,date,date);
-inan        = isnan(spy.Price);
-Price(inan) = NaN;
-
-% Returns with overnight
-spylogret = diff(log(Price));
-ret       = loadresults('return_intraday_overnight');
-r         = ret(ret.Date == date & ret.Permno == 84398,:);
-if isnan(spylogret(1))
-    spylogret(1) = r.RetCO;
-else
-    spylogret(1) = spylogret(1)+r.RetCO;
-end
-inan = isnan(spylogret);
-den  = spylogret(~inan)'*spylogret(~inan);
+grid = (9.5/24:5/(60*24):16/24)';
+ret  = loadresults('return_intraday_overnight');
 
 %%%%%%%%%%%%%%%%%%
 % Num - covariance
@@ -68,7 +40,35 @@ if isnan(logret(1))
 else
     logret(1) = logret(1)+r.RetCO;
 end
-num               = nansum(logret.*spylogret);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Den - variance of spyders
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Unsampled spy
+unsampled         = getSpy(inf,date,date);
+unsampled         = unsampled(~isInvalidTrade(unsampled),:);
+[Datetime,~,subs] = unique(unsampled.Datetime);
+Price             = accumarray(subs, unsampled.Price,[],@fast_median);
+
+% Sample with MFE
+Price = realized_price_filter(double(Price), Datetime,...
+                                    'unit','fixed', grid+yyyymmdd2serial(date));
+
+% Inherit same NaNs
+Price(inan) = NaN;
+
+% Returns with overnight
+spylogret = diff(log(Price));
+r         = ret(ret.Date == date & ret.Permno == 84398,:);
+if isnan(spylogret(1))
+    spylogret(1) = r.RetCO;
+else
+    spylogret(1) = spylogret(1)+r.RetCO;
+end
+num = nansum(logret.*spylogret);
+den = nansum(spylogret.*spylogret);
+
 record.ManualNum  = num;
 record.ManualDen  = den;
 record.ManualBeta = num./den;
