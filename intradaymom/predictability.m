@@ -28,7 +28,7 @@ for ii = 2:numel(OPT_RANGES)
     vol.(tname) = double(tmp.(tname)(pos));
 end
 vol = sortrows(vol,{'Permno','Date'});
-
+clear tmp
 % isequal(vol.Permno, ret.Permno)
 % isequal(vol.Date, ret.Date)
 
@@ -44,7 +44,7 @@ vol     = vol{:,3:end};
 
 % 40-day moving average lagged 1 standard deviation
 sigma = sqrt(tsmovavg(vol,OPT_VOL_AVG, OPT_LAG_VOL,1));
-sigma = [NaN(OPT_LAG,size(sigma,2)); sima(1:end-OPT_LAG,:)]; % ex-ante
+sigma = [NaN(OPT_LAG,size(sigma,2)); sigma(1:end-OPT_LAG,:)]; % ex-ante
 
 % Do not use lags from other permnos
 SHIFT            = OPT_LAG_VOL-1+OPT_LAG;

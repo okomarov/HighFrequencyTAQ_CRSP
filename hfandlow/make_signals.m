@@ -32,6 +32,7 @@ for ii = 1:nmonths
     signals(ii,nonans,3) = sqrt(nobs) * sum(r.^3) ./ sum(r.*r).^1.5;
 end
 
+% Betas
 for ii = 12:nmonths
     iyear = ismember(midx, ii-12+1:ii);
     nobs  = nnz(iyear);

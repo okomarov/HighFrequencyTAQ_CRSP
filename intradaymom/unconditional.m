@@ -127,7 +127,7 @@ plot(G,'layout','force')
 save .\results\avg_ts_industry_vw ptfret_vw
 
 %% Data
-datapath = '..\data\TAQ\sampled\5min\nobad';
+datapath = '..\data\TAQ\sampled\5min\nobad_vw';
 
 % Index data
 mst = loadresults('master');
@@ -219,7 +219,7 @@ f = 252*100;
 
 ha = subplot(211);
 bar(nanmean(avg_ew)*f)
-hold on 
+hold on
 bar(14, mean(avg_ew_all(:,2))*f,'r')
 title('Average annualized % returns - EW')
 set(gca,'XtickLabel',EDGES(1:end-1)/100)

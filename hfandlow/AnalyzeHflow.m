@@ -27,16 +27,9 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@maxtradepsec
-        @medianprice
-        @badprices
-        @ibadprices
-        @consolidationcounts
-        @NumTimeBuckets
-        @sample
         @sampleSpy
         @betacomponents
         @selrulecounts
-        @return_intraday
         @rv
         @countnullrets};
     
