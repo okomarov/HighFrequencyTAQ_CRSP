@@ -1,4 +1,7 @@
-%% 
+%%
+
+addpath 'D:\TAQ\HF\hfandlow\utils\MFE'
+
 fprintf('Checking one random beta.\n')
 beta   = getBetas(1,5,true,false,true,true,true);
 record = beta(randsample(size(beta,1),1),:);
@@ -6,21 +9,24 @@ record = beta(randsample(size(beta,1),1),:);
 date   = record.Date;
 permno = record.Permno;
 
-% Den
-spy  = getSpy(5,date,date);
-inan = isnan(spy.Price);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Den - variance of spyders
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Unsampled spy
 unsampled         = getSpy(inf,date,date);
-unsampled         = unsampled(~selecttrades(unsampled),:);
+unsampled         = unsampled(~isInvalidTrade(unsampled),:);
 [Datetime,~,subs] = unique(unsampled.Datetime);
 Price             = accumarray(subs, unsampled.Price,[],@fast_median);
 
 % Sample with MFE
-pt          = 'D:\TAQ\HFbetas\utils\MFE'; addpath(pt) 
-grid        = (9.5/24:5/(60*24):16/24)';
-Price       = realized_price_filter(double(Price), Datetime,...
-        'unit','fixed', grid+yyyymmdd2serial(date));
+grid  = (9.5/24:5/(60*24):16/24)';
+Price = realized_price_filter(double(Price), Datetime,...
+                                    'unit','fixed', grid+yyyymmdd2serial(date));
+
+% Inherit same NaNs
+spy         = getSpy(5,date,date);
+inan        = isnan(spy.Price);
 Price(inan) = NaN;
 
 % Returns with overnight
@@ -35,19 +41,23 @@ end
 inan = isnan(spylogret);
 den  = spylogret(~inan)'*spylogret(~inan);
 
-% Num
-s    = getTaqData('permno',permno,date,date,[],'.\data\TAQ\sampled\5min');
-inan = isnan(s.Price);
+%%%%%%%%%%%%%%%%%%
+% Num - covariance
+%%%%%%%%%%%%%%%%%%
 
 % Unsampled series
 unsampled         = getTaqData('permno',permno,date,date);
-unsampled         = unsampled(~selecttrades(unsampled),:);
+unsampled         = unsampled(~isInvalidTrade(unsampled),:);
 [Datetime,~,subs] = unique(unsampled.Datetime);
 Price             = accumarray(subs, unsampled.Price,[],@fast_median);
 
 % Sample with MFE
-Price       = realized_price_filter(double(Price), Datetime,...
-        'unit','fixed', grid+yyyymmdd2serial(date));
+Price = realized_price_filter(double(Price), Datetime,...
+                              'unit','fixed', grid+yyyymmdd2serial(date));
+
+% Inherit same NaNs
+s           = getTaqData('permno',permno,date,date,[],'D:\TAQ\HF\data\TAQ\sampled\5min\nobad_vw');
+inan        = isnan(s.Price);
 Price(inan) = NaN;
 
 % Returns with overnight
@@ -130,7 +140,7 @@ compare = betas(betas.Permno == permno & ismember(betas.Date, manual.Date),:);
 
 % Visual inspection
 subplot(211)
-title(sprintf('%d', permno)) 
+title(sprintf('%d', permno))
 plot(yyyymmdd2datetime(compare.Date), compare.Beta,...
      yyyymmdd2datetime(manual.Date), manual.Beta)
 legend({'Automated','Manual'})
