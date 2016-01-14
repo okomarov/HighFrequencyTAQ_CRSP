@@ -1,4 +1,4 @@
-function res = estimateOvernightretIntraday
+function res = estimateOverIntraCloseRet
 % Calulate overnight return from CRSP's close-to-close return and
 % TAQ's open-to-close (intraday) return.
 
