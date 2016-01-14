@@ -26,21 +26,20 @@ function [res, filename] = blockprocess(fhandle, projectpath, varnames, cached, 
 addpath(genpath('common'))
 rootfolder = fileparts(mfilename('fullpath'));
 poolStartup(poolcores, 'AttachedFiles',{fullfile(rootfolder, 'utils\poolStartup.m')},'debug',debug)
-path2data = fullfile(rootfolder,path2data);
-writeto   = fullfile(projectpath, 'results');
+writeto    = fullfile(projectpath, 'results');
 if ~debug; setupemail; end
 fun = func2str(fhandle);
 if isrowchar(varnames), varnames = {varnames}; end
 
 try
     tic
-    dd  = dir(fullfile(path2data,'*.mat'));
+    dd = dir(fullfile(path2data,'*.mat'));
     if isempty(dd)
         error('No data found in "%s".', path2data)
     end
     N   = numel(dd);
     res = deal(cell(N,1));
-    
+
     % Slice cached
     if isempty(cached)
         cached = cell(N,1);
@@ -48,7 +47,7 @@ try
         vnames = setdiff(getVariableNames(cached),'File','stable');
         cached = accumarray(cached.File,(1:size(cached))',[],@(x) {cached(x,vnames)});
     end
-    
+
     % LOOP in parallel
     parfor f = 1:N
         disp(f)
@@ -63,7 +62,7 @@ try
     end
     % Collect all results and convert to dataset
     res = cat(1,res{:});
-    
+
     % Export results and notify
     filename = sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),fun);
     save(fullfile(writeto,filename), 'res')
@@ -80,6 +79,6 @@ catch err
 end
 if ~debug
     delete(gcp('nocreate'))
-%     rmpref('Internet','SMTP_Password')
+    %     rmpref('Internet','SMTP_Password')
 end
 end
