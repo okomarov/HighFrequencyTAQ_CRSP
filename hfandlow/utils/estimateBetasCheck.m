@@ -68,11 +68,12 @@ if isnan(logret(1))
 else
     logret(1) = logret(1)+r.RetCO;
 end
-num               = logret'*spylogret;
+num               = nansum(logret.*spylogret);
 record.ManualNum  = num;
 record.ManualDen  = den;
 record.ManualBeta = num./den;
 disp(record)
+
 %% Check if multiple days extends
 fprintf('Checking beta with yearly lookback for a single.\n')
 
