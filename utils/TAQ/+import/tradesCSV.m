@@ -57,25 +57,28 @@ for f = 1:numel(filenames)
                 % Make sure to keep whole day on same mat file
                 if ii == opt.Nblk
                     if feof(fid)
-                        resids = cell(0,1);
-                        resmst = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
+                        resids  = cell(0,1);
+                        resmst  = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
+                        resdata = cell(1,11);
                     else
                         % Start of last date
                         from = find(diff(data{ii,2}),1,'last')+1;
 
                         % Day might not have ended yet (whole bulk import has
-                        % one date only). Use start of last symbol 
+                        % one date only). Use start of last symbol
                         if isempty(from)
                             [~,~,subs] = unique(data{ii,1});
                             from = find(diff(subs),1,'last')+1;
                         end
-                        
+
                         % If still empty, import more data
                         if isempty(from)
                             opt.Nblk = opt.Nblk+1;
 
                             % Defer chunk with last change of date into next bulk import
-                        elseif from ~= size(data{ii,1},1)
+                            % Note: even if last row is a new date, defer it. We don't
+                            %       know if that is the last row for that date.
+                        else
                             resdata                 = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
                             data(ii,:)              = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
                             [resids,resmst,resdata] = processDataset(resdata);
