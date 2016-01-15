@@ -27,12 +27,13 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@maxtradepsec
-        @sampleSpy
-        @betacomponents
-        @selrulecounts
-        @rv
-        @countnullrets};
-    
+    @sampleSpy
+    @betacomponents
+    @selrulecounts
+    @rv
+    @skewcomponents
+    @countnullrets};
+
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
     error('Unrecognized function "%s".', fun)
@@ -41,7 +42,7 @@ fun             = fhandles{pos};
 projectpath     = fileparts(mfilename('fullpath'));
 [res, filename] = blockprocess(fun ,projectpath, varnames, cached,path2data,debug,poolcores, varargin{:});
 end
-%% Subfunctions 
+%% Subfunctions
 
 % Maximum trades per second
 function res = maxtradepsec(s,cached)
@@ -50,7 +51,7 @@ Id            = cumsum([ones(1,'uint32'); diff(int8(s.data.Time(:,1))) < 0]);
 Dates         = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
 [un,~,subs]   = unique([Id, Dates, s.data.Time],'rows');
 counts        = [un accumarray(subs,1)];
-% Pick max per date 
+% Pick max per date
 [date,~,subs] = unique(counts(:,2));
 res           = table(date, accumarray(subs,counts(:,end),[],@max),'VariableNames',{'Date','Maxpsec'});
 end
@@ -95,40 +96,36 @@ res.Num = accumarray(subsID(ikeep), prodret(ikeep),[],[],NaN);
 res.Den = accumarray(subsID(ikeep), spret(ikeep).^2,[],[],NaN);
 end
 
-function res = selrulecounts(s,cached)
-nfile  = uint16(cached{end});
-vnames = {'Date','Val','Count'};
+function res = skewcomponents(s, cached)
+res = s.mst(:,{'Date','Permno'});
 
-% Sort mst
-if ~issorted(s.mst.From)
-    s.mst = sortrows(s.mst,'From');
+% Add permno
+nobs          = double(s.mst.To - s.mst.From + 1);
+nmst          = size(s.mst,1);
+subs          = RunLength((1:nmst)', nobs);
+s.data.Permno = s.mst.Permno(subs);
+
+% Dates and returns
+s.data.Ret        = [NaN; diff(log(s.data.Price))];
+ion               = [true; diff(fix(s.data.Datetime)) ~= 0] |...
+                    [true; diff(s.data.Permno) ~= 0];
+s.data.Ret(ion,1) = NaN;
+
+% Use overnight
+useon = numel(cached) == 2;
+if useon
+    s.data = addOvernightRet(s.data, cached{1});
 end
-dates = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
 
-% G127
-[g127,~,subs] = unique([dates,s.data.G127_Correction(:,1)],'rows');
-g127          = table(g127(:,1),g127(:,2),accumarray(subs,1), 'VariableNames', vnames);
+% Filter out NaNs
+ikeep = ~isnan(s.data.Ret);
+subs  = subs(ikeep);
+ret   = s.data.Ret(ikeep);
 
-% Correction
-[correction,~,subs] = unique([dates, s.data.G127_Correction(:,2)],'rows');
-correction          = table(correction(:,1),correction(:,2),accumarray(subs,1), 'VariableNames', vnames);
+% Daily realized skewness: sqrt(nobs)*sum(r^3)/sum(r^2)^(3/2)
+res.Num = sqrt(accumarray(subs,1)).* accumarray(subs, ret.^3);
+res.Den = accumarray(subs, ret.^2).^1.5;
 
-% Condition
-[condition,~,subs] = unique(table(dates, s.data.Condition));
-condition.Count    = accumarray(subs,1);
-condition          = setVariableNames(condition,vnames);
-
-% Null price
-bins               = double(s.data.Price ~= 0);
-[nullprice,~,subs] = unique([dates, bins],'rcachedmst.MedPrice== 0ows');
-nullprice          = table(nullprice(:,1), nullprice(:,2), accumarray(subs,1),'VariableNames', vnames);
-
-% Null size
-bins              = double(s.data.Volume ~= 0);
-[nullsize,~,subs] = unique([dates, bins],'rows');
-nullsize          = table(nullsize(:,1), nullsize(:,2), accumarray(subs,1),'VariableNames', vnames);
-
-res = {g127, correction, condition, nullprice, nullsize, nfile};
 end
 
 function res = rv(s,cached)
