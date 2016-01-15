@@ -172,3 +172,40 @@ idx          = mcolon(s.mst.From,1,s.mst.To);
 subs         = RunLength(1:size(s.mst,1),s.mst.To-s.mst.From+1);
 res.Nullrets = accumarray(subs(:), s.data.Price(idx),[],@(x) nnz(x(2:end)./x(1:end-1)==1));
 end
+
+%% OLD stuff
+function res = selrulecounts(s,cached)
+nfile  = uint16(cached{end});
+vnames = {'Date','Val','Count'};
+
+% Sort mst
+if ~issorted(s.mst.From)
+    s.mst = sortrows(s.mst,'From');
+end
+dates = RunLength(s.mst.Date, double(s.mst.To-s.mst.From+1));
+
+% G127
+[g127,~,subs] = unique([dates,s.data.G127_Correction(:,1)],'rows');
+g127          = table(g127(:,1),g127(:,2),accumarray(subs,1), 'VariableNames', vnames);
+
+% Correction
+[correction,~,subs] = unique([dates, s.data.G127_Correction(:,2)],'rows');
+correction          = table(correction(:,1),correction(:,2),accumarray(subs,1), 'VariableNames', vnames);
+
+% Condition
+[condition,~,subs] = unique(table(dates, s.data.Condition));
+condition.Count    = accumarray(subs,1);
+condition          = setVariableNames(condition,vnames);
+
+% Null price
+bins               = double(s.data.Price ~= 0);
+[nullprice,~,subs] = unique([dates, bins],'rcachedmst.MedPrice== 0ows');
+nullprice          = table(nullprice(:,1), nullprice(:,2), accumarray(subs,1),'VariableNames', vnames);
+
+% Null size
+bins              = double(s.data.Volume ~= 0);
+[nullsize,~,subs] = unique([dates, bins],'rows');
+nullsize          = table(nullsize(:,1), nullsize(:,2), accumarray(subs,1),'VariableNames', vnames);
+
+res = {g127, correction, condition, nullprice, nullsize, nfile};
+end
