@@ -4,34 +4,25 @@ reton = loadresults('return_intraday_overnight');
 
 [unDt,~,midx] = unique(date/100);
 nmonths       = numel(unDt);
-nseries       = size(data,2);
+nseries       = numel(permno);
 
 signals = NaN(nmonths, nseries,4);
 hpr     = NaN(nmonths, nseries);
 rf      = NaN(nmonths, 1);
 
+% Get market return
+mkt             = getSpy(5, min(date),max(date));
+mkt.Permno(:,1) = 84398;
+mkt             = price2ret(mkt);
+mkt             = addOvernightRet(mkt,reton);
+
+% Get rf
+
 
 for ii = 1:nmonths
-    % Get prices
-    from = unDt(ii)*100+1;
-    to   = unDt(ii)*100+31;
-    data = getTaqData('permno',permno,from,to,[],'..\data\TAQ\sampled\5min\nobad_vw');
-    
-    % Add returns
-    data.Ret        = [NaN; diff(log(data.Price))];
-    ion             = [true; diff(fix(data.Datetime)) ~= 0] |...
-                      [true; diff(data.Permno) ~= 0];
-    data.Ret(ion,1) = NaN;
-    data            = addOvernightRet(data,reton);
-    
-    % Unstack
-    data.Date   = serial2yyyymmdd(data.Datetime);
-    data.Time   = serial2hhmmss(data.Datetime);
-    data        = sortrows(unstack(data(:,{'Date','Time','Permno','Ret'}),'Ret','Permno'),{'Date','Time'});
-    permnoFound = xstr2num(data.Properties.VariableNames(3:end));
-    data        = data{:,3:end};
+    [ret, permnoFound] = getHighFreqRet(unDt(ii),permno,reton);
 
-% Month of all non-nan returns
+    % Month of all non-nan returns
     r      = data(imonth,:);
     nonans = all(~isnan(r));
     ngood  = nnz(nonans);
@@ -76,17 +67,29 @@ for ii = 12:nmonths
     end
     signals(ii,nonans,4) = coeff(2,:);
 end
-
-% Holding period return
-for ii = 1:nmonths
-    imonth = midx == ii;
-
-    r                 = data(imonth,:);
-    inan              = isnan(r);
-    r(inan)           = 0;
-    hpr(ii,:)         = prod(1+r)-1;
-    hpr(ii,all(inan)) = NaN;
-
-    rf(ii) = prod(1+factors.RF(imonth)/100)-1;
 end
+
+function [data, permnoFound] = getHighFreqRet(month, permno, reton)
+    % Get prices
+    from = month*100+1;
+    to   = month*100+31;
+    data = getTaqData('permno',permno,from,to,[],'..\data\TAQ\sampled\5min\nobad_vw');
+
+    % Add returns
+    data = price2ret(data);
+    data = addOvernightRet(data,reton);
+
+    % Unstack
+    data.Date   = serial2yyyymmdd(data.Datetime);
+    data.Time   = serial2hhmmss(data.Datetime);
+    data        = sortrows(unstack(data(:,{'Date','Time','Permno','Ret'}),'Ret','Permno'),{'Date','Time'});
+    permnoFound = xstr2num(data.Properties.VariableNames(3:end));
+    data        = data{:,3:end};
+end
+
+function data = price2ret(data)
+    data.Ret        = [NaN; diff(log(data.Price))];
+    ion             = [true; diff(fix(data.Datetime)) ~= 0] |...
+                      [true; diff(data.Permno) ~= 0];
+    data.Ret(ion,1) = NaN;
 end
