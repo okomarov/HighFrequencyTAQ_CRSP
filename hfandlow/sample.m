@@ -39,6 +39,19 @@ beta      = loadresults('betacomponents5mon');
 [idx,pos] = ismembIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
 beta      = beta(idx,:);
 
+% Skewness
+try
+    skew = loadresults('skewcomponents');
+catch
+    reton                    = loadresults('return_intraday_overnight');
+    [idx,pos]                = ismembIdDate(reton.Permno, reton.Date,master.Permno, master.Date);
+    master.RetCO(pos(idx),1) = reton.RetCO(idx);
+    mst                   = cache2cell(master,master.File);
+    skew                     = AnalyzeHflow('skewcomponents',[],mst,fullfile(datapath,'sampled\5min\nobad_vw'),[],8);
+end
+[idx,pos] = ismembIdDate(skew.Permno, skew.Date, master.Permno, master.Date);
+skew      = skew(idx,:);
+
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
 save('results\beta5minon.mat','beta')
