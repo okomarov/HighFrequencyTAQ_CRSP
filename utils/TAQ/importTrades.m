@@ -57,7 +57,7 @@ end
 % =================
 % Note: 7388 files at ~5e6 records per file
 folder = fullfile(rootfolder, 'manual');
-matnum = importTradesCSV(folder,matfolder,true);
+matnum = import.tradesCSV(folder,matfolder,true);
 
 % Import dvd 
 % ==========
@@ -71,14 +71,14 @@ tmpmat = fullfile(rootfolder, 'tmp');
 if ~isdir(tmpmat)
     mkdir(tmpmat);
 end
-importTradesDVD(folder,tmpmat,matnum);
+import.tradesDVD(folder,tmpmat,matnum);
 % Chunk into smaller .mat files
-matnum = splitMatTrades(tmpmat,fullfile(tmpmat,'split'),[],matnum);
+matnum = import.splitMatTrades(tmpmat,fullfile(tmpmat,'split'),[],matnum);
 
 % Import automated csv
 % ====================
 folder = fullfile(rootfolder, 'automated');
-importTradesCSV(folder,matfolder,false, matnum);
+import.tradesCSV(folder,matfolder,false, matnum);
 
 diary off
 end
