@@ -8,6 +8,9 @@ master   = addPermno(master.mst);
 master   = master(master.Permno ~= 0,:);
 master   = sortrows(master,{'Permno','Date'});
 
+% Get market
+mkt = master(master.Permno == 84398,:);
+
 % Common shares
 idx    = iscommonshare(master);
 master = master(idx,:);
@@ -55,12 +58,21 @@ end
 skew      = skew(idx,:);
 
 % Beta components - re-run
-idx  = ismembIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
+idx  = ismembIdDate(beta.Permno, beta.Date, master.Permno, master.Date);
 beta = beta(idx,:);
+
+% Add back mkt
+master = [master(:,1:end-1);mkt];
+
+% Overnight returns
+reton = loadresults('return_intraday_overnight');
+idx   = ismembIdDate(reton.Permno, reton.Date, master.Permno, master.Date);
+reton = reton(idx,:);
 
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
 save('results\beta5minon.mat','beta')
 save('results\skew.mat','skew')
+save('results\reton.mat','reton')
 
 importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
