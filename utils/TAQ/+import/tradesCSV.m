@@ -38,7 +38,7 @@ ii   = 0;
 
 % LOOP through each file
 for f = 1:numel(filenames)
-    filename   = unzip(fullfile(path2zip,filenames{f}),path2zip);
+    filename   = unzip(fullfile(path2zip,filenames{f}),tempdir());
     fid        = fopen(filename{end});
     cleanup    = onCleanup(@() finallyCleanup(fid, char(filename)));
     fileIsOpen = true;

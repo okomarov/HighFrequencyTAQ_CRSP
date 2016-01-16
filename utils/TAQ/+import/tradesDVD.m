@@ -1,4 +1,4 @@
-function matnum = importTradesDVD(path2main,outdir, matnum, opt)
+function matnum = tradesDVD(path2main,outdir, matnum, opt)
 if nargin < 3, matnum = 0; end
 
 if nargin < 4
@@ -27,8 +27,8 @@ for ii = 1:numel(subfolders)
             zipcontents   = char(getZipEntries(zipfile));
             iTradeFiles   = zipcontents(:,1) == 'T';
             files2extract = cellstr(zipcontents(iTradeFiles,:));
-            extracted     = unzipfiles(zipfile, files2extract, datadir);
-            extracted     = fullfile(datadir, extracted);
+            extracted     = unzipfiles(zipfile, files2extract, tempdir());
+            extracted     = fullfile(tempdir(), extracted);
             cleanup       = onCleanup(@() delete(extracted{:}));
 
             % Import master records, extension .IDX
