@@ -1,7 +1,7 @@
-function matnum = importTradesCSV(path2zip, outdir, isManual, matnum, opt)
-% IMPORTTRADESCSV Import zipped .csv of TAQ trades downloaded from WRDS
+function matnum = tradesCSV(path2zip, outdir, isManual, matnum, opt)
+% TRADESCSV Import zipped .csv of TAQ trades downloaded from WRDS
 %
-%   IMPORTTRADESCSV(PATH2ZIP, OUTDIR)
+%   TRADESCSV(PATH2ZIP, OUTDIR)
 %       Imports zipped .CSVs from the PATH2ZIP folder and saves them as
 %       .mat and .mst files in OUTDIR.
 %

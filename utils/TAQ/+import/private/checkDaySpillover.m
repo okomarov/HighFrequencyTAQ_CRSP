@@ -17,9 +17,12 @@ map = containers.Map('keyType','char','ValueType','uint64');
 for ii = 1:nfiles
     f = fullfile(path2mat,mstfiles{ii});
     s = load(f,'-mat');
-    
+    if isa(s.mst,'dataset'),
+        s.mst = dataset2table(s.mst);
+    end
+
     map = addKeyVal(map, s.ids);
-    
+
     % Drop out-of-date
     ikeep   = min(s.mst.Date) - tickers.Date < 10;
     tickers = tickers(ikeep,:);
