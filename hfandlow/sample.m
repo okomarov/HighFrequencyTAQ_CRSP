@@ -24,20 +24,22 @@ isEnoughObs    = (master.To-master.From+1 - master.Nbadtot) >= 79;
 isEnoughObs    = [false(OPT_LAGDAY,1); isEnoughObs(1:end-OPT_LAGDAY)];
 master         = master(isEnoughObs,:);
 
-% Count
-tmp       = sortrows(unstack(master(:,{'Date','Permno','File'}), 'File','Permno'),'Date');
-tmp       = tmp{:,2:end};
-count_all = sum(tmp~=0,2);
-
-% CRSP returns
-dsf       = loadresults('dsfquery','..\results');
-[idx,pos] = ismembIdDate(dsf.Permno, dsf.Date,master.Permno, master.Date);
-dsf       = dsf(idx,:);
+% % Count
+% tmp       = sortrows(unstack(master(:,{'Date','Permno','File'}), 'File','Permno'),'Date');
+% tmp       = tmp{:,2:end};
+% count_all = sum(tmp~=0,2);
 
 % Beta components
 beta      = loadresults('betacomponents5mon');
-[idx,pos] = ismembIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
-beta      = beta(idx,:);
+[~,ia,ib] = intersectIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
+beta      = beta(ia,:);
+master    = master(ib,:);
+
+% CRSP returns
+dsf       = loadresults('dsfquery','..\results');
+[~,ia,ib] = intersectIdDate(dsf.Permno, dsf.Date,master.Permno, master.Date);
+dsf       = dsf(ia,:);
+master    = master(ib,:);
 
 % Skewness
 try
@@ -46,14 +48,19 @@ catch
     reton                    = loadresults('return_intraday_overnight');
     [idx,pos]                = ismembIdDate(reton.Permno, reton.Date,master.Permno, master.Date);
     master.RetCO(pos(idx),1) = reton.RetCO(idx);
-    mst                   = cache2cell(master,master.File);
+    mst                      = cache2cell(master,master.File);
     skew                     = AnalyzeHflow('skewcomponents',[],mst,fullfile(datapath,'sampled\5min\nobad_vw'),[],8);
 end
 [idx,pos] = ismembIdDate(skew.Permno, skew.Date, master.Permno, master.Date);
 skew      = skew(idx,:);
 
+% Beta components - re-run
+idx  = ismembIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
+beta = beta(idx,:);
+
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
 save('results\beta5minon.mat','beta')
+save('results\skew.mat','skew')
 
 importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
