@@ -61,8 +61,14 @@ for ii = 1:nmonths
     for jj = 1:numel(permnoFound)
         if igood(jj)
             coeff(:,jj) = regress(Y(:,jj),X);
+            % Set to NaN rank deficient estimates
+            if strncmpi(lastwarn(),'X is rank',9)
+                igood(jj) = false;
+                lastwarn('');
+            end
         end
     end
+    coeff(:,igood)  = NaN;
     [~,pos]         = ismember(permnoFound, permno);
     signals(ii,pos) = coeff(1,:);
 
