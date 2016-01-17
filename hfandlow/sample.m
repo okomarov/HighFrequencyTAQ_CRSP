@@ -2,10 +2,9 @@
 OPT_LAGDAY = 1;
 
 % Index data
-datapath = '..\data\TAQ\';
+datapath = '..\data\TAQ\sampled\5min\nobad_vw';
 master   = load(fullfile(datapath,'master'),'-mat');
-master   = addPermno(master.mst);
-master   = master(master.Permno ~= 0,:);
+master   = master.mst(master.mst.Permno ~= 0,:);
 master   = sortrows(master,{'Permno','Date'});
 
 % Get market
@@ -52,7 +51,7 @@ catch
     [idx,pos]                = ismembIdDate(reton.Permno, reton.Date,master.Permno, master.Date);
     master.RetCO(pos(idx),1) = reton.RetCO(idx);
     mst                      = cache2cell(master,master.File);
-    skew                     = AnalyzeHflow('skewcomponents',[],mst,fullfile(datapath,'sampled\5min\nobad_vw'),[],8);
+    skew                     = AnalyzeHflow('skewcomponents',[],mst,datapath,[],8);
 end
 [idx,pos] = ismembIdDate(skew.Permno, skew.Date, master.Permno, master.Date);
 skew      = skew(idx,:);
