@@ -26,8 +26,8 @@ if nargin < 7 || isempty(master)
     end
 end
 if nargin < 8,                          updatebar = true;           end
-if isstring(id),  id  = {id}; end
-if isstring(varnames), varnames = {varnames}; end
+if isrowchar(id),  id  = {id}; end
+if isrowchar(varnames), varnames = {varnames}; end
 
 % Filter by ID
 if isempty(id)
