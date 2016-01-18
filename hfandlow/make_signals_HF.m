@@ -68,7 +68,7 @@ for ii = 1:nmonths
             end
         end
     end
-    coeff(:,igood)  = NaN;
+    coeff(:,~igood) = NaN;
     [~,pos]         = ismember(permnoFound, permno);
     signals(ii,pos) = coeff(1,:);
 
