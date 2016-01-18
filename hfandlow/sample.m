@@ -20,9 +20,9 @@ master = master(~idx,:);
 
 % Minobs
 res            = loadresults('countBadPrices','..\results');
+isEnoughObs    = (res.Ntot - res.Nbadtot) >= 79;
 [~,pos]        = ismembIdDate(master.Id, master.Date, res.Id, res.Date);
-master.Nbadtot = res.Nbadtot(pos,:);
-isEnoughObs    = (master.To-master.From+1 - master.Nbadtot) >= 79;
+isEnoughObs    = isEnoughObs(pos,:);
 isEnoughObs    = [false(OPT_LAGDAY,1); isEnoughObs(1:end-OPT_LAGDAY)];
 master         = master(isEnoughObs,:);
 
