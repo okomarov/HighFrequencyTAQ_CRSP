@@ -22,7 +22,7 @@ catch
         sampleData(grid, path2data, fmtname);
     end
 
-    [spret, reton] = getMktRet(freq, useproxy, path2data);
+    [spret, reton] = getMktRet(freq, useproxy, useon, path2data);
 
     load(fullfile(path2data,'master'),'-mat','mst');
     cached = cacheReplicateSpret(spret,mst);
@@ -82,6 +82,7 @@ if useon
     [idx,pos]            = ismember(serial2yyyymmdd(mktret(posOn,1)),spreton.Date);
     mktret(posOn(idx),2) = spreton.RetCO(pos(idx));
 else
+    retOn  = [];
     mktret = mktret(iNotOn,:);
 end
 end
