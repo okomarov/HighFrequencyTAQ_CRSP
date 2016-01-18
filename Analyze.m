@@ -82,6 +82,7 @@ nobs = double(s.mst.To - s.mst.From + 1);
 % Counts
 res         = cached(:,{'Id','Date'});
 subs        = uint32(RunLength((1:size(cached,1))',nobs));
+res.Ntot    = nobs;
 res.Nbadsel = uint32(accumarray(subs,  invalid));
 res.Nbadtot = uint32(accumarray(subs,  ibad));
 end
