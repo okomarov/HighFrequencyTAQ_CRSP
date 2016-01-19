@@ -27,12 +27,12 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@maxtradepsec
-    @sampleSpy
-    @betacomponents
-    @selrulecounts
-    @rv
-    @skewcomponents
-    @countnullrets};
+            @sampleSpy
+            @betacomponents
+            @selrulecounts
+            @rv
+            @skewcomponents
+            @countnullrets};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
