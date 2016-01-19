@@ -61,7 +61,7 @@ idx  = ismembIdDate(beta.Permno, beta.Date, master.Permno, master.Date);
 beta = beta(idx,:);
 
 % Add back mkt
-master = [master(:,1:end-1);mkt];
+master = [master; mkt];
 
 % Overnight returns
 reton = loadresults('return_intraday_overnight');

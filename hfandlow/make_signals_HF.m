@@ -14,13 +14,12 @@ for ii = 1:nmonths
     signals(ii,:,2) = nanmean(skew(imonth,:));
 end
 
-% % Betas
-% for ii = 12:nmonths
-%     iyear = ismember(midx, ii-12+1:ii);
-%     nobs  = nnz(iyear);
-%
-%     signals(ii,nonans,4) = coeff(2,:);
-% end
+% Betas
+for ii = 12:nmonths
+    iyear           = ismember(midx, ii-12+1:ii);
+    tmp             = squeeze(nansum(beta(iyear,:,:)));
+    signals(ii,:,3) = tmp(:,1)./tmp(:,2);
+end
 end
 
 function signals = estimateAlpha(permno,date,factors,master,reton)
@@ -71,10 +70,6 @@ for ii = 1:nmonths
     coeff(:,~igood) = NaN;
     [~,pos]         = ismember(permnoFound, permno);
     signals(ii,pos) = coeff(1,:);
-
-    %     % Skewness
-    %     signals(ii,nonans,2) = skewness(r);
-    %     signals(ii,nonans,3) = sqrt(nobs) * sum(r.^3) ./ sum(r.*r).^1.5;
 end
 end
 
