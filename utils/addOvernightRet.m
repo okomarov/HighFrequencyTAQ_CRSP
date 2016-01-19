@@ -4,7 +4,11 @@ function tb = addOvernightRet(tb, reton)
 % See also: estimateOverIntraCloseRet
 
 if nargin < 2
-    reton = loadresults('return_intraday_overnight');
+    try
+        reton = loadresults('return_intraday_overnight');
+    catch
+        reton = loadresults('return_intraday_overnight','..\results');
+    end
 end
 
 try
