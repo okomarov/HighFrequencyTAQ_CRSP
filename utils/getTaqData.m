@@ -1,12 +1,12 @@
 function [out,ifound] = getTaqData(idtype, id, from, to, varnames, path2data, master, updatebar)
 
 % GETTAQDATA Retrieve TAQ data from a given directory
-% 
+%
 %   GETTAQDATA(IDTYPE, ID, FROM, TO, VARNAMES, PATH2DATA)
 %
-% 
+%
 % Example:
-%   
+%
 %   path2data = '.\data\TAQ\sampled\5min';
 %   data      = getTaqData('symbol', {'A','AA'}, 19961231, 20080122, 'Price', path2data);
 
@@ -36,17 +36,17 @@ if isempty(id)
     catch
     end
 else
-    
+
     % Find tickers in the master file
     switch lower(idtype)
         case 'symbol'
             [ifound, ids] = ismember(upper(id), upper(master.ids));
             imst          = ismember(master.mst.Id,ids);
-            
+
         case 'permno'
-            try 
+            try
                 id2permno = loadresults('masterPermno');
-            catch 
+            catch
                 id2permno = loadresults('masterPermno','..\results');
             end
             idx       = ismember(id2permno.Permno,id);
@@ -54,12 +54,12 @@ else
             ifound    = ismember(id, id2permno.Permno);
             imst      = ismembIdDate(master.mst.Id, master.mst.Date,id2permno.Id, id2permno.Date);
             id        = cellstr(num2str(id(:)));
-                    
+
         case 'id'
             imst   = ismember(master.mst.Id, id);
             ifound = ismember(id, master.mst.Id(imst));
             id     = cellstr(num2str(id(:)));
-            
+
         otherwise
             error('getTaqData:invalidIdtype','IDTYPE can be ''symbol'', ''permno'' or ''id''.')
     end
@@ -72,7 +72,7 @@ else
     elseif any(~ifound)
         warning('The following IDs were not matched:%s%s.',sprintf(' ''%s'',',id{~ifound}),char(8))
     end
-    
+
     % Filter based on IDs
     master = master.mst(imst,:);
 end
@@ -114,11 +114,12 @@ elapsed   = zeros(nfiles+1,1);
 
 % Display waitbar
 if updatebar
-    h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
+    h              = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
     set(findall(h,'Type','text'),'interpreter','none')
     setappdata(h,'canceling',false)
+    cleanupWaitbar = onCleanup(@()delete(h));
 end
-    
+
 % Open matlabpool
 % poolStartup(4, 'AttachedFiles',{'.\utils\poolStartup.m'},'debug',debug)
 
@@ -130,24 +131,28 @@ for ii = 1:nfiles
     if updatebar && getappdata(h,'canceling')
         break
     end
-    
+
     % Update waitbar
     matname = matnames{files(ii)};
     if updatebar
-        x        = (ii-1)/nfiles;
-        time2end = elapsed(ii)*(1-x)/x;
-        waitbar(x,h,sprintf('Loading file %s - remaining time %s',matname, sec2time(time2end)))
+        if ii == 1
+            waitbar(0,h,sprintf('Loading file %s - ETA calculating',matname))
+        else
+            x        = (ii-1)/nfiles;
+            time2end = elapsed(ii)*(nfiles-ii+1)/(ii-1); % (1-x)/x
+            waitbar(x,h,sprintf('Loading file %s - ETA %s',matname, sec2time(time2end)))
+        end
     end
-    
+
     % Load .mat file
     s = load(fullfile(path2data, matname),'data');
-            
+
     % Records within the loaded data file
     mstfile = master(master.File == files(ii),:);
     idata   = mcolonint(mstfile.From,mstfile.To);
     blocks  = double(mstfile.To - mstfile.From + 1);
     Id      = RunLength(mstfile.Id, blocks);
-    out{ii} = table(Id(:),'VariableNames',{'Id'}); 
+    out{ii} = table(Id(:),'VariableNames',{'Id'});
     if hasUnID
         out{ii}.UnID = reshape(RunLength(mstfile.UnID, blocks),[],1);
     end
@@ -164,14 +169,11 @@ for ii = 1:nfiles
         out{ii}.(fname) = s.data.(fname)(idata,:);
     end
 
-    % Update waitbar 
+    % Update waitbar
     if updatebar
         waitbar(ii/nfiles,h)
         elapsed(ii+1) = toc;
     end
 end
 out = cat(1,out{:});
-if updatebar
-    delete(h)
-end
 end
