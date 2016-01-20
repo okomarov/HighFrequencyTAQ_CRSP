@@ -3,22 +3,30 @@ function signals = make_signals_HF(permno,date,master,reton,factors,skew,beta)
 [unDt,~,midx] = unique(date/100);
 nmonths       = numel(unDt);
 nseries       = numel(permno);
-signals       = NaN(nmonths, nseries,3);
+signals       = NaN(nmonths, nseries,4);
 
 % Alpha
-signals(:,:,1) = estimateAlpha(permno,date,factors,master,reton);
+try
+    signals = loadresults('sig_HF_alpha');
+catch
+    signals(:,:,1) = estimateAlpha(permno,date,factors,master,reton);
+    save('results\sig_HF_alpha.mat', 'signals');
+end
 
-% Skewness
+% Skewness, mean and overall month
+rskew1 = @(x) sqrt(skew.N(x,:)).*skew.Sx3(x,:)./skew.Rv(x,:).^1.5;
+rskew2 = @(x) sqrt(nansum(skew.N(x,:))).*nansum(skew.Sx3(x,:))./nansum(skew.Rv(x,:)).^1.5;
 for ii = 1:nmonths
-    imonth          = midx == ii;
-    signals(ii,:,2) = nanmean(skew(imonth,:));
+    idx = midx == ii;
+    signals(ii,:,2) = nanmean(rskew1(idx));
+    signals(ii,:,3) = rskew2(idx);
 end
 
 % Betas
 for ii = 12:nmonths
     iyear           = ismember(midx, ii-12+1:ii);
     tmp             = squeeze(nansum(beta(iyear,:,:)));
-    signals(ii,:,3) = tmp(:,1)./tmp(:,2);
+    signals(ii,:,4) = tmp(:,1)./tmp(:,2);
 end
 end
 

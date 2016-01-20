@@ -53,8 +53,8 @@ catch
     mst                      = cache2cell(master,master.File);
     skew                     = AnalyzeHflow('skewcomponents',[],mst,datapath,[],8);
 end
-[idx,pos] = ismembIdDate(skew.Permno, skew.Date, master.Permno, master.Date);
-skew      = skew(idx,:);
+[idx,~] = ismembIdDate(skew.Permno, skew.Date, master.Permno, master.Date);
+skew    = skew(idx,:);
 
 % Beta components - re-run
 idx  = ismembIdDate(beta.Permno, beta.Date, master.Permno, master.Date);
@@ -74,7 +74,7 @@ save('results\beta5minon.mat','beta')
 save('results\skew.mat','skew')
 save('results\reton.mat','reton')
 
-importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
+% importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
 %% Second stage
 master = loadresults('master');
 
@@ -100,11 +100,15 @@ cap     = myunstack(dsf,'Cap');
 cap     = cap{pos,2:end};
 
 % Realized skewness
-rskew = loadresults('skew');
-num   = myunstack(rskew,'Num');
-den   = myunstack(rskew,'Den');
-rskew = num{:,2:end}./den{:,2:end};
-clear den num
+rskew   = loadresults('skew');
+tmp.N   = myunstack(rskew,'N');
+tmp.Sx3 = myunstack(rskew,'Sx3');
+tmp.Rv  = myunstack(rskew,'Rv');
+tmp.N   = tmp.N{:,2:end};
+tmp.Sx3 = tmp.Sx3{:,2:end};
+tmp.Rv  = tmp.Rv{:,2:end};
+rskew   = tmp;
+clear tmp
 
 % Overnight return
 reton = loadresults('reton');
