@@ -123,9 +123,9 @@ subs  = subs(ikeep);
 ret   = s.data.Ret(ikeep);
 
 % Daily realized skewness: sqrt(nobs)*sum(r^3)/sum(r^2)^(3/2)
-res.Num = sqrt(accumarray(subs,1)).* accumarray(subs, ret.^3);
-res.Den = accumarray(subs, ret.^2).^1.5;
-
+res.N   = accumarray(subs,1);
+res.Sx3 = accumarray(subs, ret.^3);
+res.Rv  = accumarray(subs, ret.^2);
 end
 
 function res = rv(s,cached)
