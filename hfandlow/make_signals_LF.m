@@ -1,4 +1,4 @@
-function [signals,hpr,rf] = make_signals(ret,date,factors)
+function [signals,hpr,rf] = make_signals_LF(ret,date,factors)
 [unDt,~,midx] = unique(date/100);
 nmonths       = numel(unDt);
 nseries       = size(ret,2);
