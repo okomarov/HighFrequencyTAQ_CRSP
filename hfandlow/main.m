@@ -2,7 +2,7 @@
 OPT_VW = true;
 
 OPT_LAG    = 1;
-OPT_PTF_UN = 10;
+OPT_PTF_UN = 5;
 
 %% Data
 load('results\alldata')
@@ -56,21 +56,39 @@ else
 end
 
 % Alpha
-[ptfret{1},~,counts{1},avgsig{1}] = portfolio_sort(hpr, signals_LF(:,:,1), opts);
-
-% Alpha
-[ptfret{1},~,counts{1},avgsig{1}] = portfolio_sort(hpr, signals_HF(:,:,1), opts);
+[ptfret{1,1},~,counts{1,1},avgsig{1,1}] = portfolio_sort(hpr, signals_LF(:,:,1), opts);
+[ptfret{1,2},~,counts{1,2},avgsig{1,2}] = portfolio_sort(hpr, signals_HF(:,:,1), opts);
 
 % Skewness
-[ptfret{2},~,counts{2},avgsig{2}] = portfolio_sort(hpr, signals_LF(:,:,2), opts);
+[ptfret{2,1},~,counts{2,1},avgsig{2,1}] = portfolio_sort(hpr, signals_LF(:,:,2), opts);
+[ptfret{2,2},~,counts{2,2},avgsig{2,2}] = portfolio_sort(hpr, signals_HF(:,:,2), opts);
 
 % Skewness#2
-[ptfret{3},~,counts{3},avgsig{3}] = portfolio_sort(hpr, signals_LF(:,:,3), opts);
+[ptfret{3,1},~,counts{3,1},avgsig{3,1}] = portfolio_sort(hpr, signals_LF(:,:,3), opts);
+[ptfret{3,2},~,counts{3,2},avgsig{3,2}] = portfolio_sort(hpr, signals_HF(:,:,3), opts);
 
 % Bab
-ptfret{4} = bab(hpr,signals_LF(:,:,4),rf);
-ptfret{4} = bab(hpr,signals_HF(:,:,3),rf);
+ptfret{4,1} = bab(hpr,signals_LF(:,:,4),rf);
+ptfret{4,2} = bab(hpr,signals_HF(:,:,4),rf);
 
+figure
+dt = serial2datetime(datenum(1993,(1:size(hpr,1))+2,1)-1);
+for r = 1:4
+    for c = 1:2
+        n = (r-1)*2+c;
+        subplot(420+n)
+        if r < 4
+            plot(dt,cumprod(1+ptfret{r,c}))
+        else
+            plot(dt(12:end),cumprod(1+ptfret{r,c}(12:end,:)))
+        end
+        axis tight
+        set(gca, 'Ylim',[0,10])
+    end
+end
+%% Risk-adjustment
+factors = loadresults('RAfactors');
+factors = factors(ismember(factors.Date, mdate),:);
 %% RV, RCOV, RBETA plots
 
 % Alcoa
