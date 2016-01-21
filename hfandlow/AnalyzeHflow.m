@@ -27,12 +27,12 @@ if nargin < 5 || isempty(debug);     debug     = false;                 end
 if nargin < 6 || isempty(poolcores); poolcores = 4;                     end
 
 fhandles = {@maxtradepsec
-            @sampleSpy
-            @betacomponents
-            @selrulecounts
-            @rv
-            @skewcomponents
-            @countnullrets};
+    @sampleSpy
+    @betacomponents
+    @selrulecounts
+    @rv
+    @skewcomponents
+    @countnullrets};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -56,7 +56,7 @@ counts        = [un accumarray(subs,1)];
 res           = table(date, accumarray(subs,counts(:,end),[],@max),'VariableNames',{'Date','Maxpsec'});
 end
 
-function res = betacomponents(s,cached)
+function res = betacomponents(s,cached, grid)
 % DO NOT RELY on local id!
 
 spdays = cached{2};
@@ -65,7 +65,6 @@ useon  = numel(cached) == 4;
 if useon
     onret = cached{3};
 end
-ngrid = size(spyret{1},1);
 
 % Dates and returns
 dates = s.data.Datetime;
@@ -78,7 +77,28 @@ else
     % Keep all except overnight
     ret = ret(idx,:);
 end
+
+if ~isempty(grid)
+    % Mkt
+    dt         = spyret{1}(:,1);
+    [~,~,subs] = histcounts(mod(dt,1),grid);
+    for ii = 1:numel(spyret)
+        r          = spyret{ii}(:,2);
+        spyret{ii} = accumarray(subs, nan2zero(r)+1,[],@(x) prod(x)-1);
+    end
+
+    % All others
+    if ~issorted(s.mst.From)
+        error('Unsorted mst!');
+    end
+    nmst       = size(s.mst,1);
+    [subs,id]  = ndgrid(subs,1:nmst);
+    [~,~,subs] = unique([id(:),subs(:)],'rows');
+    ret        = accumarray(subs, nan2zero(ret)+1,[],@(x) prod(x)-1);
+end
+
 % Use a NaN when we don't have SPY returns
+ngrid   = size(spyret{1},1);
 spyret  = [NaN(ngrid,1); spyret];
 days    = yyyymmdd2serial(double(s.mst.Date));
 [~,pos] = ismember(days, spdays);
@@ -87,7 +107,7 @@ pos     = pos + 1;
 % Map SP500 rets to stock rets
 spret   = cat(1,spyret{pos});
 prodret = spret.*ret;
-subsID  = reshape(repmat(1:size(s.mst,1),ngrid,1),[],1);
+subsID  = reshape(repmat(1:nmst,ngrid,1),[],1);
 ikeep   = ~isnan(prodret);
 
 % Store results

@@ -1,5 +1,6 @@
 %% Select data
-OPT_LAGDAY = 1;
+OPT_LAGDAY   = 1;
+OPT_BETAFREQ = 75;
 
 % Index data
 datapath = '..\data\TAQ\sampled\5min\nobad_vw';
@@ -31,8 +32,15 @@ master      = master(isEnoughObs,:);
 % tmp       = tmp{:,2:end};
 % count_all = sum(tmp~=0,2);
 
-% Beta components
-beta      = loadresults('betacomponents5mon');
+% Beta components at 75, i.e. return from open to 11:00, 12:15, 13:30, 14:45, 16:00
+try
+    beta = loadresults(sprintf('betacomponents%dmon',OPT_BETAFREQ));
+catch
+    grid        = [0 11/24:freq/(60*24):16/24];
+    half_second = 0.5/(60*60*24);
+    grid        = grid + half_second;
+    beta        = estimateBetaComponents(OPT_BETAFREQ,true,false,grid);
+end
 [~,ia,ib] = intersectIdDate(beta.Permno, beta.Date,master.Permno, master.Date);
 beta      = beta(ia,:);
 master    = master(ib,:);

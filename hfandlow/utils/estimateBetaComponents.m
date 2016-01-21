@@ -1,7 +1,9 @@
-function betas = estimateBetaComponents(freq, useon, useproxy)
+function betas = estimateBetaComponents(freq, useon, useproxy, grid)
 if nargin < 1 || isempty(freq),     freq     = 5;     end
 if nargin < 2 || isempty(useon),    useon    = true;  end
 if nargin < 3 || isempty(useproxy), useproxy = false; end
+if nargin < 4 || isempty(grid),     grid     = [];    end
+
 
 writeto = '.\results\';
 
@@ -11,18 +13,30 @@ try
     betas = loadresults(name);
 catch
     fprintf('%s: betacomponents not found. Estimating...\n', mfilename)
-    path2data = fullfile('..\data\TAQ\sampled\', sprintf('%dmin', freq),'nobad_vw');
+
+    % If sampling freq is a multiple of 5, use 5min sampled data and
+    % compose later
+    isComposable = mod(freq,5) == 0 && nargin == 4;
+    if isComposable
+        path2data = '..\data\TAQ\sampled\5min\nobad_vw';        
+    else
+        path2data = fullfile('..\data\TAQ\sampled\', sprintf('%dmin', freq),'nobad_vw');
+    end
 
     % Eventully Sample data
-    if exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2
+    if ~isComposable && (exist(path2data,'dir') ~= 7 || numel(dir(path2data)) <= 2)
         fprintf('%s: sampling data at %d min.\n', mfilename, freq)
         step    = freq/(60*24);
         grid    = (9.5/24:step:16/24)';
         fmtname = sprintf('S%dm_%%04d.mat',freq);
         sampleData(grid, path2data, fmtname);
     end
-
-    [spret, reton] = getMktRet(freq, useproxy, useon, path2data);
+    
+    if isComposable
+        [spret, reton] = getMktRet(5, useproxy, useon, path2data);
+    else
+        [spret, reton] = getMktRet(freq, useproxy, useon, path2data);
+    end
 
     load(fullfile(path2data,'master'),'-mat','mst');
     cached = cacheReplicateSpret(spret,mst);
@@ -44,7 +58,7 @@ catch
 
     % Calculate beta components: sum(r*benchr) and sum(benchr^2)
     fprintf('%s: creating betacomponents at %d min.\n', mfilename, freq)
-    [betas,filename] = AnalyzeHflow('betacomponents', [], cached, path2data,[],8);
+    [betas,filename] = AnalyzeHflow('betacomponents', [], cached, path2data,[],8,grid);
 
     % Rename to append the sampling frequency
     name        = regexp(filename,'\w+?(?=\.mat)','match','once');
@@ -97,7 +111,7 @@ cached = cell(nfiles,2);
 % Cache SP500 returns by days
 dates           = fix(spret(:,1));
 [spdays,~,subs] = unique(dates,'stable');
-spret           = cache2cell(spret(:,2), subs);
+spret           = cache2cell(spret, subs);
 
 % Replicate to match master
 unMstDates = accumarray(mst.File, mst.Date,[],@(x){yyyymmdd2serial(unique(x))});
@@ -105,7 +119,7 @@ for ii = 1:nfiles
     [~,pos]      = ismember(unMstDates{ii}, spdays);
     nnzero       = pos ~= 0;
     isp          = ismember(spdays, unMstDates{ii});
-    cached(ii,:) = {spret(isp) spdays(pos(nnzero))};
+    cached(ii,:) = {spret(isp,:) spdays(pos(nnzero))};
 end
 end
 
