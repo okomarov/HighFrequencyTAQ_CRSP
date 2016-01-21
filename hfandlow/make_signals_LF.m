@@ -1,6 +1,6 @@
-function [signals,hpr,rf] = make_signals_LF(ret,date,factors)
-[unDt,~,midx] = unique(date/100);
-nmonths       = numel(unDt);
+function [signals,hpr,rf,mdate] = make_signals_LF(ret,date,factors)
+[mdate,~,midx] = unique(date/100);
+nmonths       = numel(mdate);
 nseries       = size(ret,2);
 
 signals = NaN(nmonths, nseries,4);

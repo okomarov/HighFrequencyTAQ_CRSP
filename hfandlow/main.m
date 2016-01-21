@@ -19,7 +19,7 @@ reton  = loadresults('reton');
 %% Signals
 
 % Low freqeuncy signals
-[signals_LF, hpr, rf] = make_signals(ret,date,ff);
+[signals_LF, hpr, rf, mdate] = make_signals_LF(ret,date,ff);
 nsig                  = size(signals_LF,3);
 snames                = {'alpha','skewh','skewr','betas'};
 correlations          = corrxs(signals_LF,snames);
@@ -42,8 +42,9 @@ isMicro    = isMicro(1:end-OPT_LAG,:);
 cap        = cap(1:end-OPT_LAG,:);
 
 % Lag forward
-hpr = hpr(1+OPT_LAG:end,:);
-rf  = rf(1+OPT_LAG:end,:);
+hpr   = hpr(1+OPT_LAG:end,:);
+rf    = rf(1+OPT_LAG:end,:);
+mdate = mdate(1+OPT_LAG:end,:);
 %% Filter micro
 hpr(isMicro) = NaN;
 %% PTFRET
