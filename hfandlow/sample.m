@@ -1,7 +1,8 @@
-%% Select data
+
 OPT_LAGDAY   = 1;
 OPT_BETAFREQ = 75;
 
+%% Select data
 % Index data
 datapath = '..\data\TAQ\sampled\5min\nobad_vw';
 master   = load(fullfile(datapath,'master'),'-mat');
@@ -36,7 +37,7 @@ master      = master(isEnoughObs,:);
 try
     beta = loadresults(sprintf('betacomponents%dmon',OPT_BETAFREQ));
 catch
-    grid        = [0 11/24:freq/(60*24):16/24];
+    grid        = [0 11/24:OPT_BETAFREQ/(60*24):16/24];
     half_second = 0.5/(60*60*24);
     grid        = grid + half_second;
     beta        = estimateBetaComponents(OPT_BETAFREQ,true,false,grid);
@@ -78,14 +79,12 @@ reton = reton(idx,:);
 
 save('results\dsf.mat','dsf')
 save('results\master.mat','master')
-save('results\beta5minon.mat','beta')
+save(fullfile('results',sprintf('beta%dminon.mat',OPT_BETAFREQ)),'beta')
 save('results\skew.mat','skew')
 save('results\reton.mat','reton')
 
 % importFrenchData('F-F_Research_Data_5_Factors_2x3_daily_TXT.zip','results');
 %% Second stage
-master = loadresults('master');
-
 myunstack = @(tb,vname) sortrows(unstack(tb(:,{'Permno','Date',vname}),vname,'Permno'),'Date');
 
 % Returns
@@ -122,7 +121,7 @@ clear tmp
 reton = loadresults('reton');
 
 % Beta components
-beta              = loadresults('beta5minon');
+beta              = loadresults(sprintf('beta%dminon',OPT_BETAFREQ));
 num               = myunstack(beta,'Num');
 den               = myunstack(beta,'Den');
 beta              = cat(3,num{:,2:end},den{:,2:end});
