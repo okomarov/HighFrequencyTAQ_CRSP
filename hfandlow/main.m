@@ -20,20 +20,21 @@ reton  = loadresults('reton');
 
 % Low freqeuncy signals
 [signals_LF, hpr, rf, mdate] = make_signals_LF(ret,date,ff);
-nsig                  = size(signals_LF,3);
-snames                = {'alpha','skewh','skewr','betas'};
-correlations          = corrxs(signals_LF,snames);
 
 % High freqeuncy signals
 signals_HF = make_signals_HF(xstr2num(permno),date,master,reton,ff,rskew,beta);
 
-inan                             = any(isnan(signals_LF),3) | any(isnan(signals_HF),3);
-signals_HF(repmat(inan,[1,1,3])) = NaN;
+inanLF = isnan(signals_LF);
+inanHF = isnan(signals_HF);
+inan = cat(3,repmat(any(inanHF(:,:,1:3) | inanLF(:,:,1:3),3),[1,1,3]),...
+                    any(inanHF(:,:,4)   | inanLF(:,:,4)  ,3));
+% plot(sum(~any(inanHF(:,:,4)   | inanLF(:,:,4)  ,3),2))  
+% plot(sum(~any(inanHF(:,:,1:3) | inanLF(:,:,1:3),3),2))
+signals_HF(inan) = NaN;
+signals_LF(inan) = NaN;
 
-
-corrxs(cat(3,signals_LF(:,:,4),signals_HF(:,:,3)))
-
-
+snames = {'ca','rskd','hsk','bab','rca','rskd5','rskm5','rbab'};
+correlations = corrxs(cat(3,signals_LF,signals_HF),snames);
 %% Lag
 % End-of-Month
 signals_LF = signals_LF(1:end-OPT_LAG,:,:);
