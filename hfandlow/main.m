@@ -70,8 +70,8 @@ end
 [ptfret{3,2},~,counts{3,2},avgsig{3,2}] = portfolio_sort(hpr, signals_HF(:,:,3), opts);
 
 % Bab
-ptfret{4,1} = bab(hpr,signals_LF(:,:,4),rf);
-ptfret{4,2} = bab(hpr,signals_HF(:,:,4),rf);
+[ptfret{4,1},~,~,~,avgsig{4,1}] = bab(hpr,signals_LF(:,:,4),rf);
+[ptfret{4,2},~,~,~,avgsig{4,2}] = bab(hpr,signals_HF(:,:,4),rf);
 
 dt = serial2datetime(datenum(1993,(1:size(hpr,1))+2,1)-1);
 desc = cellfun(@(r) stratstats(dt,r*100,'Frequency','m','IsPercentageReturn',true), ptfret,'un',0);
