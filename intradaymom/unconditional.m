@@ -1,10 +1,10 @@
 %% Options
 OPT_LAGDAY             = 1;
 OPT_NOMICRO            = true;
-OPT_OUTLIERS_THRESHOLD = 5;
-OPT_HASWEIGHTS         = true;
+OPT_OUTLIERS_THRESHOLD = 10;
+OPT_HASWEIGHTS         = false;
 
-OPT_CHECK_CRSP = false;
+OPT_CHECK_CRSP = true;
 
 OPT_PTFNUM_UN = 5;
 
@@ -52,8 +52,8 @@ else
 end
 
 % Filter outliers
-iout           = ret_taq > OPT_OUTLIERS_THRESHOLD |...
-                 1./(ret_taq+1)-1 > OPT_OUTLIERS_THRESHOLD;
+iout           = ret_taq+1 > OPT_OUTLIERS_THRESHOLD |...
+                 1./(ret_taq+1) > OPT_OUTLIERS_THRESHOLD;
 ret_taq(iout)  = NaN;
 ret_crsp(iout) = NaN;
 %% Intraday-average: return
@@ -218,6 +218,12 @@ figure
 f = 252*100;
 
 ha = subplot(211);
+[~, se] = nwse(avg_ew*f);
+
+errorbar(nanmean(avg_ew)*f, nwse(avg_ew)*sqrt(252))
+(nanmean(avg_ew)*f)
+
+subplot(211)
 bar(nanmean(avg_ew)*f)
 hold on
 bar(14, mean(avg_ew_all(:,2))*f,'r')
