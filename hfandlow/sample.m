@@ -1,7 +1,7 @@
 
 OPT_LAGDAY   = 1;
 OPT_BETAFREQ = 75;
-
+OPT_USEON = false;
 %% Select data
 % Index data
 datapath = '..\data\TAQ\sampled\5min\nobad_vw';
