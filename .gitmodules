@@ -4,4 +4,4 @@
 	url = https://github.com/okomarov/MatlabCommon
 [submodule "hfandlow"]
 	path = hfandlow
-	url = ../hfandlow
+	url = https://github.com/okomarov/hfandlow
