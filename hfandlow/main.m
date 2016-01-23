@@ -34,7 +34,9 @@ signals_HF(inan) = NaN;
 signals_LF(inan) = NaN;
 
 snames = {'ca','rskd','hsk','bab','rca','rskd5','rskm5','rbab'};
-correlations = corrxs(cat(3,signals_LF,signals_HF),snames);
+order  = [1,5,3,2,7,6,4,8];
+allsig = cat(3,signals_LF,signals_HF);
+correlations = corrxs(allsig(:,:,order),snames(order));
 %% Lag
 % End-of-Month
 signals_LF = signals_LF(1:end-OPT_LAG,:,:);
@@ -50,7 +52,7 @@ mdate = mdate(1+OPT_LAG:end,:);
 hpr(isMicro) = NaN;
 %% PTFRET
 if OPT_VW
-    opts = struct('PortfolioNumber',OPT_PTF_UN, 'Weights',cap);
+    opts = struct('PortfolioNumber',OPT_PTF_UN, 'Weights',double(cap));
 else
     opts = struct('PortfolioNumber',OPT_PTF_UN);
 end
@@ -71,8 +73,10 @@ end
 ptfret{4,1} = bab(hpr,signals_LF(:,:,4),rf);
 ptfret{4,2} = bab(hpr,signals_HF(:,:,4),rf);
 
-figure
 dt = serial2datetime(datenum(1993,(1:size(hpr,1))+2,1)-1);
+desc = cellfun(@(r) stratstats(dt,r*100,'Frequency','m','IsPercentageReturn',true), ptfret,'un',0);
+
+figure
 for r = 1:4
     for c = 1:2
         n = (r-1)*2+c;
