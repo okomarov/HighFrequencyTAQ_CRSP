@@ -39,6 +39,7 @@ end
 
 % Calculate zbar, z-zbar and normalizing k
 zbar       = (max(z,[],2)+1)/2;
+inan       = isnan(zbar);
 zMinusZbar = bsxfun(@minus,z,zbar);
 k          = nansum(abs(zMinusZbar)/2,2);
 
@@ -50,4 +51,6 @@ bh     = nansum(betas.* wh,2);
 rl     = nansum(ret  .* wl,2);
 bl     = nansum(betas.* wl,2);
 ptfret = [(rl-rf)./bl (rh-rf)./bh];
+
+ptfret(inan,:) = NaN;
 end
