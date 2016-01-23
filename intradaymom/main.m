@@ -35,13 +35,12 @@ cap = loadresults('cap');
 
 % NYSE breakpoints
 if OPT_NOMICRO
-    bpoints = loadresults('ME_breakpoints_TXT','..\results');
-    idx     = ismember(bpoints.Date, cap.Dates/100);
-    bpoints = bpoints(idx,{'Date','Var3'});
+    bpoints = loadresults('ME_breakpoints_TXT');
 end
 %% Lag 1 period
-w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
+% w = [NaN(1,nseries); cap.Data(1+OPT_LAGDAY:end,:)];
 
+% Lag
 if OPT_NOMICRO
     bpoints.Var3 = [NaN(OPT_LAGDAY,1); bpoints.Var3(1:end-OPT_LAGDAY)];
 end
