@@ -5,3 +5,6 @@
 [submodule "hfandlow"]
 	path = hfandlow
 	url = https://github.com/okomarov/hfandlow
+[submodule "intradaymom"]
+	path = intradaymom
+	url = https://github.com/okomarov/intradaymom
