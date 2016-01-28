@@ -36,7 +36,8 @@ fhandles = {@medianprice
     @VWAP
     @sampleSpy
     @testLoadSpeed
-    @maxRecordsPerSec};
+    @maxRecordsPerSec
+    @countNonNullRet};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -362,13 +363,30 @@ end
 function res = maxRecordsPerSec(s,~,~)
 nobs  = double(s.mst.To - s.mst.From + 1);
 dates = RunLength(yyyymmdd2serial(s.mst.Date),nobs);
-    
+
 [unDatetimes,~,gDatetime] = unique(dates + hhmmssmat2serial(s.data.Time));
 [unDates,~,gDate]         = unique(fix(unDatetimes));
 Num                       = accumarray(gDate,accumarray(gDatetime, 1),[],@max);
 res                       = table(unDates, Num,'VariableNames',{'Date','Records'});
 end
 
+function res = countNonNullRet(s,cached)
+cached = cached{1};
+if ~isequal(s.mst.From, cached.From)
+    error('Unequal mst and cached.')
+end
+res = cached(:,{'Id','Permno','Date'});
+
+ret           = [diff(s.data.Price); NaN];
+ret(s.mst.To) = NaN;
+nonzero       = ret ~= 0 & ~(isnan(ret));
+
+nobs           = double(s.mst.To - s.mst.From + 1);
+nmst           = size(s.mst,1);
+mstrow         = RunLength((1:nmst)',nobs);
+ikeep          = nonzero & ~isInvalidTrade(s.data);
+res.NonNullRet = accumarray(mstrow(ikeep), 1,[nmst,1]);
+end
 %% Utility functions
 function out = testLoadSpeed(varargin)
 out = [];
