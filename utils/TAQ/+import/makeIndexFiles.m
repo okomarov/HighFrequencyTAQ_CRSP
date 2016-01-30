@@ -7,75 +7,107 @@ d = dir(fullfile(path2mst,'*.mst'));
 % Preallocate
 nfiles = numel(d);
 
-N            = 4e4;
-Symbol       = repmat({''},N,1);
-fileList1    = repmat({NaN(1,nfiles)},N,1);
-posLastFile1 = ones(N,1);
-
-N            = 1e4;
-Date         = zeros(N,1,'uint32');
-fileList2    = repmat({NaN(1,nfiles)},N,1);
-posLastFile2 = ones(N,1);
+[mstSymb, mstDate] = preallocate(nfiles);
 
 for f = 1:nfiles
-    disp(f)
+    disp(f/nfiles*100)
     s = load(fullfile(path2mst,d(f).name),'-mat');
 
     % Symbol-file index
-    [Symbol, fileList1, posLastFile1] = mapList(Symbol, s.ids, fileList1, posLastFile1, f);
+    mstSymb = mapList(mstSymb, s.ids, f);
 
     % Date-file index
-    [Date, fileList2, posLastFile2] = mapList(Date, unique(s.mst.Date), fileList2, posLastFile2, f);
-    
+    mstDate = mapList(mstDate, unique(s.mst.Date), f);
+
 end
 
 % Drop excess pre-allocation
-ikeep     = ~cellfun('isempty',Symbol);
-Symbol    = Symbol(ikeep);
-fileList1 = cellfun(@(x) x(~isnan(x)), fileList1(ikeep),'un',0);
-
-ikeep     = Date ~= 0;
-Date      = Date(ikeep);
-fileList2 = cellfun(@(x) x(~isnan(x)), fileList2(ikeep),'un',0);
+mstSymb = dropEmptyPreallocated(mstSymb);
+mstDate = dropEmptyPreallocated(mstDate);
 
 % Organize in sorted tables
-Symbols = table(Symbol(ikeep), fileList1(ikeep), 'VariableNames',{'Symbol','File'});
-Dates   = table(Date(ikeep), fileList2(ikeep), 'VariableNames',{'Date','File'});
-Symbols = sortrows(Symbols,'Symbol');
-Dates   = sortrows(Dates,'Date');
+mstSymb = table(mstSymb.Universe, mstSymb.FileList, 'VariableNames',{'Symbol','File'});
+mstDate = table(mstDate.Universe, mstDate.FileList, 'VariableNames',{'Date','File'});
+mstSymb = sortrows(mstSymb,'Symbol');
+mstDate = sortrows(mstDate,'Date');
 
-save(fullfile(path2mst,'master'),mstname, idsname,'-v6','-mat')
+save(fullfile(path2mst,'master'),'mstSymb', 'mstDate','-v6','-mat')
 end
 
-function [universe, attribute, lasPosAttr] = mapList(universe, newset, attribute, lasPosAttr, f)
-[idx,pos] = ismember(newset,universe);
+function s = mapList(s, records, f)
+% Adds the file number to the file list of a member of the universe.
+%
+%   MAPLIST(S, RECORDS, F)
+%       S is a structure with:
+%           .Universe - cell array of symbols or uints (e.g. dates)
+%           .FileList - array of lists with the file numbers
+%           .FirstEmptyInList - array of positions pointing, for each list,
+%               to the first empty spot where we can add the file number
+%       RECORDS has the members to which I will add the file number F
+%       F is the file number containing RECORDS
+%
+%   If a RECORD is not yet a member, grows the UNIVERSE. For performance,
+%   the universe, the list and array of positions are all pre-allocated.
 
-% Grow list of existing attributes
-if any(idx)
-    pos = pos(idx);
-    for ii = 1:numel(pos)
-        p                           = pos(ii);
-        attribute{p}(lasPosAttr(p)) = f;
+[imember,existingPos] = ismember(records,s.Universe);
+
+% Existing members
+if any(imember)
+    existingPos = existingPos(imember);
+    for ii = 1:nnz(imember)
+        p = existingPos(ii);
+        s.FileList{p}(s.FirstEmptyInList(p)) = f;
     end
     % Grow positions
-    lasPosAttr(pos) = lasPosAttr(pos)+1;
+    s.FirstEmptyInList(existingPos) = s.FirstEmptyInList(existingPos)+1;
 end
 
-% Grow universe and add attributes
-if any(~idx)
-    numNew = nnz(~idx);
-    if iscell(universe)
-        uniSize = find(cellfun('isempty',universe),1,'first')-1;
-    else
-        uniSize = find(universe==0,1,'first')-1;
-    end
-       
-    pos           = uniSize+1:uniSize+numNew;
-    universe(pos) = newset(~idx);
+% Add new members to universe and their lists
+if any(~imember)
+    numNew           = nnz(~imember);
+    n                = getUniverseSize(s.Universe);
+    newPosInUni      = n+1:n+numNew;
+    s.Universe(newPosInUni) = records(~imember);
     for ii = 1:numNew
-        p                           = pos(ii);
-        attribute{p}(lasPosAttr(p)) = f;
+        p = newPosInUni(ii);
+        s.FileList{p}(s.FirstEmptyInList(p)) = f;
     end
-    lasPosAttr(pos) = lasPosAttr(pos)+1;
+    % Add positions to new members
+    s.FirstEmptyInList(newPosInUni) = s.FirstEmptyInList(newPosInUni)+1;
+end
+end
+
+function [s1,s2] = preallocate(nfiles)
+fileClass = 'uint16';
+% Symbol
+N                   = 4e4;
+s1.Universe         = repmat({''},N,1);
+s1.FileList         = repmat({zeros(1,nfiles,fileClass)},N,1);
+s1.FirstEmptyInList = ones(N,1,fileClass);
+% Date
+N                   = 1e4;
+s2.Universe         = zeros(N,1,'uint32');
+s2.FileList         = repmat({zeros(1,nfiles,fileClass)},N,1);
+s2.FirstEmptyInList = ones(N,1,fileClass);
+end
+
+function s = dropEmptyPreallocated(s)
+if iscell(s.Universe)
+    ikeep = ~cellfun('isempty',s.Universe);
+else
+    ikeep = s.Universe ~= 0;
+end
+s.Universe = s.Universe(ikeep);
+s.FileList = cellfun(@(x) x(x~=0), s.FileList(ikeep),'un',0);
+end
+
+function n = getUniverseSize(universe)
+% Gets size of a preallocated UNIVERSE array
+
+% Position of first empty (preallocated) element - 1
+if iscell(universe)
+    n = find(cellfun('isempty',universe),1,'first')-1;
+else
+    n = find(universe == 0,1,'first')-1;
 end
 end
