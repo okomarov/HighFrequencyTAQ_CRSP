@@ -59,7 +59,7 @@ end
 % =================
 % Note: 7388 files at ~5e6 records per file
 folder = fullfile(rootfolder, 'manual');
-matnum = import.tradesCSV(folder,matfolder,true);
+matnum = taq.import.tradesCSV(folder,matfolder,true);
 
 % Import dvd 
 % ==========
@@ -73,21 +73,19 @@ tmpmat = fullfile(rootfolder, 'tmp');
 if ~isdir(tmpmat)
     mkdir(tmpmat);
 end
-import.tradesDVD(folder,tmpmat,matnum);
+taq.import.tradesDVD(folder,tmpmat,matnum);
 % Chunk into smaller .mat files
-matnum = import.splitMatTrades(tmpmat,matfolder,[],matnum);
+matnum = taq.import.splitMatTrades(tmpmat,matfolder,[],matnum);
 
 % Import automated csv
 % ====================
 folder = fullfile(rootfolder, 'automated');
-import.tradesCSV(folder,matfolder,false, matnum);
+taq.import.tradesCSV(folder,matfolder,false, matnum);
 
 %% Checks
-prob = checkDaySpillover(matfolder);
-if ~isempty(prob)
-    disp(prob)
-    error('There are spillovers of daily data across multiple files.')
-end
+testfolder = fullfile(rootfolder,'test');
+taq.import.runAllChecks(matfolder,testfolder);
 
+% Tests against custom excels (need TAQ.getTrades)
 diary off
 end
