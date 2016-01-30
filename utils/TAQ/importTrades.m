@@ -53,6 +53,8 @@ if ~isdir(matfolder)
     mkdir(matfolder);
 end
 
+%% Imports
+
 % Import manual csv
 % =================
 % Note: 7388 files at ~5e6 records per file
@@ -73,12 +75,19 @@ if ~isdir(tmpmat)
 end
 import.tradesDVD(folder,tmpmat,matnum);
 % Chunk into smaller .mat files
-matnum = import.splitMatTrades(tmpmat,fullfile(tmpmat,'split'),[],matnum);
+matnum = import.splitMatTrades(tmpmat,matfolder,[],matnum);
 
 % Import automated csv
 % ====================
 folder = fullfile(rootfolder, 'automated');
 import.tradesCSV(folder,matfolder,false, matnum);
+
+%% Checks
+prob = checkDaySpillover(matfolder);
+if ~isempty(prob)
+    disp(prob)
+    error('There are spillovers of daily data across multiple files.')
+end
 
 diary off
 end
