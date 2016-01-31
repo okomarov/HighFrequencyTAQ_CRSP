@@ -25,13 +25,14 @@ end
 mstSymb = dropEmptyPreallocated(mstSymb);
 mstDate = dropEmptyPreallocated(mstDate);
 
-% Organize in sorted tables
-mstSymb = table(mstSymb.Universe, mstSymb.FileList, 'VariableNames',{'Symbol','File'});
-mstDate = table(mstDate.Universe, mstDate.FileList, 'VariableNames',{'Date','File'});
-mstSymb = sortrows(mstSymb,'Symbol');
-mstDate = sortrows(mstDate,'Date');
+% Organize in containers
+symbol = containers.Map(upper(mstSymb.Universe), mstSymb.FileList);
+id     = containers.Map(uint32(1:numel(mstSymb.Universe)), mstSymb.FileList);
+date   = containers.Map(mstDate.Universe, mstDate.FileList);
 
-save(fullfile(path2mst,'master'),'mstSymb', 'mstDate','-v6','-mat')
+save(fullfile(path2mst,'master_symbol'),'symbol','-v6','-mat')
+save(fullfile(path2mst,'master_id')  ,'id','-v6','-mat')
+save(fullfile(path2mst,'master_date')  ,'date','-v6','-mat')
 end
 
 function s = mapList(s, records, f)
@@ -64,9 +65,9 @@ end
 
 % Add new members to universe and their lists
 if any(~imember)
-    numNew           = nnz(~imember);
-    n                = getUniverseSize(s.Universe);
-    newPosInUni      = n+1:n+numNew;
+    numNew                  = nnz(~imember);
+    n                       = getUniverseSize(s.Universe);
+    newPosInUni             = n+1:n+numNew;
     s.Universe(newPosInUni) = records(~imember);
     for ii = 1:numNew
         p = newPosInUni(ii);
@@ -78,7 +79,7 @@ end
 end
 
 function [s1,s2] = preallocate(nfiles)
-fileClass = 'uint16';
+fileClass           = 'uint16';
 % Symbol
 N                   = 4e4;
 s1.Universe         = repmat({''},N,1);
