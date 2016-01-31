@@ -6,7 +6,7 @@ if nargin < 1,                          idtype    = 'symbol';       end
 if nargin < 2,                          id        = [];             end
 if nargin < 3 || isempty(date),         date      = inf;            end
 if nargin < 4 || isempty(path2data),    path2data = '.\data\TAQ';   end
-if nargin < 5,                          updatebar = true;           end
+if nargin < 5,                          updatebar = false;          end
 if isrowchar(id),  id  = {id}; end
 
 
@@ -49,9 +49,11 @@ for ii = 1:nfiles
     if updatebar && getappdata(h,'canceling')
         break
     end
-
-    % Update waitbar
+    
     matname = matnames{files(ii)};
+    mstname = mstnames{files(ii)};
+    
+    % Update waitbar
     if updatebar
         if ii == 1
             waitbar(0,h,sprintf('Loading file %s - ETA calculating',matname))
@@ -63,25 +65,24 @@ for ii = 1:nfiles
     end
 
     % Load .mat file
-    s = load(fullfile(path2data, matname));
-
-    % Records within the loaded data file
-    mstfile = master(master.File == files(ii),:);
-    idata   = mcolonint(mstfile.From,mstfile.To);
-    blocks  = double(mstfile.To - mstfile.From + 1);
-    Id      = RunLength(mstfile.Id, blocks);
-    out{ii} = table(Id(:),'VariableNames',{'Id'});
+    load(fullfile(path2data, matname));
+    mst = getMasterRecords(fullfile(path2data, mstname), idtype, id, dttype, date);
     
+    % Records within the loaded data file
+    idata   = mcolonint(mst.From,mst.To);
+    blocks  = double(mst.To - mst.From + 1);
+    Id      = RunLength(mst.Id, blocks);
+    out{ii} = data(idata,:);
+    
+    if hasPermno
+        out{ii}.Permno = reshape(RunLength(mstfile.Permno, blocks),[],1);
+    end
     % Retrieve data
     if ~any(idatetime)
         dates            = RunLength(yyyymmdd2serial(mstfile.Date),blocks);
         out{ii}.Datetime = dates(:) + hhmmssmat2serial(s.data.Time(idata,:));
     end
-    for v = 1:numel(varnames)
-        fname           = varnames{v};
-        out{ii}.(fname) = s.data.(fname)(idata,:);
-    end
-
+    
     % Update waitbar
     if updatebar
         waitbar(ii/nfiles,h)
@@ -172,3 +173,27 @@ else
 end
 end
 
+function mst = getMasterRecords(filename, idtype, id, dttype, date)
+load(filename,'-mat');
+
+switch dttype
+    case 'scalar'
+        idx = mst.Date == date;
+    case 'all'
+        idx = true(size(mst,1),1);
+    case 'ge'
+        idx = mst.Date >= date(1);
+    case 'le'
+        idx = mst.Date <= date(2);
+    case 'set'
+        idx = ismember(mst.Date, date);
+end
+mst = mst(idx,:);
+
+switch idtype
+    case 'symbol'
+        id  = find(ismember(ids,id));
+        idx = ismember(mst.Id, id);
+end
+mst = mst(idx,:);
+end
