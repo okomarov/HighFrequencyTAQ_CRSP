@@ -9,7 +9,6 @@ if nargin < 4 || isempty(path2data),    path2data = '.\data\TAQ';   end
 if nargin < 5,                          updatebar = false;          end
 if isrowchar(id),  id  = {id}; end
 
-
 [files_id, ifound, id] = filterFilesByID(idtype,id,path2data);
 
 % Check if found matches
@@ -23,8 +22,8 @@ end
 
 [files_date, date, dttype] = filterFilesByDate(date,path2data);
 
-files     = intersect(files_id,files_date);
-nfiles    = numel(files);
+files  = intersect(files_id,files_date);
+nfiles = numel(files);
 
 % List files
 dd       = dir(fullfile(path2data,'*.mat'));
@@ -34,65 +33,76 @@ mstnames = {dd.name};
 
 updatebar = updatebar && nfiles > 1;
 out       = cell(nfiles,1);
-elapsed   = zeros(nfiles+1,1);
+elapsed   = 0;
 
 % Display waitbar
 if updatebar
-    h = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
+    h              = waitbar(0,'','CreateCancelBtn','setappdata(gcbf,''canceling'',true)');
     set(findall(h,'Type','text'),'interpreter','none')
     setappdata(h,'canceling',false)
     cleanupWaitbar = onCleanup(@()delete(h));
 end
 
+tic
 for ii = 1:nfiles
     % Check if progress was cancelled
     if updatebar && getappdata(h,'canceling')
         break
     end
-    
-    matname = matnames{files(ii)};
-    mstname = mstnames{files(ii)};
-    
+
+    mat_name = matnames{files(ii)};
+    mst_name = mstnames{files(ii)};
+
     % Update waitbar
     if updatebar
         if ii == 1
-            waitbar(0,h,sprintf('Loading file %s - ETA calculating',matname))
+            waitbar(0,h,sprintf('Loading file %s - ETA calculating',mat_name))
         else
             x        = (ii-1)/nfiles;
-            time2end = elapsed(ii)*(nfiles-ii+1)/(ii-1); % (1-x)/x
-            waitbar(x,h,sprintf('Loading file %s - ETA %s',matname, sec2time(time2end)))
+            time2end = elapsed*(nfiles-ii+1)/(ii-1); % (1-x)/x
+            waitbar(x,h,sprintf('Loading file %s - ETA %s',mat_name, sec2time(time2end)))
         end
     end
 
-    % Load .mat file
-    load(fullfile(path2data, matname));
-    mst = getMasterRecords(fullfile(path2data, mstname), idtype, id, dttype, date);
-    
-    % Records within the loaded data file
-    idata   = mcolonint(mst.From,mst.To);
-    blocks  = double(mst.To - mst.From + 1);
-    Id      = RunLength(mst.Id, blocks);
-    out{ii} = data(idata,:);
-    
-    if hasPermno
-        out{ii}.Permno = reshape(RunLength(mstfile.Permno, blocks),[],1);
+    % Load data and mst
+    [mst,ids] = getMasterRecords(fullfile(path2data, mst_name), idtype, id, dttype, date);
+    if isempty(mst)
+        continue
     end
-    % Retrieve data
-    if ~any(idatetime)
-        dates            = RunLength(yyyymmdd2serial(mstfile.Date),blocks);
-        out{ii}.Datetime = dates(:) + hhmmssmat2serial(s.data.Time(idata,:));
+    load(fullfile(path2data, mat_name));
+
+    % Select data
+    idata = mcolonint(mst.From,mst.To);
+    data  = data(idata,:);
+
+    % Add numeric id to symbol
+    blocks = double(mst.To - mst.From + 1);
+    if strcmpi(idtype,'Symbol')
+        [~,pos]      = ismember(ids(mst.Id), id);
+        data.Id(:,1) = uint32(RunLength(pos, blocks));
     end
-    
+
+    % Add date
+    try
+        data.Date(1);
+    catch
+        data.Date(:,1) = uint32(RunLength(mst.Date, blocks));
+    end
+
+    out{ii} = data;
+
     % Update waitbar
     if updatebar
         waitbar(ii/nfiles,h)
-        elapsed(ii+1) = toc;
+        elapsed = toc;
     end
 end
 out = cat(1,out{:});
 end
 
 function [files, iskey, id] = filterFilesByID(idtype,id,path2data)
+% Select the files that contain the queried IDs
+
 if isempty(id)
     files = [];
     iskey = [];
@@ -107,7 +117,9 @@ else
 end
 end
 
-function [files,dates,dttype] = filterFilesByDate(date,path2data)
+function [files,date,dttype] = filterFilesByDate(date,path2data)
+% Select the files that contain the queried DATEs
+
 date2files = getRelevantMasterMap('date',path2data);
 szDate     = size(date);
 iinf       = isinf(date);
@@ -121,19 +133,20 @@ if isscalar(date) && iinf
     dttype = 'all';
     files  = date2files.values;
     files  = unique([files{:}]);
-    dates  = inf;
     return
 end
 
 % Single date
 if isscalar(date)
     dttype = 'scalar';
-    dates  = date;
-% [from, to]     
-elseif szDate(2) == 2 && all(~inf)
-    dttype = 'set';
-    dates  = date(1):date(2);
+    dates  = {date};
+
+% [from, to]
+elseif szDate(2) == 2 && all(~iinf)
+    dttype = 'fromto';
+    dates  = num2cell(date(1):date(2));
     dates  = dates(date2files.isKey(dates));
+
 % [inf, to] or [from, inf] cases
 elseif szDate(2) == 2 && any(iinf)
     keys  = date2files.keys;
@@ -148,22 +161,25 @@ elseif szDate(2) == 2 && any(iinf)
         files  = files(keys >= date(1));
     end
     files = unique([files{:}]);
-    dates = date;
+
     return
+
 % Column of dates
 elseif szDate(2) == 1
     dttype = 'set';
-    dates  = date;
+    dates  = num2cell(date);
 else
     error('DATE cannot have more than 2 columns.')
 end
 
 % Retrieve file list
-files = values(date2files, num2cell(dates));
+files = values(date2files, dates);
 files = unique([files{:}]);
 end
 
 function map = getRelevantMasterMap(type,path2data)
+% Load the maps that associate ID/DATE with list of files
+
 if any(strcmpi(type, {'symbol','id','permno','date'}))
     mstname = fullfile(path2data, sprintf('master_%s',type));
     s       = load(mstname,'-mat');
@@ -173,8 +189,12 @@ else
 end
 end
 
-function mst = getMasterRecords(filename, idtype, id, dttype, date)
-load(filename,'-mat');
+function [mst,ids] = getMasterRecords(filename, idtype, id, dttype, date)
+% Get master records that meet ID and DATE criteria
+
+s   = load(filename,'-mat');
+mst = s.mst;
+ids = s.ids;
 
 switch dttype
     case 'scalar'
@@ -185,6 +205,8 @@ switch dttype
         idx = mst.Date >= date(1);
     case 'le'
         idx = mst.Date <= date(2);
+    case 'fromto'
+        idx = mst.Date >= date(1) & mst.Date <= date(2);
     case 'set'
         idx = ismember(mst.Date, date);
 end
