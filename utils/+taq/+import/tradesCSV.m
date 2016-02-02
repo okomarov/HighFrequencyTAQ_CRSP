@@ -47,13 +47,12 @@ for f = 1:numel(filenames)
     while fileIsOpen
         while ii < opt.Nblk && ~feof(fid)
             ii     = ii + 1;
-            offset = ftell(fid);
             try
                 %    1       2       3-5       6       7        8           9           10          11
                 % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
                 data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
                     opt.Nrec,opt.Scan{:});
-
+                offset = ftell(fid);
                 % Make sure to keep whole day on same mat file
                 if ii == opt.Nblk
                     if feof(fid)
