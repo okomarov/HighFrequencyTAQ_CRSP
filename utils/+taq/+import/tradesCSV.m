@@ -46,13 +46,13 @@ for f = 1:numel(filenames)
 
     while fileIsOpen
         while ii < opt.Nblk && ~feof(fid)
-            ii     = ii + 1;
+            ii = ii + 1;
             try
                 %    1       2       3-5       6       7        8           9           10          11
                 % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
                 data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
                     opt.Nrec,opt.Scan{:});
-                offset = ftell(fid);
+                offset     = ftell(fid);
                 % Make sure to keep whole day on same mat file
                 if ii == opt.Nblk
                     if feof(fid)
@@ -67,7 +67,7 @@ for f = 1:numel(filenames)
                         % one date only). Use start of last symbol
                         if isempty(from)
                             [~,~,subs] = unique(data{ii,1});
-                            from = find(diff(subs),1,'last')+1;
+                            from       = find(diff(subs),1,'last')+1;
                         end
 
                         % If still empty, import more data
@@ -191,9 +191,12 @@ mst.To   = uint32(mst.To);
 mst = sortrows(mst,'From');
 
 % Glue split series
-pos          = find(mst.Id(2:end) == mst.Id(1:end-1) & mst.Date(2:end) == mst.Date(1:end-1));
-mst.To(pos)  = mst.To(pos+1);
-mst(pos+1,:) = [];
+key          = uint64(mst.Id)*1e8 + uint64(mst.Date);
+[~,pos,subs] = unique(key,'first');
+to           = accumarray(subs, mst.To,[],@max);
+mst.To(pos)  = to;
+mst          = mst(pos,:);
+mst          = sortrows(mst,'From');
 end
 
 function finallyCleanup(fid, csvfilename)
