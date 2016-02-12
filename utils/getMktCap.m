@@ -7,7 +7,7 @@ catch
     cap = loadresults('mktcap','..\results');
 end
 
-if nargin >= 2 && lag > 0
+if nargin >= 2 && ~isempty(lag) && lag > 0 
     % Ensure it is sorted by id-date, i.e. some date changes correspond 
     % to same permno, we need to sort
     idx = diff(cap.Date) == 0;
