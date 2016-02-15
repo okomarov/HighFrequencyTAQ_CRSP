@@ -24,7 +24,7 @@ spconst         = spconst(spconst.Issp500 ~= 0,:);
 spconst.Issp500 = [];
 
 % Convert xPermno to numeric permno
-spconst.Permno = xstr2num(spconst.Permno);
+spconst.Permno = uint32(xstr2num(spconst.Permno));
 
 % Save
 save(fullfile(writeto,sprintf('%s_%s.mat',datestr(now,'yyyymmdd_HHMM'),'spconst')), 'spconst')
