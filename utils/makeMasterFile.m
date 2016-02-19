@@ -54,11 +54,7 @@ mst.From = uint32(mst.From);
 mst.To   = uint32(mst.To);
 
 % Sort according to id-date pair
-try
-    mst = sortrows(mst,{'Permno','Date'});
-catch
-    mst = sortrows(mst,{'Id','Date'});
-end
+mst = sortrows(mst,{'Id','Date'});
 
 % Save
 save(fullfile(path2matfiles,'master'),mstname, idsname,'-v6','-mat')
