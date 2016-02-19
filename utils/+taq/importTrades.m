@@ -50,7 +50,7 @@ recycle off
 diary(fullfile(rootfolder,'log.txt'))
 
 % Create rootfolder/mat if does not exist
-matfolder = fullfile(rootfolder,'mat');
+matfolder = fullfile(rootfolder,'..','mat');
 if ~isdir(matfolder)
     mkdir(matfolder);
 end
@@ -71,7 +71,7 @@ matnum = taq.import.tradesCSV(folder,matfolder,true);
 % chunk into smaller pieces later
 folder = fullfile(rootfolder, 'dvd');
 % Import into tmp folder
-tmpmat = fullfile(rootfolder, 'tmp');
+tmpmat = fullfile(matfolder, 'tmp');
 if ~isdir(tmpmat)
     mkdir(tmpmat);
 end
