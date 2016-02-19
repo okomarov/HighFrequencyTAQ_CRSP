@@ -1,4 +1,6 @@
 function importTrades(rootfolder)
+%   IMPORTTRADES Imports TAQ raw trades located in the raw folder
+%
 % Assumes the following folder structure:
 %
 %     rootfolder/

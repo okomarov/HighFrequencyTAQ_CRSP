@@ -1,4 +1,14 @@
 function matnum = tradesDVD(path2main,outdir, matnum, opt)
+% TRADESDVD Import zipped .csv of TAQ trades provided by NYSE through DVDs
+%
+%   TRADESCSV(PATH2MAIN)
+%       PATH2MAIN points to the main folder with the subfolders containing
+%       zipped .CSVs (see importTrades for the folder structure)
+%
+% For detailed help, see tradesCSV (when applicable), e.g. OPT has only the
+% Fmt field. 
+%
+% See also: TRADESCSV, IMPORTTRADES, TEXTSCAN
 if nargin < 3, matnum = 0; end
 
 if nargin < 4

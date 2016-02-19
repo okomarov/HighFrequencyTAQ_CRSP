@@ -5,11 +5,24 @@ function matnum = tradesCSV(path2zip, outdir, isManual, matnum, opt)
 %       Imports zipped .CSVs from the PATH2ZIP folder and saves them as
 %       .mat and .mst files in OUTDIR.
 %
-% The .CSVs should be downloaded from WRDS with the following columns. The
-% format is on second line (if relevant):
+%   Optional inputs:
+%       ISMANUAL - boolean (default: false). Set to true if the .CSVs were 
+%                  downloaded from WRDS in the format specified below:
 %
-%   SYMBOL |   DATE   |   TIME   | PRICE | SIZE | G127 | CORR | COND | EX
-%            yyyymmdd   HH:MM:SS
+%           symbol |   date   |   time   | price | size | g127 | corr | cond | ex
+%                    yyyymmdd   HH:MM:SS
+%
+%       MATNUM - numeric scalar (default: 0). Starts the numbering of 
+%                .mat/mst files from MATNUM + 1.
+%
+%       OPT - structure with options (defaults: see in the code).
+%           .Nrec - number of records with each textscan read.
+%           .Nblk - number of reads before saving results to .mat/mst
+%           .Scan - textscan options
+%           .Fmt  - read format for textscan
+%
+% See also: TEXTSCAN,TRADESDVD
+
 if nargin < 5
     opt.Nrec = 1e5;
     opt.Nblk = 50;

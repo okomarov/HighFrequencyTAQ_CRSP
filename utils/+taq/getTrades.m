@@ -1,5 +1,5 @@
 function [out,ifound] = getTrades(idtype, id, date, path2data, updatebar)
-
+% [out,ifound] = getTrades(idtype, id, date, path2data, updatebar)
 
 % Checks and defaults
 if nargin < 1,                          idtype    = 'symbol';       end
