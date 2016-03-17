@@ -3,21 +3,21 @@ function matnum = tradesCSV(path2zip, outdir, isManual, matnum, opt)
 %
 %   TRADESCSV(PATH2ZIP, OUTDIR)
 %       Imports zipped .CSVs from the PATH2ZIP folder and saves them as
-%       .mat and .mst files in OUTDIR.
+%       .mat and .idx files in OUTDIR.
 %
 %   Optional inputs:
-%       ISMANUAL - boolean (default: false). Set to true if the .CSVs were 
+%       ISMANUAL - boolean (default: false). Set to true if the .CSVs were
 %                  downloaded from WRDS in the format specified below:
 %
 %           symbol |   date   |   time   | price | size | g127 | corr | cond | ex
 %                    yyyymmdd   HH:MM:SS
 %
-%       MATNUM - numeric scalar (default: 0). Starts the numbering of 
-%                .mat/mst files from MATNUM + 1.
+%       MATNUM - numeric scalar (default: 0). Starts the numbering of
+%                .mat/idx files from MATNUM + 1.
 %
 %       OPT - structure with options (defaults: see in the code).
 %           .Nrec - number of records with each textscan read.
-%           .Nblk - number of reads before saving results to .mat/mst
+%           .Nblk - number of reads before saving results to .mat/idx
 %           .Scan - textscan options
 %           .Fmt  - read format for textscan
 %
@@ -44,10 +44,10 @@ end
 filenames = filenames(~cellfun('isempty', filenames));
 
 % Preallocate
-data = cell(opt.Nblk,11);
-ids  = cell(opt.Nblk,1);
-mst  = cell(opt.Nblk,1);
-ii   = 0;
+data   = cell(opt.Nblk,11);
+symbol = cell(opt.Nblk,1);
+index  = cell(opt.Nblk,1);
+ii     = 0;
 
 % LOOP through each file
 for f = 1:numel(filenames)
@@ -69,9 +69,9 @@ for f = 1:numel(filenames)
                 % Make sure to keep whole day on same mat file
                 if ii == opt.Nblk
                     if feof(fid)
-                        resids  = cell(0,1);
-                        resmst  = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
-                        resdata = cell(1,11);
+                        ressymbol = cell(0,1);
+                        residx    = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
+                        resdata   = cell(1,11);
                     else
                         % Start of last date
                         from = find(diff(data{ii,2}),1,'last')+1;
@@ -91,13 +91,13 @@ for f = 1:numel(filenames)
                             % Note: even if last row is a new date, defer it. We don't
                             %       know if that is the last row for that date.
                         else
-                            resdata                 = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
-                            data(ii,:)              = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
-                            [resids,resmst,resdata] = processDataset(resdata);
+                            resdata                    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
+                            data(ii,:)                 = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
+                            [ressymbol,residx,resdata] = processDataset(resdata);
                         end
                     end
                 end
-                [ids{ii},mst{ii},data(ii,:)] = processDataset(data(ii,:));
+                [symbol{ii},index{ii},data(ii,:)] = processDataset(data(ii,:));
 
             catch err
                 fname = fullfile(path2zip, sprintf('%s_err.mat',datestr(now,'yyyymmdd_HHMM')));
@@ -117,35 +117,35 @@ for f = 1:numel(filenames)
         end
 
         % Consolidate parsed blocks into single variables
-        [ids,mst,data] = consolidateDataset(ids,mst,data);
+        [symbol,index,data] = consolidateDataset(symbol,index,data);
 
         matnum    = matnum+1;
         datafname = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
-        mstfname  = fullfile(outdir, sprintf([opt.Fmt '.mst'],matnum));
+        idxfname  = fullfile(outdir, sprintf([opt.Fmt '.idx'],matnum));
         save(datafname,'data','-v7.3')
-        save(mstfname ,'mst','ids','-v6')
+        save(idxfname ,'index','symbol','-v6')
         fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
 
         % Reset containers adding deferred chunks
-        data = [resdata;  cell(opt.Nblk,11)];
-        ids  = [{resids}; cell(opt.Nblk,1)];
-        mst  = [{resmst}; cell(opt.Nblk,1)];
-        ii   = 1;
+        data   = [resdata;  cell(opt.Nblk,11)];
+        symbol = [{ressymbol}; cell(opt.Nblk,1)];
+        index  = [{residx}; cell(opt.Nblk,1)];
+        ii     = 1;
     end
 end
 
 % LAST iteration exits without saving
-[ids,mst,data] = consolidateDataset(ids,mst,data);
-matnum         = matnum+1;
-datafname      = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
-mstfname       = fullfile(outdir, sprintf([opt.Fmt '.mst'],matnum));
+[symbol,index,data] = consolidateDataset(symbol,index,data);
+matnum              = matnum+1;
+datafname           = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
+idxfname            = fullfile(outdir, sprintf([opt.Fmt '.idx'],matnum));
 save(datafname,'data','-v7.3')
-save(mstfname ,'mst','ids','-v6')
+save(idxfname ,'index','symbol','-v6')
 fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
 end
 
 % Process parsed blocks from .csv
-function [tck,mst,data] = processDataset(data)
+function [tck,index,data] = processDataset(data)
 nrecords        = size(data{1},1);
 % Unique pairs id-date
 [tck,~,id]      = unique(data{1});
@@ -156,7 +156,7 @@ frompos = [0; find(diff(subs))]+1;
 topos   = [frompos(2:end)-1; nrecords];
 
 % Store in table and free memory
-mst       = table(iddate(:,1),iddate(:,2), frompos, topos, 'VariableNames',{'Id','Date','From','To'});
+index     = table(iddate(:,1),iddate(:,2), frompos, topos, 'VariableNames',{'Id','Date','From','To'});
 data(1:2) = {[]};
 
 % Convert to char (and eventually pad with a column of blank)
@@ -169,15 +169,15 @@ tck = tck(iddate(:,1));
 end
 
 % Consolidate blocks from .csv
-function [tck,mst,data] = consolidateDataset(tck,mst,data)
+function [tck,index,data] = consolidateDataset(tck,index,data)
 % Count number of records per block
-blkcountMst  = cellfun(@(x) size(x,1),mst);
+blkcountMst  = cellfun(@(x) size(x,1),index);
 blkcountData = cellfun(@(x) size(x,1),data(:,3));
 
 % Concatenate blocks
-data = arrayfun(@(x) cat(1,data{:,x}),3:11,'un',0);
-tck  = cat(1,tck{:});
-mst  = cat(1,mst{:});
+data  = arrayfun(@(x) cat(1,data{:,x}),3:11,'un',0);
+tck   = cat(1,tck{:});
+index = cat(1,index{:});
 
 % Some data manipulations
 data{1} = cat(2,data{1:3});
@@ -188,28 +188,28 @@ data = table(data{[1,4:6,8:9]},...
     'VariableNames',{'Time','Price','Volume','G127_Correction','Condition','Exchange'});
 
 % Translate block indexing of From/To to whole file indexing
-shift    = RunLength(cumsum([0; blkcountData(1:end-1)]), blkcountMst);
-mst.From = mst.From + shift;
-mst.To   = mst.To   + shift;
+shift      = RunLength(cumsum([0; blkcountData(1:end-1)]), blkcountMst);
+index.From = index.From + shift;
+index.To   = index.To   + shift;
 
 % Re-map Id
-[tck,~,mst.Id] = unique(tck);
+[tck,~,index.Id] = unique(tck);
 
 % Optimize data storage
-mst.Id   = uint16(mst.Id);
-mst.From = uint32(mst.From);
-mst.To   = uint32(mst.To);
+index.Id   = uint16(index.Id);
+index.From = uint32(index.From);
+index.To   = uint32(index.To);
 
 % Sort by from
-mst = sortrows(mst,'From');
+index = sortrows(index,'From');
 
 % Glue split series
-key          = uint64(mst.Id)*1e8 + uint64(mst.Date);
-[~,pos,subs] = unique(key,'first');
-to           = accumarray(subs, mst.To,[],@max);
-mst.To(pos)  = to;
-mst          = mst(pos,:);
-mst          = sortrows(mst,'From');
+key           = uint64(index.Id)*1e8 + uint64(index.Date);
+[~,pos,subs]  = unique(key,'first');
+to            = accumarray(subs, index.To,[],@max);
+index.To(pos) = to;
+index         = index(pos,:);
+index         = sortrows(index,'From');
 end
 
 function finallyCleanup(fid, csvfilename)

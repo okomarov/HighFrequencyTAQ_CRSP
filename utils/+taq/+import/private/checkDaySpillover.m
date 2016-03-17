@@ -2,9 +2,9 @@ function prob = checkDaySpillover(path2mat)
 % CHECKDAYSPILLOVER Checks if same-day data spans multiple files
 
 % list files
-mstfiles = dir(fullfile(path2mat,'*.mst'));
-mstfiles = {mstfiles.name}';
-nfiles   = numel(mstfiles);
+indexfiles = dir(fullfile(path2mat,'*.idx'));
+indexfiles = {indexfiles.name}';
+nfiles   = numel(indexfiles);
 
 % preallocate
 tickers = table(cell(0,1),zeros(0,1,'uint32'),'VariableNames',{'Symb','Date'});
@@ -15,34 +15,34 @@ cleanupWait = onCleanup(@() delete(h));
 
 map = containers.Map('keyType','char','ValueType','uint64');
 for ii = 1:nfiles
-    f = fullfile(path2mat,mstfiles{ii});
+    f = fullfile(path2mat,indexfiles{ii});
     s = load(f,'-mat');
-    if isa(s.mst,'dataset'),
-        s.mst = dataset2table(s.mst);
+    if isa(s.idx,'dataset'),
+        s.idx = dataset2table(s.idx);
     end
 
     map = addKeyVal(map, s.ids);
 
     % Drop out-of-date
-    ikeep   = min(s.mst.Date) - tickers.Date < 10;
+    ikeep   = min(s.idx.Date) - tickers.Date < 10;
     tickers = tickers(ikeep,:);
 
     % Check spillover
-    s.mst.Symb = s.ids(s.mst.Id);
-    keyA       = getValue(map,s.mst.Symb)*1e8 + uint64(s.mst.Date);
+    s.idx.Symb = s.ids(s.idx.Id);
+    keyA       = getValue(map,s.idx.Symb)*1e8 + uint64(s.idx.Date);
     keyB       = getValue(map,tickers.Symb)*1e8 + uint64(tickers.Date);
     [idx,pos]  = ismember(keyA,keyB);
 
     if any(idx)
-        warning('Spillover: some data for the same day is spread over %s and %s.',mstfiles{ii-1}, mstfiles{ii})
-        tmp                    = s.mst(idx,{'Symb','Date'});
-        tmp.File               = repmat(mstfiles(ii),nnz(idx),1);
+        warning('Spillover: some data for the same day is spread over %s and %s.',indexfiles{ii-1}, indexfiles{ii})
+        tmp                    = s.idx(idx,{'Symb','Date'});
+        tmp.File               = repmat(indexfiles(ii),nnz(idx),1);
         prob                   = [prob; tmp];
-        tickers.Date(pos(idx)) = s.mst.Date(idx);
+        tickers.Date(pos(idx)) = s.idx.Date(idx);
     end
 
     % Add new
-    tickers = [tickers; s.mst(~idx,{'Symb','Date'})];
+    tickers = [tickers; s.idx(~idx,{'Symb','Date'})];
 
     if mod(ii,100)
         waitbar(ii/nfiles,h)

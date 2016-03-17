@@ -28,8 +28,8 @@ nfiles = numel(files);
 % List files
 dd       = dir(fullfile(path2data,'*.mat'));
 matnames = {dd.name};
-dd       = dir(fullfile(path2data,'*.mst'));
-mstnames = {dd.name};
+dd       = dir(fullfile(path2data,'*.idx'));
+idxnames = {dd.name};
 
 updatebar = updatebar && nfiles > 1;
 out       = cell(nfiles,1);
@@ -51,7 +51,7 @@ for ii = 1:nfiles
     end
 
     mat_name = matnames{files(ii)};
-    mst_name = mstnames{files(ii)};
+    idx_name = idxnames{files(ii)};
 
     % Update waitbar
     if updatebar
@@ -64,21 +64,21 @@ for ii = 1:nfiles
         end
     end
 
-    % Load data and mst
-    [mst,ids] = getMasterRecords(fullfile(path2data, mst_name), idtype, id, dttype, date);
-    if isempty(mst)
+    % Load data and index
+    [index,symbol] = getIndexRecords(fullfile(path2data, idx_name), idtype, id, dttype, date);
+    if isempty(index)
         continue
     end
     load(fullfile(path2data, mat_name));
 
     % Select data
-    idata = mcolonint(mst.From,mst.To);
+    idata = mcolonint(index.From,index.To);
     data  = data(idata,:);
 
     % Add numeric id to symbol
-    blocks = double(mst.To - mst.From + 1);
+    blocks = double(index.To - index.From + 1);
     if strcmpi(idtype,'Symbol')
-        [~,pos]      = ismember(ids(mst.Id), id);
+        [~,pos]      = ismember(symbol(index.Id), id);
         data.Id(:,1) = uint32(RunLength(pos, blocks));
     end
 
@@ -86,7 +86,7 @@ for ii = 1:nfiles
     try
         data.Date(1);
     catch
-        data.Date(:,1) = uint32(RunLength(mst.Date, blocks));
+        data.Date(:,1) = uint32(RunLength(index.Date, blocks));
     end
 
     out{ii} = data;
@@ -107,7 +107,7 @@ if isempty(id)
     files = [];
     iskey = [];
 else
-    id2files = getRelevantMasterMap(idtype,path2data);
+    id2files = getRelevantIndexMap(idtype,path2data);
     if strcmpi(idtype,'symbol')
         id = upper(id);
     end
@@ -120,7 +120,7 @@ end
 function [files,date,dttype] = filterFilesByDate(date,path2data)
 % Select the files that contain the queried DATEs
 
-date2files = getRelevantMasterMap('date',path2data);
+date2files = getRelevantIndexMap('date',path2data);
 szDate     = size(date);
 iinf       = isinf(date);
 
@@ -177,45 +177,45 @@ files = values(date2files, dates);
 files = unique([files{:}]);
 end
 
-function map = getRelevantMasterMap(type,path2data)
+function map = getRelevantIndexMap(type,path2data)
 % Load the maps that associate ID/DATE with list of files
 
 if any(strcmpi(type, {'symbol','id','permno','date'}))
-    mstname = fullfile(path2data, sprintf('master_%s',type));
-    s       = load(mstname,'-mat');
-    map     = s.(type);
+    indexname = fullfile(path2data, sprintf('index_%s',type));
+    s         = load(indexname,'-mat');
+    map       = s.(type);
 else
     error('getTaqData:invalidIdtype','IDTYPE can be ''symbol'', ''permno'' or ''id''.')
 end
 end
 
-function [mst,ids] = getMasterRecords(filename, idtype, id, dttype, date)
+function [index,symbol] = getIndexRecords(filename, idtype, id, dttype, date)
 % Get master records that meet ID and DATE criteria
 
-s   = load(filename,'-mat');
-mst = s.mst;
-ids = s.ids;
+s      = load(filename,'-mat');
+index  = s.index;
+symbol = s.symbol;
 
 switch dttype
     case 'scalar'
-        idx = mst.Date == date;
+        idx = index.Date == date;
     case 'all'
-        idx = true(size(mst,1),1);
+        idx = true(size(index,1),1);
     case 'ge'
-        idx = mst.Date >= date(1);
+        idx = index.Date >= date(1);
     case 'le'
-        idx = mst.Date <= date(2);
+        idx = index.Date <= date(2);
     case 'fromto'
-        idx = mst.Date >= date(1) & mst.Date <= date(2);
+        idx = index.Date >= date(1) & index.Date <= date(2);
     case 'set'
-        idx = ismember(mst.Date, date);
+        idx = ismember(index.Date, date);
 end
-mst = mst(idx,:);
+index = index(idx,:);
 
 switch idtype
     case 'symbol'
-        id  = find(ismember(ids,id));
-        idx = ismember(mst.Id, id);
+        id  = find(ismember(symbol,id));
+        idx = ismember(index.Id, id);
 end
-mst = mst(idx,:);
+index = index(idx,:);
 end

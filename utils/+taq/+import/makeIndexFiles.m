@@ -1,38 +1,38 @@
-function makeIndexFiles(path2mst)
-% MAKEINDEXFILES Groups all master records from single *.mat files into one master table
+function makeIndexFiles(path2idx)
+% MAKEINDEXFILES Groups all index records from single *.mat files into one index table
 
 % Read .mat filenames
-d = dir(fullfile(path2mst,'*.mst'));
+d = dir(fullfile(path2idx,'*.idx'));
 
 % Preallocate
 nfiles = numel(d);
 
-[mstSymb, mstDate] = preallocate(nfiles);
+[indexSymb, indexDate] = preallocate(nfiles);
 
 for f = 1:nfiles
     disp(f/nfiles*100)
-    s = load(fullfile(path2mst,d(f).name),'-mat');
+    s = load(fullfile(path2idx,d(f).name),'-mat');
 
     % Symbol-file index
-    mstSymb = mapList(mstSymb, s.ids, f);
+    indexSymb = mapList(indexSymb, s.symbol, f);
 
     % Date-file index
-    mstDate = mapList(mstDate, unique(s.mst.Date), f);
+    indexDate = mapList(indexDate, unique(s.index.Date), f);
 
 end
 
 % Drop excess pre-allocation
-mstSymb = dropEmptyPreallocated(mstSymb);
-mstDate = dropEmptyPreallocated(mstDate);
+indexSymb = dropEmptyPreallocated(indexSymb);
+indexDate = dropEmptyPreallocated(indexDate);
 
 % Organize in containers
-symbol = containers.Map(upper(mstSymb.Universe), mstSymb.FileList);
-id     = containers.Map(uint32(1:numel(mstSymb.Universe)), mstSymb.FileList);
-date   = containers.Map(mstDate.Universe, mstDate.FileList);
+symbol = containers.Map(upper(indexSymb.Universe), indexSymb.FileList);
+id     = containers.Map(uint32(1:numel(indexSymb.Universe)), indexSymb.FileList);
+date   = containers.Map(indexDate.Universe, indexDate.FileList);
 
-save(fullfile(path2mst,'master_symbol'),'symbol','-v6','-mat')
-save(fullfile(path2mst,'master_id')  ,'id','-v6','-mat')
-save(fullfile(path2mst,'master_date')  ,'date','-v6','-mat')
+save(fullfile(path2idx,'index_symbol'),'symbol','-v6','-mat')
+save(fullfile(path2idx,'index_id')  ,'id','-v6','-mat')
+save(fullfile(path2idx,'index_date')  ,'date','-v6','-mat')
 end
 
 function s = mapList(s, records, f)

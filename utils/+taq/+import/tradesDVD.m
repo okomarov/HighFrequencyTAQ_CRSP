@@ -6,13 +6,13 @@ function matnum = tradesDVD(path2main,outdir, matnum, opt)
 %       zipped .CSVs (see importTrades for the folder structure)
 %
 % For detailed help, see tradesCSV (when applicable), e.g. OPT has only the
-% Fmt field. 
+% Fmt field.
 %
 % See also: TRADESCSV, IMPORTTRADES, TEXTSCAN
 if nargin < 3, matnum = 0; end
 
 if nargin < 4
-    opt.Fmt  = 'T%05d';
+    opt.Fmt = 'T%05d';
 end
 
 % Get monthly subfolders with zipped data in CDA.zip, CDB.zip, ...
@@ -41,18 +41,18 @@ for ii = 1:numel(subfolders)
             extracted     = fullfile(tempdir(), extracted);
             cleanup       = onCleanup(@() delete(extracted{:}));
 
-            % Import master records, extension .IDX
-            idx       = ~cellfun('isempty',regexpi(extracted, '\.idx$'));
-            [ids,mst] = importIDX(extracted{idx});
+            % Import index records, extension .IDX
+            idx            = ~cellfun('isempty',regexpi(extracted, '\.idx$'));
+            [symbol,index] = importIDX(extracted{idx});
 
             % Read in data, extension .BIN
             data = importBIN(extracted{~idx});
 
             % 3. Save data and cleanup
-            datafname = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
-            mstfname  = fullfile(outdir, sprintf([opt.Fmt '.mst'],matnum));
+            datafname  = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
+            indexfname = fullfile(outdir, sprintf([opt.Fmt '.idx'],matnum));
             save(datafname,'data','-v7.3')
-            save(mstfname ,'mst','ids','-v6')
+            save(indexfname ,'index','symbol','-v6')
             fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
             delete(cleanup)
 
@@ -77,7 +77,7 @@ while jEntries.hasMoreElements
 end
 end
 
-function [ids,mst] = importIDX(filename)
+function [symbol,index] = importIDX(filename)
 % symbol | date | from | to
 %   10      4      4      4
 fid     = fopen(filename);
@@ -93,11 +93,11 @@ fseek(fid,0,'bof');
 tmp = fread(fid,[cols,nrows],'*uint8')';
 
 % Get symbols and mapping (no sorting)
-[ids, ~, id] = unique(cellstr(char(tmp(:,1:10))),'stable');
+[symbol, ~, id] = unique(cellstr(char(tmp(:,1:10))),'stable');
 
-% Create master table
+% Create index table
 fun32 = @(x,pos) typecast(reshape(x(:,pos)',[],1),'uint32');
-mst   = table({uint16(id),        'Id'  },...
+index = table({uint16(id),        'Id'  },...
               {fun32(tmp,11:14),  'Date'},...
               {fun32(tmp,15:18),  'From'},...
               {fun32(tmp,19:22),  'To'});

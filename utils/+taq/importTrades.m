@@ -25,9 +25,9 @@ function importTrades(rootfolder)
 %             ...
 %
 % OUTPUT: 
-% The .mat files will contain the data records (table), while the .mst
-% files will contain the mst records (table) and the unique list of tickers
-% (cellstring) that maps to mst.Id.
+% The .mat files will contain the data records (table), while the .idx
+% files will contain the index records (table) and the unique list of tickers
+% (cellstring) that maps directly to the numeric ID.
 %
 % - data:
 %       .Time [hh, mm, ss]                          uint8
@@ -37,9 +37,9 @@ function importTrades(rootfolder)
 %       .Condition                                  2char
 %       .Exchange                                   1char
 %
-% - ids, unique list of tickers                     cellstring
+% - symbol, unique list of tickers                     cellstring
 %
-% - mst, master of id-date pairs mapping to data and ids:
+% - index, master of id-date pairs mapping to data and ids:
 %       .Id, map to ids                             uint16
 %       .Date, yyyymmdd                             uint32
 %       .From, starting row in data                 uint32
