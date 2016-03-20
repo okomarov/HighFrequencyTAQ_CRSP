@@ -4,25 +4,27 @@ function importTrades(rootfolder)
 % Assumes the following folder structure:
 %
 %     rootfolder/
-%     +-- manual/
-%     |     199301_01.zip
-%     |     ...
-%     |     201005_03.zip
-%     |
-%     +-- dvd/
-%     |   +-- 201006/
-%     |   |     CDA.zip
-%     |   |     CDB.zip
-%     |   |     ...
-%     |   +-- .../
-%     |   \-- 201012/
-%     |         CDA.zip
-%     |         CDB.zip
-%     |         ...
-%     |
-%     \-- automated/
-%           CT_20110103.zip
-%             ...
+%     +-- mat/
+%     +-- raw/
+%         +-- manual/
+%         |     199301_01.zip
+%         |     ...
+%         |     201005_03.zip
+%         |
+%         +-- dvd/
+%         |   +-- 201006/
+%         |   |     CDA.zip
+%         |   |     CDB.zip
+%         |   |     ...
+%         |   +-- .../
+%         |   \-- 201012/
+%         |         CDA.zip
+%         |         CDB.zip
+%         |         ...
+%         |
+%         \-- automated/
+%               CT_20110103.zip
+%                 ...
 %
 % OUTPUT: 
 % The .mat files will contain the data records (table), while the .idx
@@ -50,7 +52,7 @@ recycle off
 diary(fullfile(rootfolder,'log.txt'))
 
 % Create rootfolder/mat if does not exist
-matfolder = fullfile(rootfolder,'..','mat');
+matfolder = fullfile(rootfolder,'mat');
 if ~isdir(matfolder)
     mkdir(matfolder);
 end
@@ -60,7 +62,7 @@ end
 % Import manual csv
 % =================
 % Note: 7388 files at ~5e6 records per file
-folder = fullfile(rootfolder, 'manual');
+folder = fullfile(rootfolder, 'raw','manual');
 matnum = taq.import.tradesCSV(folder,matfolder,true);
 
 % Import dvd 
@@ -69,7 +71,7 @@ matnum = taq.import.tradesCSV(folder,matfolder,true);
 
 % Data spillovers across files does not happen so import as they come and
 % chunk into smaller pieces later
-folder = fullfile(rootfolder, 'dvd');
+folder = fullfile(rootfolder,'raw', 'dvd');
 % Import into tmp folder
 tmpmat = fullfile(matfolder, 'tmp');
 if ~isdir(tmpmat)
@@ -81,7 +83,7 @@ matnum = taq.import.splitMatTrades(tmpmat,matfolder,[],matnum);
 
 % Import automated csv
 % ====================
-folder = fullfile(rootfolder, 'automated');
+folder = fullfile(rootfolder,'raw', 'automated');
 taq.import.tradesCSV(folder,matfolder,false, matnum);
 
 %% Checks
