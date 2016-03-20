@@ -4,7 +4,7 @@ function prob = checkDaySpillover(path2mat)
 % list files
 indexfiles = dir(fullfile(path2mat,'*.idx'));
 indexfiles = {indexfiles.name}';
-nfiles   = numel(indexfiles);
+nfiles     = numel(indexfiles);
 
 % preallocate
 tickers = table(cell(0,1),zeros(0,1,'uint32'),'VariableNames',{'Symb','Date'});
@@ -17,32 +17,32 @@ map = containers.Map('keyType','char','ValueType','uint64');
 for ii = 1:nfiles
     f = fullfile(path2mat,indexfiles{ii});
     s = load(f,'-mat');
-    if isa(s.idx,'dataset'),
-        s.idx = dataset2table(s.idx);
+    if isa(s.index,'dataset'),
+        s.index = dataset2table(s.index);
     end
 
-    map = addKeyVal(map, s.ids);
+    map = addKeyVal(map, s.symbol);
 
     % Drop out-of-date
-    ikeep   = min(s.idx.Date) - tickers.Date < 10;
+    ikeep   = min(s.index.Date) - tickers.Date < 10;
     tickers = tickers(ikeep,:);
 
     % Check spillover
-    s.idx.Symb = s.ids(s.idx.Id);
-    keyA       = getValue(map,s.idx.Symb)*1e8 + uint64(s.idx.Date);
-    keyB       = getValue(map,tickers.Symb)*1e8 + uint64(tickers.Date);
-    [idx,pos]  = ismember(keyA,keyB);
+    s.index.Symb = s.symbol(s.index.Id);
+    keyA         = getValue(map,s.index.Symb)*1e8 + uint64(s.index.Date);
+    keyB         = getValue(map,tickers.Symb)*1e8 + uint64(tickers.Date);
+    [idx,pos]    = ismember(keyA,keyB);
 
     if any(idx)
         warning('Spillover: some data for the same day is spread over %s and %s.',indexfiles{ii-1}, indexfiles{ii})
-        tmp                    = s.idx(idx,{'Symb','Date'});
+        tmp                    = s.index(idx,{'Symb','Date'});
         tmp.File               = repmat(indexfiles(ii),nnz(idx),1);
         prob                   = [prob; tmp];
-        tickers.Date(pos(idx)) = s.idx.Date(idx);
+        tickers.Date(pos(idx)) = s.index.Date(idx);
     end
 
     % Add new
-    tickers = [tickers; s.idx(~idx,{'Symb','Date'})];
+    tickers = [tickers; s.index(~idx,{'Symb','Date'})];
 
     if mod(ii,100)
         waitbar(ii/nfiles,h)
@@ -55,8 +55,8 @@ end
 function map = addKeyVal(map, keys)
 inew = ~map.isKey(keys);
 if any(inew)
-    vals   = uint64(1:nnz(inew))+map.Count;
-    map    = [map; containers.Map(keys(inew), vals)];
+    vals = uint64(1:nnz(inew))+map.Count;
+    map  = [map; containers.Map(keys(inew), vals)];
 end
 end
 
