@@ -110,7 +110,6 @@ obscount     = arrayfun(@(x) accumarray(subs, obscount(:,x)),1:4,'un',0);
 obscount     = [obscount{:}];
 prop         = bsxfun(@rdivide, obscount,tot);
 
-
 figure
 set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.4],'PaperPositionMode','auto')
 plot(yyyymmdd2datetime(unM*100+1),tot)
@@ -124,7 +123,12 @@ gcapos = get(gca,'Position');
 
 figure
 set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.4],'PaperPositionMode','auto')
-area(yyyymmdd2serial(unM*100+1),prop*100)
+h = area(yyyymmdd2serial(unM*100+1),prop*100);
+set(h,{'FaceColor'},...
+    {[0    0.4470    0.7410]
+     [0.4940    0.1840    0.5560]
+     [0.9290    0.6940    0.1250]
+     [0.8500    0.3250    0.0980]})    
 axis tight
 set(gca,'Xtick',xtick,'XTickLabel',xtickl,'Position',gcapos)
 set(gca,'TickLabelInterpreter','latex')
