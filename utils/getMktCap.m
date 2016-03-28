@@ -1,4 +1,5 @@
 function tb = getMktCap(tb, lag, ispanel)
+if nargin < 2,                      lag     = [];      end
 if nargin < 3 || isempty(ispanel),  ispanel = false;   end
 
 try
@@ -7,18 +8,11 @@ catch
     cap = loadresults('mktcap','..\results');
 end
 
-if nargin >= 2 && ~isempty(lag) && lag > 0 
-    % Ensure it is sorted by id-date, i.e. some date changes correspond 
-    % to same permno, we need to sort
-    idx = diff(cap.Date) == 0;
-    if ~all(cap.Permno(idx) ~= cap.Permno([false;idx]))
-        cap = sortrows(cap,{'Permno','Date'});
-    end
-    
-    % Lag
-    cap.Cap = [NaN(lag,1); cap.Cap(1:end-lag)];
-    idx     = [false(lag,1); cap.Permno(1:end-lag) == cap.Permno(1+lag:end)];
-    cap     = cap(idx,:);
+try
+    cap = lagpanel(cap,'Permno',lag);
+catch
+    cap = sortrows(cap,{'Permno','Date'});
+    cap = lagpanel(cap,'Permno',lag);
 end
 
 % Filter by permno, date
