@@ -1,3 +1,6 @@
+function mst = mapPermno2master
+% MAPPERMNO2MASTER Maps TAQ issues to CRSP's Permno
+
 % Map CUSIP table with dates
 
 %% 1. Import mst-cusip (TAQmaster)
