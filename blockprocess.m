@@ -27,7 +27,9 @@ addpath(genpath('common'))
 rootfolder = fileparts(mfilename('fullpath'));
 poolStartup(poolcores, 'AttachedFiles',{fullfile(rootfolder, 'utils\poolStartup.m')},'debug',debug)
 writeto    = fullfile(projectpath, 'results');
-if ~debug; setupemail; end
+if ~debug
+    setupemail();
+end
 fun = func2str(fhandle);
 if isrowchar(varnames), varnames = {varnames}; end
 
