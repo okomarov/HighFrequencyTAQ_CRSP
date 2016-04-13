@@ -1,20 +1,15 @@
-function mst = prepareMst()
+function mst = prepareMst(path2data)
+% PREPAREMST Loads master, adds Permno and median price
 
 % Load big master file
 commonroot = fullfile(fileparts(mfilename('fullpath')),'..'); 
 commonres  = fullfile(commonroot, 'results');
-path2data  = fullfile(commonroot, 'data\TAQ');
+if nargin < 1 || isempty(path2data)
+    path2data  = fullfile(commonroot, 'data\TAQ');
+end
 load(fullfile(path2data,'master'),'-mat')
 
-% Map unique ID to mst
-testname = 'masterPermno';
-try
-    res = loadresults(testname,commonres);
-catch
-    res = mapPermno2master;
-end
-[~,pos]    = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
-mst.Permno = res.Permno(pos);
+mst = addPermno(mst);
 
 % Median price
 testname = 'medianprice';
@@ -25,4 +20,7 @@ catch
 end
 [~,pos]      = ismembIdDate(mst.Id, mst.Date, res.Id, res.Date);
 mst.MedPrice = res.MedPrice(pos);
+
+% Drop incomplete days
+mst.Isbadday = isprobdate(mst.Date);
 end
