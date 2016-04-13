@@ -33,6 +33,7 @@ fhandles = {@medianprice
     @countPerTimeBucket
     @sample
     @sampleFirstLast
+    @betacomponents_refresh
     @VWAP
     @sampleSpy
     @testLoadSpeed
@@ -233,6 +234,67 @@ if ~all(ibad)
     res.LastPrice(pos,1)  = price(idx);
     res.LastTime(pos,1)   = time(idx);
 end
+end
+
+function res = betacomponents_refresh(s,cached,opt)
+spydates = cached{2};
+spymst   = cached{3};
+cached   = cached{1};
+nmst     = size(s.mst,1);
+nspy     = size(spymst,1);
+
+% Get all prices
+[price, times] = samplePrepare_(s,cached,opt);
+price          = cache2cell([rem(times,1) double(price)],fix(times),[],[nmst,1]);
+iempty         = cellfun('isempty',price);
+
+% Get spy prices
+spy = cell(nspy,1);
+for ii = 1:nspy
+    spyprice = getTaqData([],[],[],[],[],'..\data\TAQ\',spymst(ii,:),false);
+
+    % STEP 1) Select regular trades
+    spyprice = spyprice(~isInvalidTrade(spyprice),:);
+
+    % STEP 2) Median prices for same timestamps
+    [spytime,~,subs] = unique(rem(spyprice.Datetime,1));
+
+    switch opt.TimestampConsolidation
+        case 'volumeWeighted'
+            vol      = double(spyprice.Volume)/100;
+            voltot   = accumarray(subs, vol);
+            spyprice = accumarray(subs, double(spyprice.Price).*vol) ./ voltot;
+        case 'median'
+            spyprice = accumarray(subs, double(spyprice.Price),[],@fast_median);
+    end
+
+    spy{ii} = [spytime,spyprice];
+end
+
+res          = cached(:,{'Permno','Date'});
+res.Num(:,1) = NaN;
+res.Den(:,1) = NaN;
+
+for ii = 1:nmst
+    idx = s.mst.Date(ii) == spydates;
+    if ~iempty(ii) && res.Permno(ii) ~= 0 && any(idx)
+
+        [ia,ispy] = sample_refresh(price{ii}(:,1), spy{idx}(:,1));
+
+        % returns
+        ret    = diff(log(price{ii}(ia,2)));
+        retspy = diff(log(spy{idx}(ispy,2)));
+
+        if opt.HasOvernight
+            ret    = [cached.RetCO(ii); ret];
+            retspy = [spymst.RetCO(idx); retspy];
+        end
+
+        res.Num(ii,1) = sum(ret.*retspy);
+        res.Den(ii,1) = sum(retspy.*retspy);
+    end
+end
+
 end
 
 % Sampling
