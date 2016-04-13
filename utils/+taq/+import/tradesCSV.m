@@ -24,12 +24,11 @@ function matnum = tradesCSV(path2zip, outdir, isManual, matnum, opt)
 % See also: TEXTSCAN,TRADESDVD
 
 if nargin < 5
-    opt.Nrec = 1e5;
-    opt.Nblk = 50;
-    opt.Scan = {'Delimiter',',','HeaderLines',1};
-    opt.Fmt  = 'T%05d';
+    opt.Nrec        = 1e5;
+    opt.Nblk        = 50;
+    opt.Scan        = {'Delimiter',',','HeaderLines',1};
+    opt.FilenameFmt = 'T%05d';
 end
-origNblk = opt.Nblk;
 if nargin < 4 || isempty(matnum)
     matnum = 0;
 end
@@ -44,61 +43,32 @@ end
 filenames = filenames(~cellfun('isempty', filenames));
 
 % Preallocate
-data   = cell(opt.Nblk,11);
-symbol = cell(opt.Nblk,1);
-index  = cell(opt.Nblk,1);
-ii     = 0;
+[data,symbol,index, resdata] = preallocateContainters(opt);
+ii                           = 0;
 
 % LOOP through each file
 for f = 1:numel(filenames)
-    filename   = unzip(fullfile(path2zip,filenames{f}),tempdir());
-    fid        = fopen(filename{end});
-    cleanup    = onCleanup(@() finallyCleanup(fid, char(filename)));
-    fileIsOpen = true;
+    filename = unzip(fullfile(path2zip,filenames{f}),tempdir());
+    fid      = fopen(filename{end});
+    cleanup  = onCleanup(@() finallyCleanup(fid, char(filename)));
     fprintf('%-40s%s\n',filenames{f},datestr(now,'dd HH:MM:SS'))
 
-    while fileIsOpen
-        while ii < opt.Nblk && ~feof(fid)
-            ii = ii + 1;
+    while ~feof(fid)
+        while ii < opt.Nblk
             try
-                %    1       2       3-5       6       7        8           9           10          11
-                % ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
-                data(ii,:) = textscan(fid,'%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c',...
-                    opt.Nrec,opt.Scan{:});
-                offset     = ftell(fid);
-                % Make sure to keep whole day on same mat file
-                if ii == opt.Nblk
-                    if feof(fid)
-                        ressymbol = cell(0,1);
-                        residx    = array2table(zeros(0,4), 'VariableNames',{'Id','Date','From','To'});
-                        resdata   = cell(1,11);
-                    else
-                        % Start of last date
-                        from = find(diff(data{ii,2}),1,'last')+1;
+                ii                                                = ii + 1;
+                [data(ii,:), symbol{ii}, index{ii}, resdata, opt] = importBlock(fid,ii,opt,resdata);
 
-                        % Day might not have ended yet (whole bulk import has
-                        % one date only). Use start of last symbol
-                        if isempty(from)
-                            [~,~,subs] = unique(data{ii,1});
-                            from       = find(diff(subs),1,'last')+1;
-                        end
-
-                        % If still empty, import more data
-                        if isempty(from)
-                            opt.Nblk = opt.Nblk+1;
-
-                            % Defer chunk with last change of date into next bulk import
-                            % Note: even if last row is a new date, defer it. We don't
-                            %       know if that is the last row for that date.
-                        else
-                            resdata                    = arrayfun(@(x) data{ii,x}(from:end,:), 1:11,'un',0);
-                            data(ii,:)                 = arrayfun(@(x) data{ii,x}(1:from-1,:), 1:11,'un',0);
-                            [ressymbol,residx,resdata] = processDataset(resdata);
-                        end
-                    end
+                unzipNewFile = feof(fid) && ii < fix(opt.Nblk * 0.8);
+                if unzipNewFile
+                    break
+                elseif feof(fid)
+                    % File is over and number of bulk import not complete
+                    % BUT we consolidate anywas to set a breakpoint in the
+                    % importing routine
+                    fprintf('%-40s BREAKPOINT\n',filenames{f})
+                    ii = opt.Nblk;
                 end
-                [symbol{ii},index{ii},data(ii,:)] = processDataset(data(ii,:));
-
             catch err
                 fname = fullfile(path2zip, sprintf('%s_err.mat',datestr(now,'yyyymmdd_HHMM')));
                 save(fname,'err')
@@ -106,42 +76,64 @@ for f = 1:numel(filenames)
             end
         end
 
-        % Reset to original block size
-        opt.Nblk = origNblk;
-
-        % Close .csv and clean if finished parsing it
-        if feof(fid)
-            delete(cleanup)
-            fileIsOpen = false;
-            continue
+        if unzipNewFile
+            break
         end
 
-        % Consolidate parsed blocks into single variables
         [symbol,index,data] = consolidateDataset(symbol,index,data);
 
-        matnum    = matnum+1;
-        datafname = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
-        idxfname  = fullfile(outdir, sprintf([opt.Fmt '.idx'],matnum));
-        save(datafname,'data','-v7.3')
-        save(idxfname ,'index','symbol','-v6')
-        fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
+        matnum = saveFiles(outdir,matnum,opt,symbol,index,data);
 
-        % Reset containers adding deferred chunks
-        data   = [resdata;  cell(opt.Nblk,11)];
-        symbol = [{ressymbol}; cell(opt.Nblk,1)];
-        index  = [{residx}; cell(opt.Nblk,1)];
-        ii     = 1;
+        [data,symbol,index] = preallocateContainters(opt);
+        ii                  = 0;
     end
 end
+end
 
-% LAST iteration exits without saving
-[symbol,index,data] = consolidateDataset(symbol,index,data);
-matnum              = matnum+1;
-datafname           = fullfile(outdir, sprintf([opt.Fmt '.mat'],matnum));
-idxfname            = fullfile(outdir, sprintf([opt.Fmt '.idx'],matnum));
-save(datafname,'data','-v7.3')
-save(idxfname ,'index','symbol','-v6')
-fprintf('%-40s%s\n',sprintf([opt.Fmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
+% Imports block of data from csv
+function [data, symbol, index, resdata, opt] = importBlock(fid,iter,opt,resdata)
+
+%    1       2       3-5       6       7        8           9           10          11
+% ticker | date | hh:mm:ss | price | size | G127 rule | correction | condition | exchange
+fmt  = '%s%u32%u8:%u8:%u8%f32%u32%u16%u16%s%c';
+data = textscan(fid, fmt, opt.Nrec,opt.Scan{:});
+
+% For debugging
+opt.Offset = ftell(fid);
+
+% Preallocate empty residual
+if ~isempty(resdata)
+    data            = cellfun(@(res,d) [res;d], resdata,data,'un',0);
+    [~,~,~,resdata] = preallocateContainters(opt);
+end
+
+% Determine residual data that goes into next bulk import
+if iter >= opt.Nblk
+
+    % Ensure the whole day is within one mat file
+    % Start of last date
+    from = find(diff(data{2}),1,'last')+1;
+
+    % Day might not have ended yet (whole bulk import has
+    % one date only). Use start of last symbol
+    if isempty(from)
+        [~,~,subs] = unique(data{1});
+        from       = find(diff(subs),1,'last')+1;
+    end
+
+    % If still empty, import more data
+    if isempty(from)
+        [data, symbol, index, resdata, opt] = importBlock(fid,iter+1,opt, data);
+        return
+        % Defer chunk with last change of date into next bulk import
+        % Note: even if last row is a new date, defer it. We don't
+        %       know if that is the last row for that date.
+    else
+        resdata = arrayfun(@(x) data{x}(from:end,:), 1:11,'un',0);
+        data    = arrayfun(@(x) data{x}(1:from-1,:), 1:11,'un',0);
+    end
+end
+[symbol,index,data] = processDataset(data);
 end
 
 % Process parsed blocks from .csv
@@ -149,7 +141,7 @@ function [tck,index,data] = processDataset(data)
 nrecords        = size(data{1},1);
 % Unique pairs id-date
 [tck,~,id]      = unique(data{1});
-[iddate,~,subs] = unique([id data{2}],'rows');
+[iddate,~,subs] = unique([id data{2}],'rows','stable');
 
 % Starting positions in data
 frompos = [0; find(diff(subs))]+1;
@@ -212,6 +204,28 @@ index         = index(pos,:);
 index         = sortrows(index,'From');
 end
 
+% Saves .mat and .idx
+function matnum = saveFiles(outdir, matnum, opt, symbol, index, data)
+matnum = matnum+1;
+
+datafname = fullfile(outdir, sprintf([opt.FilenameFmt '.mat'],matnum));
+save(datafname,'data','-v7.3')
+
+idxfname = fullfile(outdir, sprintf([opt.FilenameFmt '.idx'],matnum));
+save(idxfname ,'index','symbol','-v6')
+
+fprintf('%-40s%s\n',sprintf([opt.FilenameFmt '.mat'],matnum),datestr(now,'dd HH:MM:SS'))
+end
+
+% Preallocations
+function [data,symb,idx,rdata] = preallocateContainters(opt)
+data  = cell(opt.Nblk,11);
+symb  = cell(opt.Nblk,1);
+idx   = cell(opt.Nblk,1);
+rdata = cell(0,11);
+end
+
+% Fid and unzipped cleanup
 function finallyCleanup(fid, csvfilename)
 fclose(fid);
 pause(0.5);
