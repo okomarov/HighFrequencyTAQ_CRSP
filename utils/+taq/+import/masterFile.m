@@ -27,7 +27,7 @@ if opt.UseTextscan
     tmp   = textscan(fid, opt.ImportFmt,opt.ImportOther{:});
 
     % Conversions
-    tmp{1}       = cellstr(tmp{1});
+    tmp(1:3)     = cellfun(@(x) cellstr(x), tmp(1:3),'un',0);
     tmp(4:12)    = cellfun(@(x) logical(x-'0'),tmp(4:12),'un',0);
     tmp{14}      = str2num(tmp{14});
     tmp([15,18]) = cellfun(@(x) uint32(str2num(x)),tmp([15,18]),'un',0);
@@ -35,7 +35,7 @@ if opt.UseTextscan
 
     tb = table(tmp{:},'VariableNames', opt.VarNames);
 
-% CSVs    
+    % CSVs
 else
     tb = readtable(fname, 'Format',opt.ImportFmt, opt.ImportOther{:});
 
@@ -46,7 +46,7 @@ else
     tb = convertColumn(tb, 'logical', {'ETN','ETA','ETB','ETP','ETX','ETT','ETO','ETW','ITS'});
     tb = convertColumn(tb, 'int8', 'TYPE');
     tb = convertColumn(tb, 'uint32', {'FDATE','UOT'});
-    tb = convertColumn(tb, 'char', {'NAME','CUSIP','ICODE','DENOM'});
+    tb = convertColumn(tb, 'char', {'ICODE','DENOM'});
 end
 end
 
@@ -59,28 +59,46 @@ tb            = cache2cell(tb,subs);
 
 for ii = 1:numel(symb)
     fname = fullfile(outdir,sprintf([PREFIX '%s'],symb{ii}));
+
+    % Add new records with new dates
     try
-
-        % Add new records with new dates
-        s    = load(fname,'-mat');
-        iold = ismember(tb{ii}.FDATE, s.mst.FDATE);
-        if all(iold)
-            continue
-        end
-        mst = [s.mst; tb{ii}(~iold,:)];
-
-        % Sort by CUSIP/DEN and FDATE
-        [~,~,mst.Id] = unique(mst(:,{'CUSIP','DENOM'}));
-        [~,isort]    = sort(uint56(Id*1e8) + uint64(mst.FDATE));
-        mst          = mst(isort,:);
-
-        % Keep unique records with earliest date
-        idx    = isfeatchange(mst(:,[end,2,4:end-1]),[1,3:11,13,14,16,17]);
-        mst    = mst(idx,:);
-        mst.Id = [];
+        mst = loadMst(fname);
     catch
-        mst = tb{ii};
+        saveMst(fname,tb{ii})
+        continue
     end
-    save(fname,'mst','-mat','-v6')
+
+    iold = ismember(tb{ii}.FDATE, mst.FDATE);
+    if all(iold)
+        continue
+    end
+    mst = [mst; tb{ii}(~iold,:)];
+
+    % Sort by CUSIP/DEN and FDATE
+    [~,~,mst.Id] = unique(mst(:,{'CUSIP','DENOM'}));
+    [~,isort]    = sort(uint64(mst.Id*1e8) + uint64(mst.FDATE));
+    mst          = mst(isort,:);
+
+    % Keep unique records with earliest date
+    idx    = isfeatchange(mst(:,[end,2,4:end-1]),[1,3:11,13,14,16,17]);
+    mst    = mst(idx,:);
+    mst.Id = [];
+
+    saveMst(fname,mst)
 end
+end
+
+function mst = loadMst(fname)
+s          = load(fname,'-mat');
+mst        = s.(char(fieldnames(s)));
+mst.SYMBOL = cellstr(mst.SYMBOL);
+mst.NAME   = cellstr(mst.NAME);
+mst.CUSIP  = cellstr(mst.CUSIP);
+end
+
+function saveMst(fname,mst)
+mst.SYMBOL = char(mst.SYMBOL);
+mst.NAME   = char(mst.NAME);
+mst.CUSIP  = char(mst.CUSIP);
+save(fname,'mst','-mat','-v6')
 end
