@@ -271,15 +271,14 @@ for ii = 1:nspy
     spy{ii} = [spytime,spyprice];
 end
 
-res          = cached(:,{'Permno','Date'});
-res.Num(:,1) = NaN;
-res.Den(:,1) = NaN;
+res = cached(:,{'Permno','Date'});
+[Num, Den] = deal(NaN(nmst,1));
 
 for ii = 1:nmst
     idx = s.mst.Date(ii) == spydates;
     if ~iempty(ii) && res.Permno(ii) ~= 0 && any(idx)
 
-        [ia,ispy] = sample_refresh(price{ii}(:,1), spy{idx}(:,1));
+        [ia,ispy] = sample_refresh(price{ii}(:,1), spy{idx}(:,1),opt.MinRefreshStep);
 
         % returns
         ret    = diff(log(price{ii}(ia,2)));
@@ -290,11 +289,12 @@ for ii = 1:nmst
             retspy = [spymst.RetCO(idx); retspy];
         end
 
-        res.Num(ii,1) = sum(ret.*retspy);
-        res.Den(ii,1) = sum(retspy.*retspy);
+        Num(ii) = sum(ret.*retspy);
+        Den(ii) = sum(retspy.*retspy);
     end
 end
-
+res.Num = Num;
+res.Den = Den;
 end
 
 % Sampling
