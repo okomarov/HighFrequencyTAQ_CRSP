@@ -1,7 +1,9 @@
 function makeIndexFiles(path2idx)
-% MAKEINDEXFILES Groups all index records from single *.mat files into one index table
+% MAKEINDEXFILES Groups all index records from single *.idx files into one index table
 
-% Read .mat filenames
+PREFIX_INDEX = 'index_';
+
+% Read .idx filenames
 d = dir(fullfile(path2idx,'*.idx'));
 
 % Preallocate
@@ -18,7 +20,6 @@ for f = 1:nfiles
 
     % Date-file index
     indexDate = mapList(indexDate, unique(s.index.Date), f);
-
 end
 
 % Drop excess pre-allocation
@@ -30,9 +31,9 @@ symbol = containers.Map(upper(indexSymb.Universe), indexSymb.FileList);
 id     = containers.Map(uint32(1:numel(indexSymb.Universe)), indexSymb.FileList);
 date   = containers.Map(indexDate.Universe, indexDate.FileList);
 
-save(fullfile(path2idx,'index_symbol'),'symbol','-v6','-mat')
-save(fullfile(path2idx,'index_id')  ,'id','-v6','-mat')
-save(fullfile(path2idx,'index_date')  ,'date','-v6','-mat')
+save(fullfile(path2idx,[PREFIX_INDEX, 'symbol']),'symbol','-v6','-mat')
+save(fullfile(path2idx,[PREFIX_INDEX, 'id'])    ,'id'    ,'-v6','-mat')
+save(fullfile(path2idx,[PREFIX_INDEX, 'date'])  ,'date'  ,'-v6','-mat')
 end
 
 function s = mapList(s, records, f)

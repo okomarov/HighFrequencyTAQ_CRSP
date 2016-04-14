@@ -1,5 +1,7 @@
 function masterFile(fname, outdir, opt)
 
+PREFIX_MASTER = 's_';
+
 % Default case with CSVs
 if nargin < 3
     opt.UseTextscan = false;
@@ -12,7 +14,7 @@ if isempty(tb.DENOM)
     tb.DENOM = repmat(' ', size(tb,1),1);
 end
 
-recordsAdd(tb,outdir);
+recordsAdd(tb,outdir,PREFIX_MASTER);
 end
 
 % Import master file into a table
@@ -49,14 +51,14 @@ end
 end
 
 % Add master records to symbol-specific master files
-function tb = recordsAdd(tb, outdir)
+function tb = recordsAdd(tb, outdir, PREFIX)
 
 % Group records by symbol
 [symb,~,subs] = unique(tb.SYMBOL);
 tb            = cache2cell(tb,subs);
 
 for ii = 1:numel(symb)
-    fname = fullfile(outdir,sprintf('s_%s',symb{ii}));
+    fname = fullfile(outdir,sprintf([PREFIX '%s'],symb{ii}));
     try
 
         % Add new records with new dates

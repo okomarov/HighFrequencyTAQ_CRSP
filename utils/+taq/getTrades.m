@@ -180,8 +180,10 @@ end
 function map = getRelevantIndexMap(type,path2data)
 % Load the maps that associate ID/DATE with list of files
 
+PREFIX_INDEX = 'index_';
+
 if any(strcmpi(type, {'symbol','id','permno','date'}))
-    indexname = fullfile(path2data, sprintf('index_%s',type));
+    indexname = fullfile(path2data, sprintf([PREFIX_INDEX '%s'],type));
     s         = load(indexname,'-mat');
     map       = s.(type);
 else
