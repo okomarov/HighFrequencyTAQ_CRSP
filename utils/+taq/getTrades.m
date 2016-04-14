@@ -65,28 +65,28 @@ for ii = 1:nfiles
     end
 
     % Load data and index
-    [index,symbol] = getIndexRecords(fullfile(path2data, idx_name), idtype, id, dttype, date);
-    if isempty(index)
+    [idx_records,symbols] = getIndexRecords(fullfile(path2data, idx_name), idtype, id, dttype, date);
+    if isempty(idx_records)
         continue
     end
     load(fullfile(path2data, mat_name));
 
     % Select data
-    idata = mcolonint(index.From,index.To);
+    idata = mcolonint(idx_records.From,idx_records.To);
     data  = data(idata,:);
 
-    % Add numeric id to symbol
-    blocks = double(index.To - index.From + 1);
+    % Map searched symbols to a numeric id
+    blocks = double(idx_records.To - idx_records.From + 1);
     if strcmpi(idtype,'Symbol')
-        [~,pos]      = ismember(symbol(index.Id), id);
-        data.Id(:,1) = uint32(RunLength(pos, blocks));
+        [~,pos]         = ismember(symbols(idx_records.Id), id);
+        data.Idnum(:,1) = uint32(RunLength(pos, blocks));
     end
 
     % Add date
     try
         data.Date(1);
     catch
-        data.Date(:,1) = uint32(RunLength(index.Date, blocks));
+        data.Date(:,1) = uint32(RunLength(idx_records.Date, blocks));
     end
 
     out{ii} = data(:,[end-1:end,1:end-2]);
@@ -121,55 +121,41 @@ function [files,date,dttype] = filterFilesByDate(date,path2data)
 % Select the files that contain the queried DATEs
 
 date2files = getRelevantIndexMap('date',path2data);
-szDate     = size(date);
-iinf       = isinf(date);
+dttype     = getDateType(date);
 
-% [inf, inf] case
-if isrow(date) && szDate(2) == 2 && all(iinf)
-    date = inf;
-end
-% Inf case
-if isscalar(date) && iinf
-    dttype = 'all';
-    files  = date2files.values;
-    files  = unique([files{:}]);
-    return
-end
+switch dttype
+    case 'scalar'
+        iskey = date2files.isKey(date);
+        if iskey
+            dates = {date};
+        else
+            dates = {};
+        end
 
-% Single date
-if isscalar(date)
-    dttype = 'scalar';
-    dates  = {date};
+    case 'all'
+        files = date2files.values;
+        files = unique([files{:}]);
+        return
 
-% [from, to]
-elseif szDate(2) == 2 && all(~iinf)
-    dttype = 'fromto';
-    dates  = num2cell(date(1):date(2));
-    dates  = dates(date2files.isKey(dates));
+    case 'ge'
+        dates  = date2files.keys;
+        idx    = [dates{:}] >= date(1);
+        dates  = dates(idx);
 
-% [inf, to] or [from, inf] cases
-elseif szDate(2) == 2 && any(iinf)
-    keys  = date2files.keys;
-    keys  = [keys{:}];
-    files = date2files.values;
+    case 'le'
+        dates  = date2files.keys;
+        idx    = [dates{:}] <= date(1);
+        dates  = dates(idx);
 
-    if iinf(1)
-        dttype = 'le';
-        files  = files(keys <= date(2));
-    elseif iinf(2)
-        dttype = 'ge';
-        files  = files(keys >= date(1));
-    end
-    files = unique([files{:}]);
+    case 'fromto'
+        dates = num2cell(date(1):date(2));
+        iskey = date2files.isKey(dates);
+        dates = dates(iskey);
 
-    return
-
-% Column of dates
-elseif szDate(2) == 1
-    dttype = 'set';
-    dates  = num2cell(date);
-else
-    error('DATE cannot have more than 2 columns.')
+    case 'set'
+        dates = num2cell(date);
+        iskey = date2files.isKey(dates);
+        dates = dates(iskey);
 end
 
 % Retrieve file list
