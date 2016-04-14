@@ -89,7 +89,7 @@ for ii = 1:nfiles
         data.Date(:,1) = uint32(RunLength(index.Date, blocks));
     end
 
-    out{ii} = data;
+    out{ii} = data(:,[end-1:end,1:end-2]);
 
     % Update waitbar
     if updatebar
