@@ -19,7 +19,7 @@ outdir       = fullfile(rootfolder,'master');
 
 % Manual CSV
 % ==========
-fprintf('Unzipping manual .csv files\n')
+fprintf('Processing manual .csv files\n')
 list   = unzip(fullfile(masterfolder,'TAQmast.csv.zip'),tempdir());
 list   = sort(list);
 % Due to a change in FDATE as per TAQ readme.txt which screwed the field,exclude 2000/02 and 2000/03 master files
@@ -27,15 +27,16 @@ idx    = cellfun('isempty', regexp(list,'(mst200002|mst200003)','once'));
 delete(list{~idx})
 list   = list(idx);
 nfiles = numel(list);
+cleanup = onCleanup(@() delete(list{:}));
 
 for ii = 1:nfiles
+    disp(ii/nfiles*100)
     taq.import.masterFile(list{ii}, outdir)
 end
-delete(list{:})
 
 % Manual TAB
 % ==========
-fprintf('Unzipping .tab files\n')
+fprintf('Processing .tab files\n')
 list   = unzip(fullfile(masterfolder,'TAQmast.tab.zip'),tempdir());
 list   = sort(list);
 
@@ -44,6 +45,7 @@ idx    = ~cellfun('isempty', regexp(list,'2010','once'));
 delete(list{~idx})
 list   = list(idx);
 nfiles = numel(list);
+cleanup = onCleanup(@() delete(list{:}));
 
 opt.UseTextscan = true;
 opt.ImportFmt   = '%10c %30c %12c %c%c%c %*2c %c%c%c%c%c %c %4c %10c %4c %c %c %8c %*[^\n]';
@@ -51,21 +53,21 @@ opt.VarNames    = {'SYMBOL','NAME','CUSIP','ETN','ETA','ETB','ETP','ETX','ETT','
 opt.ImportOther = {'Whitespace',''};
 
 for ii = 1:nfiles
-    disp(ii)
+    disp(ii/nfiles*100)
     taq.import.masterFile(list{ii}, outdir, opt)
 end
-delete(list{:})
 
 % Automated CSV
 % =============
+fprintf('Processing automated .csv files\n')
 ziplist = dir(fullfile(masterfolder,'MAST_*.zip'));
 ziplist = sort(fullfile(masterfolder,{ziplist.name}))';
 nfiles  = numel(ziplist);
 
 for ii = 1:nfiles
-    disp(ii)
+    disp(ii/nfiles*100)
     fname = unzip(ziplist{ii},tempdir());
+    cleanup = onCleanup(@() delete(fname{1}));
     taq.import.masterFile(fname{1}, outdir)
-    delete(fname{1})
 end
 end
