@@ -1,12 +1,14 @@
 function dttype = getDateType(date)
 % GETDATETYPE Parse date input and return its type
 %
-% See also: validateDate
-
-validateDate(date);
+% See also: isYYYYMMDD
 
 sz   = size(date);
 iinf = isinf(date);
+
+if ~(isYYYYMMDD(date) | iinf)
+    error('taq:getDateType:invalidDate','DATE should be in YYYYMMDD format.')
+end
 
 % [inf, inf] case
 if isrow(date) && sz(2) == 2 && all(iinf)
