@@ -29,7 +29,7 @@ list   = list(idx);
 nfiles = numel(list);
 
 for ii = 1:nfiles
-    taq.import.masterCSV(list{ii}, outdir)
+    taq.import.masterFile(list{ii}, outdir)
 end
 delete(list{:})
 
@@ -52,7 +52,7 @@ opt.ImportOther = {'Whitespace',''};
 
 for ii = 1:nfiles
     disp(ii)
-    taq.import.masterCSV(list{ii}, outdir, opt)
+    taq.import.masterFile(list{ii}, outdir, opt)
 end
 delete(list{:})
 
@@ -65,7 +65,7 @@ nfiles  = numel(ziplist);
 for ii = 1:nfiles
     disp(ii)
     fname = unzip(ziplist{ii},tempdir());
-    taq.import.masterCSV(fname{1}, outdir)
+    taq.import.masterFile(fname{1}, outdir)
     delete(fname{1})
 end
 end
