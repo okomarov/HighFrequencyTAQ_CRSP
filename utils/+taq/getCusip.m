@@ -26,8 +26,10 @@ switch dttype
         [~,isort] = sort(mst.FDATE);
         mst       = mst(isort,:);
 
-        [~,~,bin] = histcounts(date, [mst.FDATE; inf]);
-        cusip     = mst.CUSIP(bin,1:8);
+        [~,~,bin]    = histcounts(date, [mst.FDATE; inf]);
+        cusip        = repmat(' ',size(date,1),8);
+        idx          = bin ~= 0;
+        cusip(idx,:) = mst.CUSIP(bin(idx),1:8);
 
     otherwise
         error('taq:getCusip:invalidDateType','Only scalar or a set of yyyymmdd dates are accepted.')
