@@ -9,7 +9,7 @@ d = dir(fullfile(path2idx,'*.idx'));
 % Preallocate
 nfiles = numel(d);
 
-[indexSymb, indexDate] = preallocate(nfiles);
+[indexSymb, indexDate, indexPermno] = preallocate(nfiles);
 
 for f = 1:nfiles
     disp(f/nfiles*100)
@@ -20,20 +20,26 @@ for f = 1:nfiles
 
     % Date-file index
     indexDate = mapList(indexDate, unique(s.index.Date), f);
+
+    % Permno-file index
+    indexPermno = mapList(indexPermno, unique(s.index.Permno), f);
 end
 
 % Drop excess pre-allocation
-indexSymb = dropEmptyPreallocated(indexSymb);
-indexDate = dropEmptyPreallocated(indexDate);
+indexSymb   = dropEmptyPreallocated(indexSymb);
+indexDate   = dropEmptyPreallocated(indexDate);
+indexPermno = dropEmptyPreallocated(indexPermno);
 
 % Organize in containers
 symbol = containers.Map(upper(indexSymb.Universe), indexSymb.FileList);
 id     = containers.Map(uint32(1:numel(indexSymb.Universe)), indexSymb.FileList);
 date   = containers.Map(indexDate.Universe, indexDate.FileList);
+permno = containers.Map(indexPermno.Universe, indexPermno.FileList);
 
 save(fullfile(path2idx,[PREFIX_INDEX, 'symbol']),'symbol','-v6','-mat')
 save(fullfile(path2idx,[PREFIX_INDEX, 'id'])    ,'id'    ,'-v6','-mat')
 save(fullfile(path2idx,[PREFIX_INDEX, 'date'])  ,'date'  ,'-v6','-mat')
+save(fullfile(path2idx,[PREFIX_INDEX, 'permno']),'permno','-v6','-mat')
 end
 
 function s = mapList(s, records, f)
@@ -79,7 +85,7 @@ if any(~imember)
 end
 end
 
-function [s1,s2] = preallocate(nfiles)
+function [s1,s2,s3] = preallocate(nfiles)
 fileClass           = 'uint16';
 % Symbol
 N                   = 4e4;
@@ -91,6 +97,11 @@ N                   = 1e4;
 s2.Universe         = zeros(N,1,'uint32');
 s2.FileList         = repmat({zeros(1,nfiles,fileClass)},N,1);
 s2.FirstEmptyInList = ones(N,1,fileClass);
+% Permno
+N                   = 4e4;
+s3.Universe         = zeros(N,1,'uint32');
+s3.FileList         = repmat({zeros(1,nfiles,fileClass)},N,1);
+s3.FirstEmptyInList = ones(N,1,fileClass);
 end
 
 function s = dropEmptyPreallocated(s)

@@ -86,6 +86,12 @@ matnum = taq.import.splitMatTrades(tmpmat,matfolder,[],matnum);
 folder = fullfile(rootfolder,'raw', 'automated');
 taq.import.tradesCSV(folder,matfolder,false, matnum);
 
+%% Add permno
+taq.import.addPermnoToIndexFiles(matfolder)
+
+%% Overall index files
+taq.import.makeIndexFiles(matfolder)
+
 %% Checks
 testfolder = fullfile(rootfolder,'test');
 taq.import.runAllChecks(matfolder,testfolder);
