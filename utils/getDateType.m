@@ -1,13 +1,21 @@
 function dttype = getDateType(date)
 % GETDATETYPE Parse date input and return its type
 %
+%   DATE can be:
+%       date               - 'scalar' numeric date in yyyymmdd format
+%       inf (or [inf,inf]) - 'all' dates
+%       [inf date]         - 'le', i.e. takes all dates up to a threshold (<= date)
+%       [date inf]         - 'ge', takes all dates after a threshold i.e. >= date
+%       [date  date]       - 'fromto', i.e. takes all dates in between
+%       [date; date; ...]  - 'set', i.e. only the specified dates
+%
 % See also: isYYYYMMDD
 
 sz   = size(date);
 iinf = isinf(date);
 
 if ~(isYYYYMMDD(date) | iinf)
-    error('taq:getDateType:invalidDate','DATE should be in YYYYMMDD format.')
+    error('getDateType:invalidDate','DATE should be in YYYYMMDD format.')
 end
 
 % [inf, inf] case
