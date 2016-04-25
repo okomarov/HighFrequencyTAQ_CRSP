@@ -56,7 +56,7 @@ for f = 1:numel(filenames)
     while ~feof(fid)
         while ii < opt.Nblk
             try
-                ii                                                = ii + 1;
+                ii = ii + 1;
                 [data(ii,:), symbol{ii}, index{ii}, resdata, opt] = importBlock(fid,ii,opt,resdata);
 
                 unzipNewFile = feof(fid) && ii < fix(opt.Nblk * 0.8);
@@ -87,6 +87,10 @@ for f = 1:numel(filenames)
         [data,symbol,index] = preallocateContainters(opt);
         ii                  = 0;
     end
+end
+if ~isempty(data)
+    [symbol,index,data] = consolidateDataset(symbol,index,data);
+    matnum = saveFiles(outdir,matnum,opt,symbol,index,data);
 end
 end
 
