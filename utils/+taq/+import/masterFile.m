@@ -10,9 +10,6 @@ if nargin < 3
 end
 
 tb = importTable(fname,opt);
-if isempty(tb.DENOM)
-    tb.DENOM = repmat(' ', size(tb,1),1);
-end
 
 recordsAdd(tb,outdir,PREFIX_MASTER);
 end
@@ -20,34 +17,49 @@ end
 % Import master file into a table
 function tb = importTable(fname,opt)
 
-% Fixed-length .TAB files
 if opt.UseTextscan
-    fid   = fopen(fname);
-    clean = onCleanup(@() fclose(fid));
-    tmp   = textscan(fid, opt.ImportFmt,opt.ImportOther{:});
-
-    % Conversions
-    tmp(1:3)     = cellfun(@(x) cellstr(x), tmp(1:3),'un',0);
-    tmp(4:12)    = cellfun(@(x) logical(x-'0'),tmp(4:12),'un',0);
-    tmp{14}      = str2num(tmp{14});
-    tmp([15,18]) = cellfun(@(x) uint32(str2num(x)),tmp([15,18]),'un',0);
-    tmp{17}      = uint8(tmp{17}-'0');
-
-    tb = table(tmp{:},'VariableNames', opt.VarNames);
-
-    % CSVs
+    tb = importTableText(fname,opt);
 else
-    tb = readtable(fname, 'Format',opt.ImportFmt, opt.ImportOther{:});
-
-    % Eventually rename DATEF to FDATE (in some files it changes)
-    tb.Properties.VariableNames = regexprep(tb.Properties.VariableNames,'(?i)datef','FDATE');
-
-    % Conversions
-    tb = convertColumn(tb, 'logical', {'ETN','ETA','ETB','ETP','ETX','ETT','ETO','ETW','ITS'});
-    tb = convertColumn(tb, 'int8', 'TYPE');
-    tb = convertColumn(tb, 'uint32', {'FDATE','UOT'});
-    tb = convertColumn(tb, 'char', {'ICODE','DENOM'});
+    tb = importTableCsv(fname,opt);
 end
+
+% Fill with empty to avoid cat errors
+if isempty(tb.DENOM)
+    tb.DENOM = repmat(' ', size(tb,1),1);
+end
+iempty           = cellfun('isempty',tb.NAME);
+tb.NAME(iempty)  = {' '};
+iempty           = cellfun('isempty',tb.CUSIP);
+tb.CUSIP(iempty) = {' '};
+end
+
+function tb = importTableText(fname,opt)
+% Textscan
+fid   = fopen(fname);
+clean = onCleanup(@() fclose(fid));
+tb    = textscan(fid, opt.ImportFmt,opt.ImportOther{:});
+
+% Conversions
+tb(1:3)     = cellfun(@(x) cellstr(x), tb(1:3),'un',0);
+tb(4:12)    = cellfun(@(x) logical(x-'0'),tb(4:12),'un',0);
+tb{14}      = str2num(tb{14});
+tb([15,18]) = cellfun(@(x) uint32(str2num(x)),tb([15,18]),'un',0);
+tb{17}      = uint8(tb{17}-'0');
+
+tb = table(tb{:},'VariableNames', opt.VarNames);
+end
+
+function tb = importTableCsv(fname,opt)
+tb = readtable(fname, 'Format',opt.ImportFmt, opt.ImportOther{:});
+
+% Eventually rename DATEF to FDATE (in some files it changes)
+tb.Properties.VariableNames = regexprep(tb.Properties.VariableNames,'(?i)datef','FDATE');
+
+% Conversions
+tb = convertColumn(tb, 'logical', {'ETN','ETA','ETB','ETP','ETX','ETT','ETO','ETW','ITS'});
+tb = convertColumn(tb, 'int8', 'TYPE');
+tb = convertColumn(tb, 'uint32', {'FDATE','UOT'});
+tb = convertColumn(tb, 'char', {'ICODE','DENOM'});
 end
 
 % Add master records to symbol-specific master files
@@ -72,19 +84,21 @@ for ii = 1:numel(symb)
     if all(iold)
         continue
     end
-    mst = [mst; tb{ii}(~iold,:)];
+    newMst = [mst; tb{ii}(~iold,:)];
 
     % Sort by CUSIP/DEN and FDATE
-    [~,~,mst.Id] = unique(mst(:,{'CUSIP','DENOM'}));
-    [~,isort]    = sort(uint64(mst.Id*1e8) + uint64(mst.FDATE));
-    mst          = mst(isort,:);
+    [~,~,newMst.Id] = unique(newMst(:,{'CUSIP','DENOM'}));
+    [~,isort]       = sort(uint64(newMst.Id*1e8) + uint64(newMst.FDATE));
+    newMst          = newMst(isort,:);
 
     % Keep unique records with earliest date
-    idx    = isfeatchange(mst(:,[end,2,4:end-1]),[1,3:11,13,14,16,17]);
-    mst    = mst(idx,:);
-    mst.Id = [];
+    idx       = isfeatchange(newMst(:,[end,2,4:end-1]),[1,3:11,13,14,16,17]);
+    newMst    = newMst(idx,:);
+    newMst.Id = [];
 
-    saveMst(fname,mst)
+    if ~isequal(newMst, mst)
+        saveMst(fname,newMst)
+    end
 end
 end
 
