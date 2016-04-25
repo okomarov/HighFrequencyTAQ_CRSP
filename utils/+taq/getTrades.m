@@ -107,7 +107,7 @@ if isempty(id)
     files = [];
     iskey = [];
 else
-    id2files = getRelevantIndexMap(idtype,path2data);
+    id2files = getIndexMap(idtype,path2data);
     if strcmpi(idtype,'symbol')
         id = upper(id);
     end
@@ -120,7 +120,7 @@ end
 function [files,date,dttype] = filterFilesByDate(date,path2data)
 % Select the files that contain the queried DATEs
 
-date2files = getRelevantIndexMap('date',path2data);
+date2files = getIndexMap('date',path2data);
 dttype     = getDateType(date);
 
 switch dttype
@@ -163,7 +163,7 @@ files = values(date2files, dates);
 files = unique([files{:}]);
 end
 
-function map = getRelevantIndexMap(type,path2data)
+function map = getIndexMap(type,path2data)
 % Load the maps that associate ID/DATE with list of files
 
 PREFIX_INDEX = 'index_';
