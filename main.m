@@ -154,3 +154,8 @@ set(gcf, 'Position', get(gcf,'Position').*[1,1,1,0.62],'PaperPositionMode','auto
 plot(plotdts, maxcount)
 set(gca,'TickLabelInterpreter','latex')
 print('countMaxTradeSec','-depsc','-r200')
+
+%% Sample first and last
+BAD_MULTIPLIER = 2;
+mst = prepareMst();
+Analyze('sampleFirstLast',[],mst,[],[],[],BAD_MULTIPLIER);
