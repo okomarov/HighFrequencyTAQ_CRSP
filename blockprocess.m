@@ -79,8 +79,8 @@ catch err
     end
     rethrow(err)
 end
-if ~debug
-    delete(gcp('nocreate'))
-    %     rmpref('Internet','SMTP_Password')
-end
+% if ~debug
+%     delete(gcp('nocreate'))
+%     %     rmpref('Internet','SMTP_Password')
+% end
 end
