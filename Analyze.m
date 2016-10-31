@@ -350,6 +350,10 @@ nfile  = cached{end};
 cached = cached{1};
 res    = [];
 
+if ~isfield(opt,'inclusion')
+    opt.inclusion = '[)';
+end
+
 [price, times, vol] = samplePrepare_(s,cached,opt);
 
 if ~isempty(price)
@@ -361,7 +365,7 @@ if ~isempty(price)
     col    = zeros(size(row));
     nedges = size(opt.edgesVWAP,1);
     for r = 1:nedges
-        idx      = in(hhmmss, opt.edgesVWAP(r,:));
+        idx      = in(hhmmss, opt.edgesVWAP(r,:),opt.inclusion);
         col(idx) = r;
     end
     subs = [row, col];
