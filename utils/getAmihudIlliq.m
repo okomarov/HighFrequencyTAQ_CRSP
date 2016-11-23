@@ -1,4 +1,4 @@
-function [out,unId,unDt] = getAmihudIlliq(id, dt, prc, ret, vol, n)
+function [out,unId,mdate] = getAmihudIlliq(id, dt, prc, ret, vol, n)
 % GETAMIHUDILLIQ Estimate the end-of-month (log) Amihud illiquidity measure
 %
 %   Ranks from liquid (smaller values) to illiquid (bigger values)
