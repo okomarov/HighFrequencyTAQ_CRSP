@@ -33,6 +33,7 @@ fhandles = {@medianprice
     @countPerTimeBucket
     @sample
     @sampleFirstLast
+    @rvcomponents
     @betacomponents_refresh
     @betacomponents_preav
     @VWAP
@@ -90,9 +91,9 @@ change = [0; abs(diff(double(s.data.Price)))];
 inan   = inan | change < 0.01;
 
 % Estimate of tick size
-res           = cached(:,{'Id','Permno','Date'});
-res.MinChange = accumarray(subs(~inan), change(~inan),[nmst,1], @min);
-inanout       = accumarray(subs(~inan),1) == 0;
+res                    = cached(:,{'Id','Permno','Date'});
+res.MinChange          = accumarray(subs(~inan), change(~inan),[nmst,1], @min);
+inanout                = accumarray(subs(~inan),1) == 0;
 res.MinChange(inanout) = NaN;
 end
 
@@ -262,6 +263,40 @@ if ~all(ibad)
 end
 end
 
+function res = rvcomponents(s,cached,opt)
+
+% Dates and returns
+dates = s.data.Datetime;
+ret   = [NaN; diff(log(s.data.Price))];
+idx   = [false; diff(rem(dates,1)) >= 0];
+
+% Use overnight
+if opt.USE_OVERNIGHT
+    onret     = cached{1};
+    [~,pos]   = ismembIdDate(s.mst.Permno, s.mst.Date, onret.Permno, onret.Date);
+    ret(~idx) = onret.RetCO(pos);
+else
+    % Keep all except overnight
+    ret(~idx) = NaN;
+end
+
+% Number of observations per day
+nobs = double(s.mst.To - s.mst.From + 1);
+nmst = size(s.mst,1);
+subs = RunLength((1:nmst)', nobs);
+
+% Filter out NaNs
+ikeep = ~isnan(ret);
+subs  = subs(ikeep);
+ret   = ret(ikeep);
+
+% RV, sum and count
+res    = s.mst(:,{'Permno','Date'});
+res.RV = accumarray(subs, ret.^2,[nmst,1],[],NaN);
+res.Sx = accumarray(subs, ret   ,[nmst,1],[],NaN);
+res.N  = uint8(accumarray(subs,      1,[nmst,1],[],NaN));
+end
+
 function res = betacomponents_refresh(s,cached,opt)
 spydates = cached{2};
 spymst   = cached{3};
@@ -275,7 +310,7 @@ iempty         = cellfun('isempty',price);
 
 spy = getSpy_(spymst,opt.TimestampConsolidation);
 
-res = cached(:,{'Permno','Date'});
+res        = cached(:,{'Permno','Date'});
 [Num, Den] = deal(NaN(nmst,1));
 
 for ii = 1:nmst
@@ -314,7 +349,7 @@ iempty         = cellfun('isempty',price);
 
 spy = getSpy_(spymst,opt.TimestampConsolidation);
 
-res = cached(:,{'Permno','Date'});
+res        = cached(:,{'Permno','Date'});
 [Num, Den] = deal(NaN(nmst,1));
 
 for ii = 1:nmst
