@@ -179,8 +179,9 @@ for r = 1:size(ranges,1)
 end
 
 % minute
-ranges = serial2hhmmss(datenum(0,0,0,9,30:5:450,0)');
+ranges = serial2hhmmss(datenum(0,0,0,9,30:5:420,0)');
 ranges = [ranges(1:end-1), ranges(2:end)];
+ranges = [930,935; 1155,1200; 1255,1300; 1305,1310; 1330,1335; 1525,1530; 1555,1600]*100;
 
 for r = 1:size(ranges,1)
     opt           = struct('edgesVWAP',ranges(r,:),'BadPriceMultiplier',BAD_MULTIPLIER);
