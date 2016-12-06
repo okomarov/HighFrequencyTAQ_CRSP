@@ -191,3 +191,13 @@ for r = 1:size(ranges,1)
     newName = fullfile('results', 'vwap', regexprep(filename, '.mat', sprintf('_5_%d.mat',ranges(r,1))));
     movefile(oldName,newName)
 end
+%% Min tick size
+try
+    res = loadresults('minTickSize');
+catch
+    mst = prepareMst();
+    res = Analyze('minTickSize',[],mst);
+end
+
+%% RV components
+rv = estimateRVcomponents(5,false);

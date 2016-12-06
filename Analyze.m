@@ -39,7 +39,8 @@ fhandles = {@medianprice
     @sampleSpy
     @testLoadSpeed
     @maxRecordsPerSec
-    @countNonNullRet};
+    @countNonNullRet
+    @minTickSize};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -69,6 +70,30 @@ idx                  = cached.MedPrice == 0;
 cached.MedPrice(idx) = NaN;
 
 res = cached;
+end
+
+function res = minTickSize(s,cached)
+cached = cached{1};
+inan   = isInvalidTrade(s.data);
+
+% Daily accumulation
+nobs = double(s.mst.To - s.mst.From + 1);
+nmst = size(cached,1);
+subs = int32(RunLength((1:nmst)',nobs));
+
+% NaN overnight/overlap
+iovernight = [true; subs(2:end) - subs(1:end-1) ~= 0];
+inan       = inan | iovernight;
+
+% Exclude changes below 0.01
+change = [0; abs(diff(double(s.data.Price)))];
+inan   = inan | change < 0.01;
+
+% Estimate of tick size
+res           = cached(:,{'Id','Permno','Date'});
+res.MinChange = accumarray(subs(~inan), change(~inan),[nmst,1], @min);
+inanout       = accumarray(subs(~inan),1) == 0;
+res.MinChange(inanout) = NaN;
 end
 
 % Identify bad prices
@@ -451,7 +476,7 @@ s.mst = sortrows(s.mst, {'Date','From'});
 % Loop for each day
 nmst = size(s.mst,1);
 res  = cell(nmst,1);
-for r = 1:size(s.mst,1);
+for r = 1:size(s.mst,1)
     from = s.mst.From(r);
     to   = s.mst.To(r);
     data = s.data(from:to,:);
@@ -499,6 +524,7 @@ mstrow         = RunLength((1:nmst)',nobs);
 ikeep          = nonzero & ~isInvalidTrade(s.data);
 res.NonNullRet = accumarray(mstrow(ikeep), 1,[nmst,1]);
 end
+
 %% Utility functions
 function out = testLoadSpeed(varargin)
 out = [];
