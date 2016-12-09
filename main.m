@@ -161,37 +161,35 @@ mst = prepareMst();
 Analyze('sampleFirstLast',[],mst,[],[],[],BAD_MULTIPLIER);
 %% Sample VVWAP
 BAD_MULTIPLIER = 2;
-mst = prepareMst();
+FREQ = 30;
+FREQ = 5;
+FUN = 'volume';
+FUN = 'VWAP';
+
+mst  = prepareMst();
 
 % Half hours
 ranges = [ 930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430,...
           1500, 1530, 1600]'*100;
 ranges = [ranges(1:end-1), ranges(2:end)];
 
-opt             = struct('edgesVWAP',ranges,'BadPriceMultiplier',BAD_MULTIPLIER);
-[out, filename] = Analyze('VWAP',[],mst,[],[],[],opt);
+% 5 minute
+% ranges = serial2hhmmss(datenum(0,0,0,9,30:5:420,0)');
+% ranges = [ranges(1:end-1), ranges(2:end)];
+ranges = [930,935; 1155,1200; 1255,1300; 1305,1310; 1330,1335; 1525,1530; 1555,1600]*100;
+ranges = [1225, 1230; 1230 1235; 1300, 1305]; 
+ranges = [1355 1400; 1400 1405; 1425 1430; 1430 1435; 1455 1500; 1500, 1505; 1530 1535]*100;
+
+opt             = struct('edges',ranges,'BadPriceMultiplier',BAD_MULTIPLIER);
+[out, filename] = Analyze(FUN,[],mst,[],[],4,opt);
 
 % Save each column separately
 for r = 1:size(ranges,1)
-    fname = fullfile('results', 'vwap', regexprep(filename, '.mat', sprintf('_30_%d.mat',ranges(r,1))));
+    fname = fullfile('results', 'vwap', regexprep(filename, '.mat', sprintf('_%d_%d.mat',FREQ, ranges(r,1))));
     res = out(:,[1,2,r+2,end]);
     save(fname,'res')
 end
 
-% minute
-ranges = serial2hhmmss(datenum(0,0,0,9,30:5:420,0)');
-ranges = [ranges(1:end-1), ranges(2:end)];
-ranges = [930,935; 1155,1200; 1255,1300; 1305,1310; 1330,1335; 1525,1530; 1555,1600]*100;
-
-for r = 1:size(ranges,1)
-    opt           = struct('edgesVWAP',ranges(r,:),'BadPriceMultiplier',BAD_MULTIPLIER);
-    [~, filename] = Analyze('VWAP',[],mst,[],[],[],opt);
-
-    % Rename file
-    oldName = fullfile('results',filename);
-    newName = fullfile('results', 'vwap', regexprep(filename, '.mat', sprintf('_5_%d.mat',ranges(r,1))));
-    movefile(oldName,newName)
-end
 %% Min tick size
 try
     res = loadresults('minTickSize');

@@ -37,6 +37,7 @@ fhandles = {@medianprice
     @betacomponents_refresh
     @betacomponents_preav
     @VWAP
+    @volume
     @sampleSpy
     @testLoadSpeed
     @maxRecordsPerSec
@@ -403,7 +404,6 @@ for ii = 1:nspy
 end
 end
 
-% Sampling
 function res = VWAP(s,cached,opt)
 % Volume weighted average price
 nfile  = cached{end};
@@ -423,9 +423,9 @@ if ~isempty(price)
     row    = fix(times);
     hhmmss = serial2hhmmss(times);
     col    = zeros(size(row));
-    nedges = size(opt.edgesVWAP,1);
+    nedges = size(opt.edges,1);
     for r = 1:nedges
-        idx      = in(hhmmss, opt.edgesVWAP(r,:),opt.inclusion);
+        idx      = in(hhmmss, opt.edges(r,:),opt.inclusion);
         col(idx) = r;
     end
     subs = [row, col];
@@ -441,8 +441,47 @@ if ~isempty(price)
     row       = unique(row);
     res       = res(row,:);
     VWAP      = VWAP(row,:);
-    VWAPnames = arrayfun(@(x) sprintf('T%d',x),opt.edgesVWAP(:,1),'un',0);
+    VWAPnames = arrayfun(@(x) sprintf('T%d',x),opt.edges(:,1),'un',0);
     res       = [res, array2table(VWAP,'VariableNames',VWAPnames)];
+    res.File  = repmat(uint16(nfile), size(res,1),1);
+end
+end
+
+function res = volume(s,cached,opt)
+% Volume weighted average price
+nfile  = cached{end};
+cached = cached{1};
+res    = [];
+
+if ~isfield(opt,'inclusion')
+    opt.inclusion = '[)';
+end
+
+[price, times, vol] = samplePrepare_(s,cached,opt);
+
+if ~isempty(price)
+    res = cached(:,{'Date','Permno'});
+
+    % Accumulation subs
+    row    = fix(times);
+    hhmmss = serial2hhmmss(times);
+    col    = zeros(size(row));
+    nedges = size(opt.edges,1);
+    for r = 1:nedges
+        idx      = in(hhmmss, opt.edges(r,:),opt.inclusion);
+        col(idx) = r;
+    end
+    subs = [row, col];
+
+    sz = [size(res,1), nedges];
+
+    % Drop uncategorized
+    ikeep  = col ~= 0;
+    volume = uint32(accumarray(subs(ikeep,:), vol(ikeep), sz));
+
+    % Keep only record for which we have prices
+    names     = arrayfun(@(x) sprintf('Vol%d',x),opt.edges(:,1),'un',0);
+    res       = [res, array2table(volume,'VariableNames',names)];
     res.File  = repmat(uint16(nfile), size(res,1),1);
 end
 end
