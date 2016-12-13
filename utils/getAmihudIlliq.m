@@ -10,9 +10,9 @@ ret = double(ret);
 vol = double(vol);
 
 % Amihud illiq |r_t|/(price_t.*volume_t)
+ikeep               = ~(vol == 0 | isnan(ret) | isnan(prc));
 illiq               = abs(ret ./ (prc.* vol));
-illiq(isinf(illiq)) = NaN;
-[illiq, unId, unDt] = my_unstack(id,dt,illiq);
+[illiq, unId, unDt] = my_unstack(id(ikeep),dt(ikeep),illiq(ikeep));
 
 % End-of-month rolling average of a year of daily observations
 [mdate, pos, midx] = unique(unDt/100,'last');
