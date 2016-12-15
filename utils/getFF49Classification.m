@@ -727,9 +727,9 @@ for ii = 2:numel(s)
 end
 
 iKeep = ~cellfun('isempty', dict(:,1));
-dict  = cell2table(dict(iKeep,:), 'VariableNames',{'Id_FF49','Sic_from','Sic_to','SIC_Ind_Name'});
+dict  = cell2table(dict(iKeep,:), 'VariableNames',{'FF_id','Sic_from','Sic_to','SIC_Ind_Name'});
 
 if nargout == 2
-    desc = cell2table(desc, 'VariableNames',{'Id_FF49','FF49_ShortLabel','FF49_Ind_Name'});
+    desc = cell2table(desc, 'VariableNames',{'FF_id','ShortLabel','Industry_Name'});
 end
 end

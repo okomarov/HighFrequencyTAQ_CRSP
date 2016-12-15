@@ -1,9 +1,17 @@
-function tb = getFF49IndustryCodes(tb, isPanel)
-% GETFF49INDUSTRYCODES Get Fama and French 49 industry group codes for given Date - Permno pairs
+function tb = getFFIndustryCodes(tb, numind, isPanel)
+% GETFFINDUSTRYCODES Get Fama and French industry group codes for given Date - Permno pairs
 %
-%   GETFF49INDUSTRYCODES(TB) TB is a table with Permno and Date in yyyymmdd format
+%   GETFFINDUSTRYCODES(TB,NUMIND) TB is a table with Permno and Date in yyyymmdd format
+%       and NUMIND specifies on how many industry codes to map.
+%       Currently available classifications are 49 and 12 industries.
 
-if nargin < 2, isPanel = false; end
+if nargin < 2
+    error('getFFIndustryCodes:missingIndustry','Missing industry specification.')
+end
+
+if nargin < 3
+    isPanel = false;
+end
 
 % Ensure it is sorted by id-date, i.e. some date changes correspond
 % to same permno, we need to sort
@@ -29,15 +37,22 @@ unP_tb = unique(tb.Permno);
 idx    = ismember(ccm.Lpermno, unP_tb);
 ccm    = ccm(idx,:);
 
-% Import mapping of SIC to the 49 FF industry portfolios
-[sic2ffptf, desc] = getFF49Classification();
+% Import mapping of SIC to the FF industry portfolios
+switch numind
+    case 49
+        [sic2ffptf, desc] = getFF49Classification();
+    case 12
+        [sic2ffptf, desc] = getFF12Classification();
+    otherwise
+        error('getFFIndustryCodes:invalidIndustry','Invalid indusrty specification.')
+end
 
 % Map
 for ii = 1:size(sic2ffptf,1)
     from            = sic2ffptf.Sic_from(ii);
     to              = sic2ffptf.Sic_to(ii);
     idx             = in(ccm.Sic, [from, to],'[]');
-    ccm.FFid(idx,1) = uint8(sic2ffptf.Id_FF49(ii));
+    ccm.FFid(idx,1) = uint8(sic2ffptf.FF_id(ii));
 end
 
 % Exclude unmapped
