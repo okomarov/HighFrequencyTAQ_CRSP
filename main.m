@@ -157,16 +157,16 @@ print('countMaxTradeSec','-depsc','-r200')
 
 %% Sample first and last
 BAD_MULTIPLIER = 2;
-mst = prepareMst();
+mst            = prepareMst();
 Analyze('sampleFirstLast',[],mst,[],[],[],BAD_MULTIPLIER);
 %% Sample VVWAP
 BAD_MULTIPLIER = 2;
-FREQ = 30;
-FREQ = 5;
-FUN = 'volume';
-FUN = 'VWAP';
+FREQ           = 30;
+FREQ           = 5;
+FUN            = 'volume';
+FUN            = 'VWAP';
 
-mst  = prepareMst();
+mst = prepareMst();
 
 % Half hours
 ranges = [ 930, 1000, 1030, 1100, 1130, 1200, 1230, 1300, 1330, 1400, 1430,...
@@ -186,7 +186,7 @@ opt             = struct('edges',ranges,'BadPriceMultiplier',BAD_MULTIPLIER);
 % Save each column separately
 for r = 1:size(ranges,1)
     fname = fullfile('results', 'vwap', regexprep(filename, '.mat', sprintf('_%d_%d.mat',FREQ, ranges(r,1))));
-    res = out(:,[1,2,r+2,end]);
+    res   = out(:,[1,2,r+2,end]);
     save(fname,'res')
 end
 
@@ -200,3 +200,13 @@ end
 
 %% RV components
 rv = estimateRVcomponents(5,false);
+%% RSkew components
+USE_OVERNIGHT = false;
+PATH2DATA     = 'data\TAQ\sampled\5min\nobad_vw';
+mst           = prepareMst();
+mst           = cache2cell(mst,mst.File);
+try
+    rskew = loadresults('rskew_comp');
+catch
+    rskew = Analyze('rskew_comp', [],mst, PATH2DATA,[],8,struct('USE_OVERNIGHT',USE_OVERNIGHT));
+end

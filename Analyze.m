@@ -34,6 +34,7 @@ fhandles = {@medianprice
     @sample
     @sampleFirstLast
     @rvcomponents
+    @rskew_comp
     @betacomponents_refresh
     @betacomponents_preav
     @VWAP
@@ -265,6 +266,26 @@ end
 end
 
 function res = rvcomponents(s,cached,opt)
+nmst       = size(s.mst,1);
+[ret,subs] = ret_prepare_(s,cached,opt);
+
+% RV, sum and count
+res    = s.mst(:,{'Permno','Date'});
+res.RV = accumarray(subs, ret.^2,[nmst,1],[],NaN);
+res.Sx = accumarray(subs, ret   ,[nmst,1],[],NaN);
+res.N  = uint8(accumarray(subs,      1,[nmst,1],[],NaN));
+end
+
+function res = rskew_comp(s,cached,opt)
+nmst       = size(s.mst,1);
+[ret,subs] = ret_prepare_(s,cached,opt);
+
+% RV, sum and count
+res    = s.mst(:,{'Permno','Date'});
+res.R3 = accumarray(subs, ret.^3,[nmst,1],[],NaN);
+end
+
+function [ret,subs] = ret_prepare_(s,cached,opt)
 
 % Dates and returns
 dates = s.data.Datetime;
@@ -290,12 +311,6 @@ subs = RunLength((1:nmst)', nobs);
 ikeep = ~isnan(ret);
 subs  = subs(ikeep);
 ret   = ret(ikeep);
-
-% RV, sum and count
-res    = s.mst(:,{'Permno','Date'});
-res.RV = accumarray(subs, ret.^2,[nmst,1],[],NaN);
-res.Sx = accumarray(subs, ret   ,[nmst,1],[],NaN);
-res.N  = uint8(accumarray(subs,      1,[nmst,1],[],NaN));
 end
 
 function res = betacomponents_refresh(s,cached,opt)
