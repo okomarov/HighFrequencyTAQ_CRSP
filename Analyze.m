@@ -43,7 +43,8 @@ fhandles = {@medianprice
     @testLoadSpeed
     @maxRecordsPerSec
     @countNonNullRet
-    @minTickSize};
+    @minTickSize
+    @estimateHighLowPrice};
 
 [hasFunc, pos] = ismember(fun, cellfun(@func2str,fhandles,'un',0));
 if ~hasFunc
@@ -73,6 +74,22 @@ idx                  = cached.MedPrice == 0;
 cached.MedPrice(idx) = NaN;
 
 res = cached;
+end
+
+function res = estimateHighLowPrice(s,cached, opt)
+cached = cached{1};
+nobs   = double(s.mst.To - s.mst.From + 1);
+
+% Bad prices and bad days
+ibad = ibadprices(s, cached, opt.BadPriceMultiplier);
+ibad = ibad | RunLength(cached.Isbadday, nobs);
+
+nmst = size(cached,1);
+subs = int32(RunLength((1:nmst)',nobs));
+
+res      = cached(:,{'Id','Permno','Date'});
+res.Low  = accumarray(subs(~ibad), s.data.Price(~ibad),[nmst,1], @min);
+res.High = accumarray(subs(~ibad), s.data.Price(~ibad),[nmst,1], @max);
 end
 
 function res = minTickSize(s,cached)
