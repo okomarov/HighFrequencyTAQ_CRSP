@@ -21,6 +21,7 @@ end
 hl      = hl(hl.Permno ~= 0,:);
 invalid = isnan(hl.High) | isnan(hl.Low) | hl.High == 0 | hl.Low == 0;
 hl      = hl(~invalid,:);
+hl      = sortrows(hl,{'Permno','Date'});
 
 % Adjust by overnight
 try
@@ -29,8 +30,10 @@ catch
     reton = loadresults('return_intraday_overnight','..\hfandlow\results');
 end
 [~,pos]  = ismembIdDate(hl.Permno, hl.Date, reton.Permno, reton.Date);
-hl.HighA = double(hl.High) .* (1+reton.RetCO(pos));
-hl.LowA  = double(hl.Low) .* (1+reton.RetCO(pos));
+hl.RetCO = double(reton.RetCO(pos));
+hl.RetCO(hl.RetCO < -0.99) = 0;
+hl.HighA = double(hl.High) ./ (1+hl.RetCO);
+hl.LowA  = double(hl.Low)  ./ (1+hl.RetCO);
 clear reton
 
 gvar = findgroups(hl.Permno);
