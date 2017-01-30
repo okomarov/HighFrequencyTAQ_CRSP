@@ -13,13 +13,21 @@ function hl = estimateHighLowSpread(LAG)
 % Reference: 2012 Corwin, Schults - A Simple Way to Estimate Bid-Ask Spreads from Daily High and Low Prices - JF
 
 % Load high low prices and cache
-hl      = loadresults('estimateHighLowPrice');
+try
+    hl = loadresults('estimateHighLowPrice');
+catch
+    hl = loadresults('estimateHighLowPrice','..\results');
+end
 hl      = hl(hl.Permno ~= 0,:);
 invalid = isnan(hl.High) | isnan(hl.Low) | hl.High == 0 | hl.Low == 0;
 hl      = hl(~invalid,:);
 
 % Adjust by overnight
-reton    = loadresults('return_intraday_overnight','hfandlow\results');
+try
+    reton = loadresults('return_intraday_overnight','hfandlow\results');
+catch
+    reton = loadresults('return_intraday_overnight','..\hfandlow\results');
+end
 [~,pos]  = ismembIdDate(hl.Permno, hl.Date, reton.Permno, reton.Date);
 hl.HighA = double(hl.High) .* (1+reton.RetCO(pos));
 hl.LowA  = double(hl.Low) .* (1+reton.RetCO(pos));
