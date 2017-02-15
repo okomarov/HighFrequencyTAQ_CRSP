@@ -4,18 +4,26 @@ path2legacy = 'data\TAQ\master';
 master      = load(path2legacy, '-mat');
 
 % Check old master versus new
-dd     = dir(fullfile(matfolder,'*.idx'));
-nfiles = numel(dd);
-new    = cell(nfiles,1);
+maxdate = max(master.mst.Date);
+dd      = dir(fullfile(matfolder,'*.idx'));
+nfiles  = numel(dd);
+new     = cell(nfiles,1);
 for ii = 1:nfiles
-    tmp          = load(fullfile(matfolder,dd(ii).name),'-mat');
+    tmp       = load(fullfile(matfolder,dd(ii).name),'-mat');
+    idx       = tmp.index.Date <= maxdate;
+    tmp.index = tmp.index(idx,:);
+
     [~,pos]      = ismember(tmp.symbol, master.ids);
-    tmp.index.Id = pos(tmp.index.Id);
+    tmp.index.Id = uint16(pos(tmp.index.Id));
     new{ii}      = tmp.index(:,{'Id','Date'});
 end
 new = cat(1,new{:});
-new = sortrows(new,{'Id','Date'});
-if ~isequal(new, master.mst(:,{'Id','Date'}))
+new = sortrows(new, {'Id','Date'});
+old = master.mst(:,{'Id','Date'});
+old = sortrows(old, {'Id','Date'});
+
+prob = find(~isequal(old.Id, new.Id) | ~isequal(old.Date, new.Date));
+if ~isempty(prob)
     error('The legacy master is different from the newly created master.')
 end
 
