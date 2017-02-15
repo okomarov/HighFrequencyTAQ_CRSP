@@ -31,7 +31,7 @@ indexDate   = dropEmptyPreallocated(indexDate);
 indexPermno = dropEmptyPreallocated(indexPermno);
 
 % Organize in containers
-symbol = containers.Map(upper(indexSymb.Universe), indexSymb.FileList);
+symbol = containers.Map(indexSymb.Universe, indexSymb.FileList);
 id     = containers.Map(uint32(1:numel(indexSymb.Universe)), indexSymb.FileList);
 date   = containers.Map(indexDate.Universe, indexDate.FileList);
 permno = containers.Map(indexPermno.Universe, indexPermno.FileList);
