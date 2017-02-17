@@ -30,12 +30,13 @@ if all(iexclude)
 end
 
 % Add id and date to data
-s.data.Id(:,1)     = RunLength(s.index.Id, nobs);
-s.data.Permno(:,1) = RunLength(s.index.Permno, nobs);
-s.data.Date(:,1)   = RunLength(s.index.Date, nobs);
-s.data             = s.data(~iexclude,:);
+data = s.data;
+data.Id(:,1)     = RunLength(s.index.Id    , nobs);
+data.Permno(:,1) = RunLength(s.index.Permno, nobs);
+data.Date(:,1)   = RunLength(s.index.Date  , nobs);
+data             = data(~iexclude,:);
 
 if ~isempty(opts.ConsolidateTimestampType)
-    data = consolidateTimestamp(s.data, opts.ConsolidateTimestampType);
+    data = consolidateTimestamp(data, opts.ConsolidateTimestampType);
 end
 end
