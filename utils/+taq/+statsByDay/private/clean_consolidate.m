@@ -29,6 +29,7 @@ if all(iexclude)
     return
 end
 
+% Add id and date to data
 s.data.Id(:,1)     = RunLength(s.index.Id, nobs);
 s.data.Permno(:,1) = RunLength(s.index.Permno, nobs);
 s.data.Date(:,1)   = RunLength(s.index.Date, nobs);

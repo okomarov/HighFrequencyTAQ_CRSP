@@ -8,7 +8,9 @@ function data = consolidateTimestamp(data, type)
 %
 %   NOTE: mostly used on TAQ trades data
 
-if nargin < 2, type = 'volumeWeighted'; end
+if nargin < 2
+    type = 'volumeWeighted'; 
+end
 
 try
     dt = data.Datetime;
