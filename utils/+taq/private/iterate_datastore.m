@@ -40,7 +40,8 @@ try
     % Export results and notify
     filename = sprintf('%s_%s.mat',outname,datestr(now,'yyyymmdd_HHMM'));
     save(filename, 'res')
-    message  = sprintf('Task ''%s'' terminated in %s',getfield(dbstack(1),'name'),sec2time(toc));
+    stack = dbstack();
+    message  = sprintf('Task ''%s'' terminated in %s',stack(end).name,sec2time(toc));
     disp(message);
     if ~p.Results.debug
         sendmail('o.komarov11@imperial.ac.uk', message,'');
@@ -49,7 +50,8 @@ catch err
     filename = fullfile(fileparts(outname), sprintf('%s_err.mat',datestr(now,'yyyymmdd_HHMM')));
     save(filename,'err')
     if ~p.Results.debug
-        sendmail('o.komarov11@imperial.ac.uk',sprintf('ERROR in task ''%s''',getfield(dbstack(1),'name')), err.message, {filename})
+        stack = dbstack();
+        sendmail('o.komarov11@imperial.ac.uk',sprintf('ERROR in task ''%s''',stack(end).name), err.message, {filename})
     end
     rethrow(err)
 end
