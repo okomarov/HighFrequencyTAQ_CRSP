@@ -28,7 +28,7 @@ end
 
 try
     tic
-    for f = 1:N
+    parfor f = 1:N
         disp(f)
         fname  = fullfile(path2data, dd(f).name);
         s      = taq.util.loadFull(fname);
@@ -47,7 +47,7 @@ try
         sendmail('o.komarov11@imperial.ac.uk', message,'');
     end
 catch err
-    filename = fullfile(fileparts(outname), sprintf('%s_err.mat',datestr(now,'yyyymmdd_HHMM')));
+    filename = fullfile(fileparts(outname), sprintf('err_%s.mat',datestr(now,'yyyymmdd_HHMM')));
     save(filename,'err')
     if ~p.Results.debug
         stack = dbstack();
