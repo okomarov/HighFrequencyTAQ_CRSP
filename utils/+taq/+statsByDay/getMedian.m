@@ -12,11 +12,23 @@ else
     cleanOpts      = p.Results;
 end
 
+% Parse iterOpts
+if nargin < 4
+    iterOpts = struct('debug',false, 'numcores', 4);
+else
+    p              = inputParser();
+    p.StructExpand = true;
+    addParameter(p,'debug',false);
+    addParameter(p,'numcores',4);
+    p.parse(iterOpts);
+    iterOpts       = p.Results;
+end
+
 % Single file or whole datastore
 if nargin == 1 && isstruct(path2data)
     res = getMedianSingle_(path2data, [], [], cleanOpts);
 else
-    res = getMedianWholeDatastore_(path2data, outname, cleanOpts);
+    res = getMedianWholeDatastore_(path2data, outname, cleanOpts, iterOpts);
 end
 end
 
@@ -33,6 +45,6 @@ res.MedianPrice(:,1)   = NaN;
 res.MedianPrice(pos,1) = prices;
 end
 
-function res = getMedianWholeDatastore_(path2data, outname, cleanOpts)
-res = taq.statsByDay(path2data, outname, @(s,cached,filenum) getMedianSingle_(s, cached, filenum, cleanOpts));
+function res = getMedianWholeDatastore_(path2data, outname, cleanOpts, iterOpts)
+res = taq.statsByDay(path2data, outname, @(s,cached,filenum) getMedianSingle_(s, cached, filenum, cleanOpts), iterOpts);
 end
