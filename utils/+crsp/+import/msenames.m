@@ -25,6 +25,10 @@ function data = msenames(path2zip, outname)
 %     Hsiccd    uint16   Standard Industrial Classification Code
 %     Cusip     cellstr  CUSIP Header
 %
+if nargin < 2
+    [folder,name] = fileparts(mfilename('fullpath'));
+    outname       = fullfile(folder,'..\data',name);
+end
 fmt  = ['%u32%u32%u32%u8%u8%u16%s%s%s%s '...
         '%s%u32%s%s%s%u32%u32%u32%u8%u16%s'];
 labels = {'PERMNO';'Names Date (yyyymmdd)';'Names Ending Date  (yyyymmdd)';'Share Code';'Exchange Code';'Standard Industrial Classification Code';'CUSIP historical';'Ticker Symbol';'Company Name';'Share Class';'Trading Symbol';'North American Industry Classification System';'Primary Exchange';'Trading Status';'Security Status';'PERMCO';'Nasdaq Company Number';'Nasdaq Issue Number';'Exchange Code Header';'Standard Industrial Classification Code';'CUSIP Header'};
