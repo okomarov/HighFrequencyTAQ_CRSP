@@ -14,12 +14,12 @@ end
 
 % Parse iterOpts
 if nargin < 4
-    iterOpts = struct('debug',false, 'numcores', 4);
+    iterOpts = struct('Debug',false, 'NumCores', 4);
 else
     p              = inputParser();
     p.StructExpand = true;
-    addParameter(p,'debug',false);
-    addParameter(p,'numcores',4);
+    addParameter(p,'Debug',false);
+    addParameter(p,'NumCores',4);
     p.parse(iterOpts);
     iterOpts       = p.Results;
 end

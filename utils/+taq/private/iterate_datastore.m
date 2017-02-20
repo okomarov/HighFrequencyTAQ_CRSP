@@ -11,18 +11,21 @@ res = deal(cell(N,1));
 
 % Parse inputs
 p = inputParser();
-addParameter(p,'debug',false);
-addParameter(p,'numcores',4);
-addParameter(p,'cachebyfile',cell(N,1));
-addParameter(p,'input2fun',{});
+p.CaseSensitive = false;
+addParameter(p,'Debug',false);
+addParameter(p,'NumCores',4);
+addParameter(p,'CacheByFile',cell(N,1));
+addParameter(p,'InputToFun',{});
+addParameter(p,'DisplayProgress',true);
 p.parse(varargin{:});
 
-cachebyfile = p.Results.cachebyfile;
-input2fun   = p.Results.input2fun;
+CacheByFile  = p.Results.CacheByFile;
+InputToFun   = p.Results.InputToFun;
+DispProgress = p.Results.DisplayProgress;
 
 % Setup
-poolStartup(p.Results.numcores, p.Results.debug)
-if ~p.Results.debug
+poolStartup(p.Results.NumCores, p.Results.Debug)
+if ~p.Results.Debug
     setupemail();
 end
 
@@ -32,7 +35,7 @@ try
         disp(f)
         fname  = fullfile(path2data, dd(f).name);
         s      = taq.util.loadFull(fname);
-        inputs = {cachebyfile{f,:}, f, input2fun{:}};
+        inputs = {CacheByFile{f,:}, f, InputToFun{:}};
         res{f} = fun(s, inputs{:});
     end
     res = cat(1,res{:});
@@ -40,16 +43,16 @@ try
     % Export results and notify
     filename = sprintf('%s_%s.mat',outname,datestr(now,'yyyymmdd_HHMM'));
     save(filename, 'res')
-    stack = dbstack();
+    stack    = dbstack();
     message  = sprintf('Task ''%s'' terminated in %s',stack(end).name,sec2time(toc));
     disp(message);
-    if ~p.Results.debug
+    if ~p.Results.Debug
         sendmail('o.komarov11@imperial.ac.uk', message,'');
     end
 catch err
     filename = fullfile(fileparts(outname), sprintf('err_%s.mat',datestr(now,'yyyymmdd_HHMM')));
     save(filename,'err')
-    if ~p.Results.debug
+    if ~p.Results.Debug
         stack = dbstack();
         sendmail('o.komarov11@imperial.ac.uk',sprintf('ERROR in task ''%s''',stack(end).name), err.message, {filename})
     end
