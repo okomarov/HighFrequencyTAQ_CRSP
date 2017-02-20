@@ -48,5 +48,7 @@ res.Nbadtot = uint32(accumarray(subs,  iexclude));
 end
 
 function res = getBadPricesCountWholeDatastore_(path2data, outname, cleanOpts, iterOpts)
-res = taq.statsByDay(path2data, outname, @(s,cached,filenum) getBadPricesCountSingle_(s, cached, filenum, cleanOpts), iterOpts);
+iterOpts = [fieldnames(iterOpts), struct2cell(iterOpts)]';
+res      = taq.iterate_datastore(path2data, outname,...
+    @(s,cached,filenum) getBadPricesCountSingle_(s, cached, filenum, cleanOpts), iterOpts{:});
 end

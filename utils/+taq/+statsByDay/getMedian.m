@@ -48,5 +48,6 @@ res.File(:,1)          = uint16(filenum);
 end
 
 function res = getMedianWholeDatastore_(path2data, outname, cleanOpts, iterOpts)
-res = taq.statsByDay(path2data, outname, @(s,cached,filenum) getMedianSingle_(s, cached, filenum, cleanOpts), iterOpts);
+iterOpts = [fieldnames(iterOpts), struct2cell(iterOpts)]';
+res      = taq.iterate_datastore(path2data, outname, @(s,cached,filenum) getMedianSingle_(s, cached, filenum, cleanOpts), iterOpts{:});
 end
