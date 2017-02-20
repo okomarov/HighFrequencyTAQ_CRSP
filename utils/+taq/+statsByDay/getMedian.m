@@ -38,12 +38,13 @@ data = clean_consolidate(s, cached, cleanOpts);
 
 [un,~,subs] = unique([uint32(data.Id),data.Date],'rows');
 nmst        = size(un,1);
-prices      = accumarray(subs, data.Price,[nmst,1], @fast_median);
+prices      = single(accumarray(subs, data.Price,[nmst,1], @fast_median));
 
 res                    = s.index(:,{'Id','Date','Permno'});
 res.MedianPrice(:,1)   = NaN;
 [~,pos]                = ismembIdDate(un(:,1), un(:,2), res.Id, res.Date);
 res.MedianPrice(pos,1) = prices;
+res.File(:,1)          = uint16(filenum);
 end
 
 function res = getMedianWholeDatastore_(path2data, outname, cleanOpts, iterOpts)

@@ -14,10 +14,10 @@ iexclude = isInvalidTrade(s.data);
 
 % Exclude prices > multiplier or prices < 1/multiplier
 if ~isempty(opts.BadPriceMultiplier)
-    medprice = RunLength(cached.MedPrice,nobs);
+    medprice = RunLength(cached.MedianPrice,nobs);
     iexclude = iexclude | ...
-               s.data.Price >= medprice .* multiplier |...
-               s.data.Price <= medprice ./ multiplier;
+               s.data.Price >= medprice .* opts.BadPriceMultiplier |...
+               s.data.Price <= medprice ./ opts.BadPriceMultiplier;
 end
 
 if opts.ExcludeBadDays
