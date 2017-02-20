@@ -13,12 +13,12 @@ folder = fullfile(fileparts(mfilename('fullpath')),'data');
 switch freq
     case 'monthly'
         if isempty(names_m)
-            names_m = loadresults('msenames',folder);
+            names_m = loadlatest('msenames',folder);
         end
         names = names_m;
     case 'daily'
         if isempty(names_d)
-            names_d = loadresults('dsenames',folder);
+            names_d = loadlatest('dsenames',folder);
         end
         names = names_d;
     otherwise
