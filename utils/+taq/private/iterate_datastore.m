@@ -30,13 +30,28 @@ if ~p.Results.Debug
 end
 
 try
+    % Setup progressbar
+    try
+        if DispProgress
+            stack = dbstack();
+            title = [stack(end).name, ' progress    '];
+            ppm   = ParforProgMon(title, N, floor(N/100),500, 55);
+        end
+    catch
+        DispProgress = false;
+        warning('Could not start parfor progress monitor.')
+    end
+
     tic
     parfor f = 1:N
-        disp(f)
         fname  = fullfile(path2data, dd(f).name);
         s      = taq.util.loadFull(fname);
         inputs = {CacheByFile{f,:}, f, InputToFun{:}};
         res{f} = fun(s, inputs{:});
+
+        if DispProgress
+            ppm.increment();
+        end
     end
     res = cat(1,res{:});
 
