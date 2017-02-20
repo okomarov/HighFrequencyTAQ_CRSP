@@ -24,7 +24,7 @@ if opts.ExcludeBadDays
     iexclude = iexclude | RunLength(cached.Isbadday, nobs);
 end
 
-if all(iexclude)
+if all(iexclude) || opts.TerminateEarly
     data = [];
     return
 end

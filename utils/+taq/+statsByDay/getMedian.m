@@ -1,12 +1,13 @@
 function res = getMedian(path2data, outname, cleanOpts, iterOpts)
 % Parse options
-if nargin < 3
-    cleanOpts = struct('ExcludeBadDays',false, 'BadPriceMultiplier', [],'ConsolidateTimestampType',[]);
+if nargin < 3 || isempty(cleanOpts)
+    cleanOpts = struct('ExcludeBadDays',false, 'BadPriceMultiplier', [], 'TerminateEarly',false,'ConsolidateTimestampType',[]);
 else
     p              = inputParser();
     p.StructExpand = true;
     addParameter(p,'BadPriceMultiplier',[]);
     addParameter(p,'ExcludeBadDays',false);
+    addParameter(p,'TerminateEarly',false);
     addParameter(p,'ConsolidateTimestampType',[]);
     p.parse(cleanOpts);
     cleanOpts      = p.Results;
