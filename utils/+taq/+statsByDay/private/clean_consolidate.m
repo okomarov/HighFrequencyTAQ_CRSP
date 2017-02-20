@@ -1,4 +1,4 @@
-function data = clean_consolidate(s, cached, opts)
+function [data, iexclude, nobs] = clean_consolidate(s, cached, opts)
 % CLEAN_CONSOLIDATE Cleans invalid/bad trades and consolidates timestamp
 
 if ~isempty(cached) && ~isequal(s.index.Date, cached.Date)
