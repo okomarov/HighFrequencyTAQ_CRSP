@@ -1,4 +1,19 @@
-function masterFile(fname, outdir, opt)
+function tb = masterFile(fname, outdir, opt)
+% MASTERFILE Imports .csv or .tab master files to table and adds record to master folder
+% 
+%   MASTERFILE(FNAME, OUTDIR, OPT) FNAME is the name of the file, OUTDIR specifies the 
+%       folder with all the master records and OPT can have the folowing fields:
+%           - UseTextscan = false (default)
+%           - ImportFmt   = scan format used by textscan
+%           - ImportOther = other options to textscan
+%
+%   Format ot the output table
+%
+%       SYMBOL | NAME | CUSIP | ETN | ETA | ETB | ETP | ETX | ETT | ETO| ...
+%       cstr   | cstr | cstr  | tf  | tf  | tf  | tf  | tf  | tf  | tf | ...
+%
+%       ... ETW | ITS | ICODE | SHROUT | UOT | DENOM | TYPE | FDATE
+%       ... tf  | tf  | cstr  | double | u32 | char  |  i8  | u32
 
 PREFIX_MASTER = 's_';
 
