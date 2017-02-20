@@ -21,7 +21,7 @@ p.parse(varargin{:});
 
 CacheByFile  = p.Results.CacheByFile;
 InputToFun   = p.Results.InputToFun;
-DispProgress = p.Results.DisplayProgress;
+DispProgress = p.Results.DisplayProgress && ~p.Results.Debug;
 
 % Setup
 poolStartup(p.Results.NumCores, p.Results.Debug)
